@@ -1,0 +1,152 @@
+body {
+    font-family: "Lato", sans-serif;
+    margin: 0;
+    background-color: #F7F7F7;
+}
+
+.header {
+    background-color: #5d5fca;
+    height: 300px;
+    padding: 16px 0 0 0;
+}
+
+.header-emoji {
+    font-size: 48px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.header-title {
+    color: #FFFFFF;
+    font-size: 48px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0 auto;
+}
+
+.menu {
+    display: flex;
+    justify-content: space-evenly;
+    background-color: #FFFFFF;
+    box-shadow: 0 4px 6px 0 rgba(0, 0, 0, 0.18);
+    height: 112px;
+    padding-top: 24px;
+    margin-top: 10px;
+    margin-left: 10%;
+    margin-right: 10%;
+    border-radius: 10px;
+}
+
+.menut {
+    height: 112px;
+    width: 1500px;
+    display: flex;
+    justify-content: space-evenly;
+    padding-top: 24px;
+    margin: -80px auto 0 auto;
+    background-color: #FFFFFF;
+    box-shadow: 0 4px 6px 0 rgba(0, 0, 0, 0.18);
+}
+
+.subheader-title {
+    color: #313131;
+    font-size: 30px;
+    font-weight: bold;
+    text-align: left;
+    margin: 3 auto;
+    padding-left: 80px;
+}
+
+.header-description {
+    color: #CFCFCF;
+    margin: 4px auto;
+    text-align: center;
+    max-width: 384px;
+}
+
+.dropdown {
+    width: 300px;
+}
+
+.aspect {
+    height: 30px;
+    width: 300px
+}
+
+.wrapper {
+    margin-right: auto;
+    margin-left: auto;
+    max-width: 1024px;
+    padding-right: 10px;
+    padding-left: 10px;
+    margin-top: 32px;
+}
+
+.text-area {
+    resize: none;
+    margin-left: 0%;
+    margin-right: 0%;
+    font-size: 18px;
+    text-align: left;
+    border-color: transparent;
+    background-color: #F7F7F7;
+    font-family: "Lato", sans-serif;
+    width: 90%;
+    height: 50px;
+    overflow-y: scroll;
+    padding-left: 10px;
+    padding-top: 10px;
+}
+
+.p-full-review {
+    font-family: "Lato", sans-serif;
+    padding-left: 10px;
+    padding-top: 20px;
+    text-decoration: underline;
+}
+
+.p-full-alert {
+    font-family: "Lato", sans-serif;
+    padding-left: 10px;
+    padding-top: 20px;
+}
+
+.text-area-review {
+    resize: none;
+    margin-left: 0%;
+    margin-right: 0%;
+    font-size: 18px;
+    text-align: left;
+    border-color: transparent;
+    background-color: #f4f3f3;
+    font-family: "Lato", sans-serif;
+    width: 90%;
+    height: 300px;
+    overflow-y: scroll;
+    padding-left: 10px;
+}
+
+.card {
+    margin-bottom: 24px;
+    box-shadow: 0 4px 6px 0 rgba(0, 0, 0, 0.18);
+}
+
+.Select-control {
+    width: 300px;
+    height: 48px;
+}
+
+.Select--single>.Select-control .Select-value,
+.Select-placeholder {
+    line-height: 48px;
+}
+
+.Select--multi .Select-value-label {
+    line-height: 32px;
+}
+
+.menu-title {
+    margin-bottom: 6px;
+    font-weight: bold;
+    color: #000000;
+}
