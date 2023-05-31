@@ -48,7 +48,6 @@ SIDEBAR_STYLE = {
     "width": "16rem",
     "padding": "2rem 1rem",
     "background-color": "#f8f9fa",
-    # "display": "none",
 }
 
 # the styles for the main content position it to the right of the sidebar and
@@ -58,6 +57,21 @@ CONTENT_STYLE = {
     "margin-right": "2rem",
     "padding": "2rem 1rem",
 }
+
+sidebar = html.Div(
+    id="side-bar",
+    children=[
+        html.H2("Topics", className="display-4"),
+        html.Hr(),
+        html.P("Click on your topics", className="lead"),
+        dbc.Nav(
+            id="nav-menu",
+            vertical=True,
+            pills=True,
+        ),
+    ],
+    style=SIDEBAR_STYLE,
+)
 
 
 header = html.Div(
@@ -69,43 +83,36 @@ header = html.Div(
             ),
             className="header-description",
         ),
-        html.Hr(),
-    ],
-    className="header_alt",
-)
-
-login = html.Div(
-    id="login-div",
-    style={"position": "absolute", "top": "50%", "left": "50%"},
-    children=[
         html.Div(
             children=[
-                html.H2("Log In"),
                 html.Div(
-                    children="Enter your email",
-                    className="menu-title",
+                    children=[
+                        html.Div(
+                            children="Enter your email",
+                            className="menu-title",
+                        ),
+                        dcc.Input(
+                            id="email-input",
+                            placeholder="Enter the email you signed up with...",
+                            className="aspect",
+                        ),
+                        dbc.Button("Enter", id="email-submit"),
+                        dbc.Spinner(html.Div(id="loading-output")),
+                        html.Div(
+                            html.P(
+                                id="wrong-username",
+                                children="\n\nThe email was not found or your topics haven't been generated. Sign up at www.pickrsocial.com or come back in 24 hours.",
+                            ),
+                            id="wrong-email",
+                            style={"display": "none", "color": "red"},
+                        ),
+                    ]
                 ),
-                dcc.Input(
-                    id="email-input",
-                    placeholder="Enter the email you signed up with...",
-                    className="aspect",
-                ),
-                dbc.Button("Submit", id="email-submit"),
-                html.P(
-                    children="If you haven't signed up for an account sign up account, then sign up at www.pickrsocial.com",
-                ),
-                html.Div(
-                    html.P(
-                        id="wrong-username",
-                        children="\n\nThe email was not found or your topics haven't been generated. Sign up or come back in 24 hours.",
-                    ),
-                    id="wrong-email",
-                    style={"display": "none", "color": "red"},
-                ),
-                dbc.Spinner(html.Div(id="loading-output")),
-            ]
+            ],
+            className="menu",
         ),
     ],
+    className="header",
 )
 
 topic_overiew_dt = dash_table.DataTable(
@@ -210,65 +217,44 @@ topic_posts_dt = dash_table.DataTable(
     fill_width=False,
 )
 
-sidebar = html.Div(
-    id="side-bar",
-    children=[
-        html.H2("Topics", className="display-4"),
-        html.Hr(),
-        html.P("Click on your topics", className="lead"),
-        dbc.Nav(
-            id="nav-menu",
-            vertical=True,
-            pills=True,
-        ),
-    ],
-    # style=SIDEBAR_STYLE,
-)
-topic_content = html.Div(
-    id="topic-div",
-    # style={"display": "none"},
-    children=[
-        sidebar,
-        html.Div(
-            id="topic-content",
-            children=[
-                dcc.Tabs(
-                    [
-                        dcc.Tab(
-                            label="Topic Overview",
-                            children=[
-                                html.H2(id="topic-name"),
-                                html.H5(id="topic-desc"),
-                                topic_overiew_dt,
-                                html.Hr(),
-                                html.P(
-                                    id="gen-tweets",
-                                    children="\n\nHandcrafted tweets for you",
-                                ),
-                                generated_tweets_dt,
-                            ],
-                        ),
-                        dcc.Tab(
-                            label="Posts from this topic",
-                            children=[
-                                html.P(
-                                    children="Posts from social media about this topic are below"
-                                ),
-                                topic_posts_dt,
-                            ],
-                        ),
-                    ]
-                )
-            ],
-        ),
-    ],
-)
 
+topic_content = html.Div(
+    id="topic-content",
+    children=[
+        dcc.Tabs(
+            [
+                dcc.Tab(
+                    label="Topic Overview",
+                    children=[
+                        html.H2(id="topic-name"),
+                        html.H5(id="topic-desc"),
+                        topic_overiew_dt,
+                        html.Hr(),
+                        html.P(
+                            id="gen-tweets",
+                            children="\n\nHandcrafted tweets for you",
+                        ),
+                        generated_tweets_dt,
+                    ],
+                ),
+                dcc.Tab(
+                    label="Posts from this topic",
+                    children=[
+                        html.P(
+                            children="Posts from social media about this topic are below"
+                        ),
+                        topic_posts_dt,
+                    ],
+                ),
+            ]
+        )
+    ],
+)
 
 app.layout = html.Div(
     children=[
         dcc.Location(id="url"),
-        html.Div(children=[header, topic_content], style=CONTENT_STYLE),
+        html.Div(children=[header, topic_content, sidebar], style=CONTENT_STYLE),
     ]
 )
 
@@ -336,6 +322,18 @@ def update_output(submit_n_clicks, url, username):
                 None,
             )
         return render_page_content(url)
+
+
+"""@app.callback(
+    Output("gen-tweets", "children"),
+    Output("nav-menu", "children"),
+    Output("topic-name", "children"),
+    Output("topic-desc", "children"),
+    Output("topic-ov-dt", "data"),
+    Output("gen-tweet-dt", "data"),
+    Output("all-posts-dt", "data"),
+    [Input("url", "pathname")],
+)"""
 
 
 def render_page_content(pathname):
