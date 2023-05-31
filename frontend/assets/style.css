@@ -10,6 +10,11 @@ body {
     padding: 16px 0 0 0;
 }
 
+.header_alt {
+    background-color: #cfcfec;
+    padding: 16px 0 0 0;
+}
+
 .header-emoji {
     font-size: 48px;
     margin: 0 auto;
