@@ -136,6 +136,7 @@ def create_topic_post_table(worksheet, header_background_color, t, cols, source)
 
 
 def create_sheet(username, topics, source, max_topics=13):
+    topics = topics[:max_topics]
     if source == "twitter":
         cols = ["Date", "Username", "Text", "Likes", "Retweets", "url"]
     elif source == "reddit":
@@ -151,7 +152,7 @@ def create_sheet(username, topics, source, max_topics=13):
 
     readable_topic_names = []
     create_topic_list_sheet(topics, sh, header_background_color)
-    for i, t in enumerate(topics[:max_topics]):
+    for i, t in enumerate(topics):
         topic_name = t.readable_topic_name[:100]
         readable_topic_names.append(topic_name)
         worksheet = sh.add_worksheet(
@@ -166,6 +167,6 @@ def create_sheet(username, topics, source, max_topics=13):
 
         if i % 2 == 0:
             print("sheets sleep")
-            time.sleep(30)
+            time.sleep(120)
 
     return "https://docs.google.com/spreadsheets/d/%s" % sh.id
