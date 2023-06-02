@@ -1,4 +1,9 @@
 data/
+service_account.json
+
+*.pickle
+*.ipynb
+.ipynb_checkpoints
 # Editors
 .vscode/
 .idea/
