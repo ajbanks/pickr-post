@@ -26,11 +26,6 @@ app_colors = {
 }
 
 
-def load_topic_data(username):
-    with open("data/" + username + ".pickle", "rb") as f:
-        return pickle.load(f)
-
-
 sorted_topics = None  # load_topic_data("pete")
 # topics = [t.readable_topic_name for t in sorted_topics]
 # topic_selected = sorted_topics[0]
@@ -48,6 +43,7 @@ SIDEBAR_STYLE = {
     "width": "16rem",
     "padding": "2rem 1rem",
     "background-color": "#f8f9fa",
+    # "display": "none",
 }
 
 # the styles for the main content position it to the right of the sidebar and
@@ -57,21 +53,6 @@ CONTENT_STYLE = {
     "margin-right": "2rem",
     "padding": "2rem 1rem",
 }
-
-sidebar = html.Div(
-    id="side-bar",
-    children=[
-        html.H2("Topics", className="display-4"),
-        html.Hr(),
-        html.P("Click on your topics", className="lead"),
-        dbc.Nav(
-            id="nav-menu",
-            vertical=True,
-            pills=True,
-        ),
-    ],
-    style=SIDEBAR_STYLE,
-)
 
 
 header = html.Div(
@@ -83,36 +64,43 @@ header = html.Div(
             ),
             className="header-description",
         ),
+        html.Hr(),
+    ],
+    className="header_alt",
+)
+
+login = html.Div(
+    id="login-div",
+    style={"position": "absolute", "top": "50%", "left": "50%"},
+    children=[
         html.Div(
             children=[
+                html.H2("Log In"),
                 html.Div(
-                    children=[
-                        html.Div(
-                            children="Enter your email",
-                            className="menu-title",
-                        ),
-                        dcc.Input(
-                            id="email-input",
-                            placeholder="Enter the email you signed up with...",
-                            className="aspect",
-                        ),
-                        dbc.Button("Enter", id="email-submit"),
-                        dbc.Spinner(html.Div(id="loading-output")),
-                        html.Div(
-                            html.P(
-                                id="wrong-username",
-                                children="\n\nThe email was not found or your topics haven't been generated. Sign up at www.pickrsocial.com or come back in 24 hours.",
-                            ),
-                            id="wrong-email",
-                            style={"display": "none", "color": "red"},
-                        ),
-                    ]
+                    children="Enter your email",
+                    className="menu-title",
                 ),
-            ],
-            className="menu",
+                dcc.Input(
+                    id="email-input",
+                    placeholder="Enter the email you signed up with...",
+                    className="aspect",
+                ),
+                dbc.Button("Submit", id="email-submit"),
+                html.P(
+                    children="If you haven't signed up for an account sign up account, then sign up at www.pickrsocial.com",
+                ),
+                html.Div(
+                    html.P(
+                        id="wrong-username",
+                        children="\n\nThe email was not found or your topics haven't been generated. Sign up or come back in 24 hours.",
+                    ),
+                    id="wrong-email",
+                    style={"display": "none", "color": "red"},
+                ),
+                dbc.Spinner(html.Div(id="loading-output")),
+            ]
         ),
     ],
-    className="header",
 )
 
 topic_overiew_dt = dash_table.DataTable(
@@ -217,123 +205,99 @@ topic_posts_dt = dash_table.DataTable(
     fill_width=False,
 )
 
-
-topic_content = html.Div(
-    id="topic-content",
+sidebar = html.Div(
+    id="side-bar",
     children=[
-        dcc.Tabs(
-            [
-                dcc.Tab(
-                    label="Topic Overview",
-                    children=[
-                        html.H2(id="topic-name"),
-                        html.H5(id="topic-desc"),
-                        topic_overiew_dt,
-                        html.Hr(),
-                        html.P(
-                            id="gen-tweets",
-                            children="\n\nHandcrafted tweets for you",
+        html.H2("Topics", className="display-4"),
+        html.Hr(),
+        html.P("Click on your topics", className="lead"),
+        dbc.Nav(
+            id="nav-menu",
+            vertical=True,
+            pills=True,
+        ),
+    ],
+    # style=SIDEBAR_STYLE,
+)
+topic_content = html.Div(
+    id="topic-div",
+    style={"display": "none"},
+    children=[
+        sidebar,
+        html.Div(
+            id="topic-content",
+            children=[
+                dcc.Tabs(
+                    [
+                        dcc.Tab(
+                            label="Topic Overview",
+                            children=[
+                                html.H2(id="topic-name"),
+                                html.H5(id="topic-desc"),
+                                topic_overiew_dt,
+                                html.Hr(),
+                                html.P(
+                                    id="gen-tweets",
+                                    children="\n\nHandcrafted tweets for you",
+                                ),
+                                generated_tweets_dt,
+                            ],
                         ),
-                        generated_tweets_dt,
-                    ],
-                ),
-                dcc.Tab(
-                    label="Posts from this topic",
-                    children=[
-                        html.P(
-                            children="Posts from social media about this topic are below"
+                        dcc.Tab(
+                            label="Posts from this topic",
+                            children=[
+                                html.P(
+                                    children="Posts from social media about this topic are below"
+                                ),
+                                topic_posts_dt,
+                            ],
                         ),
-                        topic_posts_dt,
-                    ],
-                ),
-            ]
-        )
+                    ]
+                )
+            ],
+        ),
     ],
 )
+
 
 app.layout = html.Div(
     children=[
         dcc.Location(id="url"),
-        html.Div(children=[header, topic_content, sidebar], style=CONTENT_STYLE),
+        html.Div(children=[header, login, topic_content], style=CONTENT_STYLE),
     ]
 )
 
 
 @app.callback(
-    Output("nav-menu", "children"),
-    Output("topic-name", "children"),
-    Output("topic-desc", "children"),
-    Output("topic-ov-dt", "data"),
-    Output("gen-tweet-dt", "data"),
-    Output("all-posts-dt", "data"),
-    Output("wrong-email", "style"),
-    Output("topic-content", "style"),
+    # Output("topic-div", "style"),
+    # Output("login-div", "style"),
     Output("loading-output", "children"),
     Input("email-submit", "n_clicks"),
-    Input("url", "pathname"),
+    #    Input("url", "pathname"),
     State("email-input", "value"),
-    prevent_intial_call=True,
+    #    prevent_intial_call=True,
 )
-def update_output(submit_n_clicks, url, username):
-    print("url", url)
-    triggered_id = ctx.triggered_id
-    global sorted_topics
-    if triggered_id == "email-submit":
-        if not submit_n_clicks or username is None:
-            return (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                {"display": "none"},
-                {"display": "none"},
-                None,
-            )
-
-        try:
-            sorted_topics = load_topic_data(username)
-        except:
-            return (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                {"display": "block", "color": "red"},
-                {"display": "none"},
-                None,
-            )
-        return update_all_cells(sorted_topics[0])
-    elif triggered_id == "url":
-        print("url", url)
-        if sorted_topics is None:
-            return (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                {"display": "none"},
-                {"display": "none"},
-                None,
-            )
-        return render_page_content(url)
+def update_output(submit_n_clicks, username):
+    print("hi")
+    """try:
+        print("try")
+        topics = load_topic_data(username)
+        print("got topic")
+        return update_all_cells(topics[0])
+    except Exception as e:
+        print("pass")
+        # print(e)
+        pass"""
+    return (
+        # {"display": "none"},
+        # {"display": "block"},
+        None,
+    )
 
 
-"""@app.callback(
-    Output("gen-tweets", "children"),
-    Output("nav-menu", "children"),
-    Output("topic-name", "children"),
-    Output("topic-desc", "children"),
-    Output("topic-ov-dt", "data"),
-    Output("gen-tweet-dt", "data"),
-    Output("all-posts-dt", "data"),
-    [Input("url", "pathname")],
-)"""
+def load_topic_data(username):
+    with open(username + ".pickle", "rb") as f:
+        return pickle.load(f)
 
 
 def render_page_content(pathname):
@@ -380,13 +344,7 @@ def update_all_cells(topic):
         columns=["Potentially Viral Tweet 1", "Potentially Viral Tweet 2"],
     )
     return (
-        nav[0],
-        topic.readable_topic_name,
-        topic.description,
-        ov_df.to_dict("records"),
-        gen_df.to_dict("records"),
-        topic.topic_tweets.to_dict("records"),
-        {"display": "none"},
+        {"display": "block"},
         {"display": "block"},
         None,
     )
