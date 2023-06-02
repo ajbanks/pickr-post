@@ -141,7 +141,7 @@ def fetch_tweets_from_search_sns(
         for i, tweet in enumerate(sntwitter.TwitterSearchScraper(term).get_items()):
             query_tweets_dict[term].append(tweet)
             all_tweets.append(tweet)
-            if i > max_tweets:
+            if i > int(max_tweets / len(search_terms)):
                 print(i)
                 break
     # all_tweets = query_tweets_dict[search_terms[0]]+query_tweets_dict[search_terms[1]]+query_tweets_dict[search_terms[2]]

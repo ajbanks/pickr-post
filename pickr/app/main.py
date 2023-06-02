@@ -50,7 +50,7 @@ def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=
                     except:
                         if source == "twitter":
                             posts_df = twitter.fetch_tweets_from_search_sns(  # TODO put this in a try catch with a while loop
-                                "temp", keywords, max_tweets=1000
+                                "temp", keywords, max_tweets=max_posts
                             )
                         elif source == "reddit":
                             print("data not on file, gettng from reddit")
@@ -66,7 +66,7 @@ def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=
                             )
                             if len(posts_df) > max_posts:
                                 posts_df = posts_df.sample(max_posts)
-                            posts_df.to_csv(path, index=False)
+                        posts_df.to_csv(path, index=False)
                 except Exception as e:
                     time.sleep(120)
                     attempts += 1
@@ -104,7 +104,7 @@ def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=
                             sorted_topics, handle, protocol=pickle.HIGHEST_PROTOCOL
                         )
                     with open(
-                        str(username) + ".pickle",
+                        "data/" + str(username) + ".pickle",
                         "wb",
                     ) as handle:
                         pickle.dump(
