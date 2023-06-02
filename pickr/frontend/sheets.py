@@ -95,12 +95,12 @@ def create_topic_post_table(worksheet, header_background_color, t, cols, source)
     set_column_width(worksheet, "C", 380)
     topic_tweets = t.topic_tweets.copy()
     topic_tweets["Date"] = topic_tweets["Date"].astype(str)
-    for col_name in ['Likes', 'Retweets', 'Score']:
+    for col_name in ["Likes", "Retweets", "Score"]:
         if col_name in topic_tweets.columns:
             topic_tweets[col_name] = topic_tweets[col_name].astype(int)
-    if source == 'reddit':
+    if source == "reddit":
         topic_tweets["Post Text"] = topic_tweets["Title"] + " - " + topic_tweets["Body"]
-    elif source == 'twitter':
+    elif source == "twitter":
         topic_tweets["Post Text"] = topic_tweets["Text"]
     topic_tweets["Post Text"].astype(str)
     topic_tweets["Post Text"] = topic_tweets["Post Text"].str[:3000]
@@ -135,7 +135,7 @@ def create_topic_post_table(worksheet, header_background_color, t, cols, source)
     )
 
 
-def create_sheet(email, topics, source, max_topics=13):
+def create_sheet(username, topics, source, max_topics=13):
     if source == "twitter":
         cols = ["Date", "Username", "Text", "Likes", "Retweets", "url"]
     elif source == "reddit":
@@ -146,13 +146,9 @@ def create_sheet(email, topics, source, max_topics=13):
     }
     gc = gspread.service_account(filename="service_account.json")
     date_str = datetime.now().strftime("%Y-%m-%d")
-    sh = gc.create("Pickr - Trending Topics for You " + date_str + " " + email)
-    sh.share("nathan.francis@nalex.ai", perm_type="user", role="writer")
-    sh.share("alexander.joseph@nalex.ai", perm_type="user", role="writer")
-    try:
-        sh.share(email, perm_type="user", role="writer")
-    except:
-        pass
+    sh = gc.create("Pickr - Trending Topics for You " + date_str + " " + username)
+    sh.share("", perm_type="anyone", role="reader")
+
     readable_topic_names = []
     create_topic_list_sheet(topics, sh, header_background_color)
     for i, t in enumerate(topics[:max_topics]):
@@ -171,3 +167,5 @@ def create_sheet(email, topics, source, max_topics=13):
         if i % 2 == 0:
             print("sheets sleep")
             time.sleep(30)
+
+    return "https://docs.google.com/spreadsheets/d/%s" % sh.id

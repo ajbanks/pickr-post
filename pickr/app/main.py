@@ -125,6 +125,10 @@ def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=
                     username, sorted_topics, source, max_topics=13
                 )
                 print(sheet_url)
+                # save output URL to file
+                with open("data/sheet_output.csv", "a") as csvfile:
+                    writer = csv.writer(csvfile, delimiter=",")
+                    writer.writerow([date_str, username, email, sheet_url])
             except Exception as e:
                 time.sleep(60)
                 attempts += 1
@@ -132,10 +136,6 @@ def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=
                 continue
             break
 
-        # save output URL to file
-        with open("data/sheet_output.csv", "a") as csvfile:
-            writer = csv.writer(csvfile, delimiter=",")
-            writer.writerow([date_str, username, sheet_url])
     print("Done")
 
 
