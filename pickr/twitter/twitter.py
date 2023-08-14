@@ -11,9 +11,11 @@ from pickr.utils import normalise_tweet, lang
 
 
 reddit = praw.Reddit(
-    client_id="RxpU8nuSs_6RNQ",
-    client_secret="Bt58INZOgAGPHbFSGYwLX2L-wBQ",  # password='$Ferrari94',
-    user_agent="Alexander Joseph",
+    # client_id="RxpU8nuSs_6RNQ",
+    # client_secret="Bt58INZOgAGPHbFSGYwLX2L-wBQ",  # password='$Ferrari94',
+    client_id="PgEl8bT1kRG27UZxlUTAAw",
+    client_secret="QAeUPrxZNGqGGf3SXg66lTllwmMiMA",
+    user_agent="Sang Young Noh",
 )  # , username='techinnovator')
 
 business_subreddits = [
@@ -90,7 +92,6 @@ def get_hot_submissions_from_subreddit_list(subreddit_list):
 
 def get_hot_submissions(subreddit):
     post_rows = []
-    comments = []
     # assuming you run this script every hour
     ten_days_ago = datetime.utcnow() - timedelta(days=30)
 
@@ -179,3 +180,50 @@ def fetch_tweets_from_search_sns(
     filename = name + ".csv"
     tweets_df.to_csv(filename, index=False)
     return tweets_df
+
+
+def fetch_niche_subreddit_posts(subreddits, num_posts_per_subreddit=1000):
+    """ """
+    output_rows = []
+    try:
+        for subred in subreddits:
+            for submission in reddit.subreddit(subred).new(limit=num_posts_per_subreddit):
+                submission_id = submission.id
+                title = submission.title
+                link = submission.url
+                author = submission.author.name if submission.author is not None else ""
+                score = submission.score
+                created = datetime.utcfromtimestamp(int(submission.created))
+                body = submission.selftext
+                # submission.comments.replace_more(limit=0)
+                comments = (
+                    []
+                )  # [top_level_comment.body for top_level_comment in submission.comments]
+                output_dict = {
+                    "id": submission_id,
+                    "author": author,
+                    "title": title,
+                    "body": body,
+                    "score": score,
+                    "created_at": created,
+                    "link": link,
+                    "comments": comments,
+                }
+                output_rows.append(output_dict)
+    except Exception as e:
+        print("got exception", e)
+        if len(output_rows) > 0:
+            df = pd.DataFrame(output_rows)
+            df["title"] = df["title"].astype(str)
+            df["body"] = df["body"].astype(str)
+            df["text"] = df["title"] + " " + df["body"]
+            df["clean_text"] = df["text"].apply(normalise_tweet)
+            return df
+        raise Exception("Failed to get any posts")
+
+    df = pd.DataFrame(output_rows)
+    df["title"] = df["title"].astype(str)
+    df["body"] = df["body"].astype(str)
+    df["text"] = df["title"] + " " + df["body"]
+    df["clean_text"] = df["text"].apply(normalise_tweet)
+    return df

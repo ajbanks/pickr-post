@@ -1,0 +1,40 @@
+{% extends 'layout.html' %}
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="body">
+    <div class="sidebar sidebar_small">
+        {% include 'navigation.html' %}
+    </div>
+    <div class="content content_large">
+        <div class="container">
+            <h1>Your Trending Topics</h1>
+            <h2>{{date}}</h2>
+            <p>All trending topics in the last 14 days... Click on a topic to view your generated tweets</p>
+            {% for topic in topics %}
+            <div class="topic clickable" onclick="location.href='topic/{{topic.id}}'">
+                <h3>Trending Topic {{ loop.index }}  🔥: {{topic.name}}</h3>
+                <p>Click to view curated tweets and related posts</p>
+                <hr/>
+                <p>{{topic.description}}</p>
+            </div>
+            {% endfor %}
+        </div>
+        {% if topics|length < 1 %} 
+        <div class="no_topics">
+            <hr />
+            <p>Your trending topics and curated tweets have not been generated yet. Please check again in 30 minutes</p>
+        </div>
+        {% endif %}
+</div>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

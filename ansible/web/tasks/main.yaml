@@ -1,0 +1,93 @@
+---
+- name: Create web user
+  user:
+    name: "{{ web_user }}"
+    password: "{{ web_password | password_hash('sha512') }}"
+    shell: /usr/bin/bash
+    groups: "sudo"
+
+- name: Create python venv
+  command:
+    cmd: "python3 -m venv /home/{{ web_user }}/venv"
+    creates: "/home/{{ web_user }}/venv"
+  become: yes
+
+- name: chown python venv
+  file:
+    path: "/home/{{ web_user }}/venv"
+    owner: "{{ web_user }}"
+    group: "{{ web_user }}"
+    recurse: yes
+  become: yes
+
+- name: Install python modules
+  command:
+    cmd: "/home/{{ web_user }}/venv/bin/pip install {{ item }}"
+  with_items:
+    - gunicorn
+    - celery
+
+- name: Install nginx
+  apt:
+    name: nginx
+    state: latest
+    update_cache: yes
+
+- name: Apply nginx template
+  template:
+    src: nginx.conf.j2
+    dest: /etc/nginx/sites-available/default
+  notify: restart nginx
+
+- name: Enable nginx site
+  file:
+    src: /etc/nginx/sites-available/default
+    dest: /etc/nginx/sites-enabled/default
+    state: link
+  notify: restart nginx
+
+- name: Create gunicorn socket
+  template:
+    src: gunicorn.socket
+    dest: /etc/systemd/system/gunicorn.socket
+
+- name: Create gunicorn service
+  template:
+    src: gunicorn.service.j2
+    dest: /etc/systemd/system/gunicorn.service
+
+- name: Create celery service
+  template:
+    src: celery.service.j2
+    dest: /etc/systemd/system/celery.service
+
+- name: Create celerybeat service
+  template:
+    src: celerybeat.service.j2
+    dest: /etc/systemd/system/celerybeat.service
+
+- name: Celery log dir
+  file:
+    path: /var/log/celery
+    state: directory
+    owner: "{{ web_user }}"
+    group: "{{ web_user }}"
+    mode: 0775
+
+- name: Enable services
+  systemd:
+    name: "{{ item }}"
+    enabled: true
+    masked: no
+    daemon_reload: yes
+  with_items:
+    - gunicorn.service
+    - gunicorn.socket
+    - celery.service
+    - celerybeat.service
+
+- name: Start gunicorn service
+  systemd:
+    name: gunicorn.service
+    state: started
+    daemon_reload: yes

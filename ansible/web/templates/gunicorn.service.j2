@@ -1,0 +1,18 @@
+[Unit]
+Description=Pickr gunicorn service
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+Type=notify
+User={{ web_user }}
+Group={{ web_user }}
+WorkingDirectory={{ app_root }}
+ExecStart={{ GUNICORN_BIN }} --bind {{ GUNICORN_BIND }} {{ GUNICORN_APP }} {{ GUNICORN_OPTS }}
+ExecReload=/bin/kill -HUP ${MAINPID}
+TimeoutStopSec=5
+RestartSec=1
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

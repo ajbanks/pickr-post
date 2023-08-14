@@ -1,0 +1,30 @@
+---
+- name: Create admin users
+  user:
+    name: "{{ item }}"
+    password: "{{ HASHED_ADMIN_PASSWORD }}"
+    shell: /usr/bin/bash
+  with_items: "{{ admin_users }}"
+
+- name : Install authorized keys
+  authorized_key:
+    user: "{{ item }}"
+    key: "{{ lookup('file', 'public-keys/' + item) }}"
+    exclusive: yes
+  with_items: "{{ admin_users }}"
+  tags:
+    - keys
+
+- name: Install sudo
+  package:
+    name: sudo
+    state: present
+
+- name: Add admin users to passwordless sudoers
+  lineinfile:
+    dest: /etc/sudoers
+    regexp: '^#?{{ item }}'
+    line: "{{ item }} ALL=(ALL:ALL) NOPASSWD:ALL"
+    state: present
+    validate: 'visudo -cf %s'
+  with_items: "{{ admin_users }}"

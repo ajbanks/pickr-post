@@ -1,0 +1,71 @@
+{% extends 'layout.html' %}
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="body">
+    <div class="sidebar sidebar_small">
+        {% include 'navigation.html' %}
+    </div>
+    <div class="content content_large">
+        <div class="topic">
+            <h1>{{topic.name}}</h1>
+            <p>{{topic.description}}</p>
+
+            <h2>Curated posts for you to Tweet</h2>
+            <div class="container cards">
+                {% for post in generated_posts %}
+                <div class="card">
+                    <div class="author">@{{ current_user.username }}</div>
+                    <div class="suggested-post">
+                        <p spellcheck="false">
+                            {{post.text}}
+                        </p>
+                    </div>
+
+                    <div class="button">
+                        <a class="twitter-share-button" href="https://twitter.com/intent/tweet?url=%00"
+                            data-size="large" data-text="{{ post.text }}">
+                            Tweet
+                        </a>
+                    </div>
+                    <small><b>Click 'Tweet' button to post/schedule/edit</b></small> 
+
+                </div>
+                {% endfor %}
+            </div>
+
+            <h2>Posts from this topic</h2>
+            <div class="container cards">
+                {% for pst in posts %}
+                <div class="card">
+                    <p>{{ pst.body|e }}</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block js %}
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>window.twttr = (function (d, s, id) {
+            var js, fjs = d.getElementsByTagName(s)[0],
+                t = window.twttr || {};
+            if (d.getElementById(id)) return t;
+            js = d.createElement(s);
+            js.id = id;
+            js.src = "https://platform.twitter.com/widgets.js";
+            fjs.parentNode.insertBefore(js, fjs);
+
+            t._e = [];
+            t.ready = function (f) {
+                t._e.push(f);
+            };
+
+            return t;
+        }(document, "script", "twitter-wjs"));</script>
+    {% endblock %}

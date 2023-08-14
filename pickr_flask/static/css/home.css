@@ -1,0 +1,275 @@
+@font-face {
+  font-family: Inter;
+  src: url(pickr_flask/static/fonts/Inter-VariableFont_slnt,wght.ttf);
+}
+
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  vertical-align: center;
+  border-bottom: 1px solid #CCC;
+  box-shadow: 0px 0px 15px rgb(0, 0, 0, .25);
+  padding: 0 1rem;
+  background: var(--main-color);
+  height: 4rem;
+  font-family: Inter;
+}
+
+.left,
+.right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+#user {
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+#all_topic {
+  font-size: 1.2rem;
+  font-weight: 300;
+}
+
+#all_topic>a {
+  color: #DDD;
+}
+
+#user>a {
+  color: #DDD;
+}
+
+#menu {
+  width: 32px;
+  height: 32px;
+  padding: 5px 5px;
+  border-radius: 5px;
+}
+
+#exit {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 22px;
+  height: 22px;
+}
+
+.body {
+  flex: 1;
+  display: flex;
+}
+
+.sidebar {
+  position: relative;
+  width: 20%;
+  background: #F9F9F9;
+  border-right: 1px solid #CCC;
+  flex-shrink: 0;
+  padding: 5px 5px;
+  transition: 0.1s ease;
+}
+
+.body>.sidebar_small {
+  width: 0%;
+}
+
+.body>.content_large {
+  width: 100%;
+}
+
+.content h1 {
+  font-weight: 500;
+  color: #444;
+  text-align: center;
+  margin-bottom: 0px;
+  font-family: Inter;
+}
+
+.content h2 {
+  font-weight: 270;
+  margin-top: 5px;
+  color: #555;
+}
+
+.content {
+  width: 80%;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+}
+
+.message-modal {
+  color: #856404;
+  background-color: #fff3cd;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 auto;
+  position: relative;
+  top: 0%;
+  width: 100%;
+  height: 3rem;
+  padding: 10px;
+}
+
+.message-modal > button.close {
+    background-color: transparent;
+    padding-right: 30px;
+    border: 0;
+    float: right;
+    font-size: 1.5rem;
+    color: black;
+    opacity: 0.5;
+    -webkit-appearance: none;
+}
+
+.message-modal p {
+
+}
+
+#navigation {
+  margin-left: 0px;
+  margin-top: 40px;
+}
+
+#navigation .option {
+  display: flex;
+  font-size: 1.3rem;
+  text-align: left;
+  margin: 5px 10px;
+  padding-left: 5px;
+  padding-bottom: 5px;
+  cursor: pointer;
+}
+
+#navigation .option > img {
+  width: 23px;
+  height: 23px;
+  padding-right: 5px;
+}
+
+#navigation .option:hover {
+  border-left: 4px solid var(--main-color-lite);
+}
+
+
+
+.topic {
+  border-bottom: 1px solid #DDD;
+  font-size: 1rem;
+  margin: 0px 0px;
+  padding: 8px 30px;
+  text-align: left;
+  word-wrap: break-word;
+  background-color: #f1f1f1;
+}
+
+.topic h2 {
+  font-weight: 350;
+  font-size: 1.4rem;
+  color: #555;
+  font-family: Inter;
+}
+
+.topic h3 {
+  font-family: Inter;
+}
+
+.topic p {
+  font-size: 1.1rem;
+}
+
+.topic.clickable:hover {
+  background: #F9F9F9;
+}
+
+.user-account {
+  border: 1px solid var(--main-color);
+  box-shadow: 1px 1px 1px var(--main-color);
+  padding: 30px 30px;
+  border-radius: 6px;
+  margin: 30px;
+  text-align: left;
+}
+
+.user-account h2 {
+  font-weight: 400;
+  color: black;
+}
+
+.cards {
+  justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16px;
+}
+
+.card {
+  position: relative;
+  border: 1px solid var(--main-color);
+  box-shadow: 2px 2px 10px rgba(0, 0, 0, .1);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 5px;
+  max-width: 15em;
+  display: block;
+}
+
+.card p {
+  font-size: 1rem;
+}
+
+.card .author {
+  color: #bbb;
+}
+
+.card:hover {
+  box-shadow: 1px 1px 1px var(--main-color);
+}
+
+.suggested-post {
+  padding-bottom: 30px;
+  spellcheck: false;
+}
+
+.suggested-post p:focus {
+  border: 1px solid black;
+}
+
+.card>.button {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+}
+
+.no_topics {
+  color: red;
+  font-weight: bold;
+}
+
+@media (max-width: 600px) {
+  .sidebar {
+    width: 30%;
+  }
+
+  .content {
+    width: 70%;
+  }
+
+  .card {
+    font-size: 0.8rem;
+  }
+
+  #user {
+    display: none;
+  }
+<<<<<<< HEAD
+  #navigation .option {
+    padding-left: 0px;
+    margin-left: 0px;
+  }
+}
+=======
+}
+>>>>>>> develop

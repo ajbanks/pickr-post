@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+    <head>
+        <title>{{title}}</title>
+        <meta name="description" content="{{description}}">
+        <meta charset="utf-8">
+        <meta http-equiv="x-ua-compatible" content="ie=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+        {% block css %}{% endblock %}
+    </head>
+
+    {% if no_header %}{% else %}
+    <div class="header">{% include 'header.html' %}</div>
+    {% endif %}
+    <body>
+        {% block content %}{% endblock %}
+    </body>
+
+    {% if no_footer is none %}
+        <div class="footer">© 2023 Nalex Ltd. All rights reserved</div>
+    {% endif %}
+
+    <script src="https://js.stripe.com/v3/"></script>
+    {% block js %}{% endblock %}
+</html>

@@ -1,7 +1,5 @@
 import pytest
-import os
 import pathlib
-import datetime
 from funcy import lmap
 import tweepy
 import pickr.twitter.backend as backend
@@ -145,7 +143,7 @@ def test_insert_users(session):
     backend.insert_users(session, users)
 
     for user in users:
-        got_user = backend.get_user_by_id(session, user.id)
+        backend.get_user_by_id(session, user.id)
 
 @pytest.mark.usefixtures("setup_db")
 def test_insert_topics(session):

@@ -3,10 +3,6 @@ from datetime import datetime
 import gspread
 from gspread_formatting import (
     set_column_width,
-    set_row_height,
-    format_cell_range,
-    Borders,
-    CellFormat,
 )
 
 

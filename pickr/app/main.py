@@ -15,6 +15,14 @@ from pickr.twitter import twitter
 from pickr.frontend import sheets
 
 
+def daily_run():
+    pass
+
+
+def new_user():
+    pass
+
+
 def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=2):
     # Load scheduel csv
     schedule_df = pd.read_csv(schedule_path)
@@ -24,6 +32,9 @@ def post_fetch_topic_fetch(schedule_path, source, max_posts=10000, max_attempts=
     for index, row in schedule_df.iterrows():
         email = row["email"]
         username = row["twitter handle"]
+        username = username.lower()
+        if username[0] == "@":
+            username = username[1:]
 
         keywords = json.loads(row["keywords"])
         print("username", username)

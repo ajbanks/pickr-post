@@ -1,0 +1,37 @@
+<div id="navigation">
+    <div id="nav-options" class="hide">
+        <img id="exit" class="clickable" src="{{url_for('static', filename='img/exit.svg')}}">
+        <ul>
+            <li>
+                <div class="option">
+                    <img id="home" src="{{url_for('static', filename='img/ribbon.svg')}}">
+                    <a href="{{url_for('home')}}">Home</a>
+                </div>
+            </li>
+            <li>
+                <div class="option">
+                    <img src="{{url_for('static', filename='img/all_topics.svg')}}">
+                    <a href="{{url_for('all_topics')}}">All Topics</a>
+                </div>
+            </li>
+            <li>
+                <div class="option">
+                    <img src="{{url_for('static', filename='img/account.svg')}}">
+                    <a href="{{url_for('user')}}">Account</a>
+                </div>
+            </li>
+            <li>
+                <div class="option" id="upgrade">
+                    <img src="{{url_for('static', filename='img/star.svg')}}">
+                    <a href="{{url_for('upgrade')}}">Upgrade</a>
+                </div>
+            </li>
+            <li>
+                <div class="option">
+                    <img src="{{url_for('static', filename='img/logout.svg')}}">
+                    <a href="{{url_for('logout')}}">Logout</a>
+                </div>
+            </li>
+        </ul>
+    </div>
+</div>

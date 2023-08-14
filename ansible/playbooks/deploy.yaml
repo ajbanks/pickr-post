@@ -1,0 +1,47 @@
+---
+- hosts: all
+  vars:
+    GIT_REPO: git@github.com:pickrsocial/topic-tweet.git
+    GIT_BRANCH: main
+    web_user: web
+    dotenv: "/home/web/.env"
+    dest: "/home/web/topic-tweet"
+  tasks:
+    - name: Clone repo
+      git:
+        repo: "{{ GIT_REPO }}"
+        version: "{{ GIT_BRANCH }}"
+        dest: "/tmp/topic-tweet"
+        accept_hostkey: yes
+        depth: 1
+      become: no
+    - name: Delete existing repo
+      file:
+        path: "{{ dest }}"
+        state: absent
+      become: yes
+    - name: Move repo
+      command:
+        cmd: "mv /tmp/topic-tweet {{ dest }}"
+        creates: "{{ dest }}"
+      become: yes
+    - name: Install required modules
+      command:
+        cmd: "/home/{{ web_user }}/venv/bin/pip install -r {{dest}}/requirements.txt"
+      become: yes
+    - name: chown directory
+      file:
+        path: "{{ dest }}"
+        owner: "{{ web_user }}"
+        group: "{{ web_user }}"
+        recurse: yes
+      become: yes
+    - name: copy dotenv
+      command:
+        "cp {{ dotenv }} {{ dest }}"
+      become: yes
+    - name: restart gunicorn
+      systemd:
+        name: gunicorn.service
+        state: restarted
+      become: yes

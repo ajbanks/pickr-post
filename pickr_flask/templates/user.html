@@ -1,0 +1,34 @@
+{% extends 'layout.html' %}
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="body">
+    <div class="sidebar sidebar_small">
+        {% include 'navigation.html' %}
+    </div>
+    <div class="content content_large">
+        <div class="user-account">
+            <h2>{{current_user.username}}</h2>
+            <p>Email: {{current_user.email}}</p>
+            <p>Joined: {{current_user.created_at.strftime('%b %d, %Y')}}</p>
+            <p>To update your niches, give feedback or cancel your subscription, email our support at
+                nathan.francis@pickrsocial.com
+            </p>
+            <h3>Your niches:</h3>
+            <ul>
+                {% for niche in current_user.niches %}
+                <li>{{niche.title}}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

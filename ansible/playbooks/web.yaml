@@ -1,0 +1,29 @@
+- hosts: web
+  become: yes
+  vars:
+    web_user: "web"
+    web_password: "web"
+    app_root: "/home/web/topic-tweet"
+    dotenv: "/home/web/.env"
+
+    # nginx
+    SERVER_NAME: "app.pickrsocial.com"
+
+    # gunicorn
+    GUNICORN_BIN: "/home/web/venv/bin/gunicorn"
+    GUNICORN_BIND: "unix:/run/gunicorn.sock"
+    GUNICORN_APP: "wsgi:app"
+    GUNICORN_OPTS: "--worker-class gevent --workers 5 --timeout 1000"
+
+    # celery
+    CELERY_BIN: "/home/web/venv/bin/celery"
+    CELERY_APP: "pickr_flask.tasks:task_queue"
+    CELERYD_NODES: "w1" # single worker node, multiple would be e.g. "w1 w2 w3"
+    CELERYD_OPTS: "--time-limit=300 --concurrency=2"
+    CELERYD_LOG_LEVEL: "INFO"
+    CELERYD_PID_FILE: "/var/log/celery/%n.pid"
+    CELERYD_LOG_FILE: "/var/log/celery/%n%I.log"
+    CELERYBEAT_PID_FILE: "/var/run/celery/beat.pid"
+    CELERYBEAT_LOG_FILE: "/var/run/celery/beat.log"
+  roles:
+    - web

@@ -1,0 +1,69 @@
+---
+- name: Set hostnames
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Update SSH configuration to be more secure.
+  lineinfile:
+    dest: "{{ security_ssh_config_path }}"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  with_items:
+    - { regexp: "^#?PasswordAuthentication", line: "PasswordAuthentication no" }
+    - { regexp: "^#?PermitRootLogin", line: "PermitRootLogin no" }
+    - { regexp: "^#?X11Forwarding", line: "X11Forwarding no" }
+    - { regexp: "^#?AllowTcpForwarding", line: "AllowTcpForwarding yes" }
+    - { regexp: "^#?Port", line: "Port {{ security_ssh_port }}" }
+  notify: restart ssh
+
+- name: Update APT package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install fail2ban
+  apt:
+    pkg: fail2ban
+    state: present
+
+- name: Ensure fail2ban is running and enabled on boot
+  systemd:
+    name: fail2ban
+    state: started
+    enabled: yes
+  when: not ansible_check_mode
+
+- name: Install unattended upgrades package
+  apt:
+    pkg: unattended-upgrades
+    state: present
+
+- name: Install firewall
+  apt:
+    pkg: ufw
+    state: present
+
+- name: "Firewall: Allow SSH traffic"
+  ufw:
+    rule: allow
+    port: "{{ security_ssh_port }}"
+    proto: "tcp"
+  when: not ansible_check_mode
+
+- name: "Firewall: Enable ufw"
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  when: not ansible_check_mode
+
+- name: "Firewall: Allow web traffic"
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  with_items:
+    - "80"
+    - "443"
+  when: not ansible_check_mode
