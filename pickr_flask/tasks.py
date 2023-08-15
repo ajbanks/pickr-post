@@ -36,7 +36,7 @@ def write_niche_subreddit(niche_subreddit_path: str = "static/data/nichesubreddi
     """
     This function stores niche, and adds a UUID id to it.
 
-    Follwing this, the subreddits and its titles are also attached a UUID
+    Follwing this, the subreddits and its titles are also attached a UUID,
     as well as the corresponding niche UUID
     """
     write_reddit_niche(file_path=niche_subreddit_path)

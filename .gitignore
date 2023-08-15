@@ -1,4 +1,5 @@
-data/
+/data
+!/*/static/data
 service_account.json
 
 *.pickle
