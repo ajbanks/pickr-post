@@ -30,12 +30,23 @@ def save_model_result(model_result):
 
     db.session.commit()
 
+
 def load_initial_data(data):
     n = Niche.query.first()
     if n:
         return False
 
-    
+    user = PickrUser.query.filter(
+        PickrUser.username == data["user"]["username"]
+    ).first()
+    if user:
+        pass
+    else:
+        user = PickrUser(**data["user"])
+
+    user.niches = Niche.query.filter(Niche.title.in_(data["topics"])).all()
+    db.session.merge(user)
+    db.session.commit()
 
     niche_df = pd.read_csv("pickr_flask/static/data/Niche.csv")
     niche_df = niche_df.replace({'is_active': {'True': True, 'False': False}})
@@ -47,14 +58,14 @@ def load_initial_data(data):
         t.is_active = True
         db.session.merge(t)
     db.session.commit()
-    
+
     subreddit_df = pd.read_csv("pickr_flask/static/data/Subreddit.csv")
+    # subreddit_df = subreddit_df.drop(columns=["id"])
     subreddit_rows = subreddit_df.to_dict(orient="records")
     subreddits = [Subreddit(**d) for d in subreddit_rows]
     for s in subreddits:
         db.session.merge(s)
     db.session.commit()
-
 
     topic_df = pd.read_csv("pickr_flask/static/data/ModelledTopic.csv")
     topic_rows = topic_df.to_dict(orient="records")
@@ -77,16 +88,4 @@ def load_initial_data(data):
     for p in reddit_posts:
         db.session.merge(p)
     db.session.commit()
-
-    user = PickrUser.query.filter(
-        PickrUser.username == data["user"]["username"]
-    ).first()
-    if user:
-        pass
-    else:
-        user = PickrUser(**data["user"])
-        user.niches = Niche.query.filter(Niche.title.in_(data["topics"])).all()
-        db.session.merge(user)
-        db.session.commit()
-
     return True

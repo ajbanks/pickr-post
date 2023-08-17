@@ -1,5 +1,6 @@
 from os import environ, path
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
@@ -36,14 +37,21 @@ class Config:
     STRIPE_ENDPOINT_SECRET = environ.get("STRIPE_ENDPOINT_SECRET")
     STRIPE_WEBHOOK_LOG = "./stripe-webhook.log"
 
-    # timezone for cron jobs
-    timezone = "Europe/London"
-    
-    # Celery for redis broker address - this requires a working redis server
-    CELERY_BROKER_URL = environ.get("CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND = environ.get("CELERY_RESULT_BACKEND")
+    # Celery
+    timezone = "Europe/London"  # timezone for cron jobs
+    CELERY = dict(
+        broker_url=environ.get("CELERY_BROKER_URL"),
+        result_backend=environ.get("CELERY_RESULT_BACKEND"),
+        task_ignore_result=True,
+        beat_schedule={
+            "task_update_reddit_every_morning": {
+                "task": "pickr_flask.tasks.daily_update",
+                "schedule": crontab(hour=4, minute=30),  # morning schedule
+            },
+        }
+    )
 
-    # SMTP settings
+	# SMTP settings
     MAIL_SERVER = environ.get("MAIL_SERVER")
     MAIL_PORT = 465
     MAIL_USE_SSL = True

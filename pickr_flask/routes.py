@@ -1,13 +1,11 @@
 import json
 import random
-from time import time
 from typing import List
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 from typing import List
 
-import jwt
 import stripe
 from flask import (
     flash,
@@ -21,10 +19,9 @@ from flask import (
 )
 from flask import current_app as app
 from flask_login import current_user, login_required, login_user, logout_user
-from flask_mail import Mail, Message
 from werkzeug.security import check_password_hash, generate_password_hash
 from sqlalchemy import Date
-from .forms import LoginForm, SignupForm, TopicForm, ResetForm, SetPasswordForm
+from .forms import LoginForm, SignupForm, TopicForm
 from .http import url_has_allowed_host_and_scheme
 from .subscription import (
     handle_subscription_created,
@@ -172,99 +169,6 @@ def user():
     return render_template(
         "user.html",
         title="Pickr - User Account",
-    )
-
-@app.route("/reset", methods=["GET", "POST"])
-def reset():
-    # send email
-    form = ResetForm()
-    if form.validate_on_submit():
-        existing_user = PickrUser.query.filter_by(
-            email=form.email.data,
-        ).first()
-        
-        if existing_user:
-            # send email
-            mail = Mail(app)
-
-            msg = Message()
-            msg.subject = "Pickr Social - Reset Password"
-            msg.recipients = [existing_user.email] # existing_user.email #
-            msg.sender = 'account@pickrsocial.com'
-            token = get_reset_token(existing_user.username) 
-            msg.html = render_template('reset_email_body.html', user=existing_user.username, token=token)
-            mail.send(msg)
-            return render_template(
-                "reset_email_sent.html",
-                title="Pickr - Reset Password",
-                no_header=True,
-                no_footer=True,
-            )
-
-        flash("Account not found with this email.")
-
-        
-    return render_template(
-        "reset.html",
-        title="Pickr - Reset Password",
-        form=form,
-        no_header=True,
-        no_footer=True,
-        template="signup-page",
-    )
-
-def get_reset_token(username, expires=500):
-    return jwt.encode({'reset_password':    username,
-            'exp':    time() + expires},
-            algorithm='HS256',
-            key=app.config['SECRET_KEY']
-    )
-
-def verify_reset_token(token):
-    try:
-        username = jwt.decode(token,
-            key=app.config['SECRET_KEY'], algorithms=['HS256'])['reset_password']
-        app.logger.info(f'reset password - username from token {username}')
-    except Exception as e:
-        app.logger.info(f'reset password - caught exception when trying to get token {e}')
-        return
-    return PickrUser.query.filter_by(username=username).first()
-
-@app.route("/set_password/<token>", methods=["GET", "POST"])
-def set_password(token):
-    form = SetPasswordForm()
-    user = verify_reset_token(token)
-    password = form.password.data
-    app.logger.info(f'reset password - new password  {password}')
-    print('validate_on_submit()', form.validate_on_submit())
-    if form.validate_on_submit():
-        password = form.password.data
-        password_hash = generate_password_hash(
-                password,
-                method="pbkdf2:sha512:1000",
-            )
-        user.password = generate_password_hash(password)
-        db.session.add(user)
-        db.session.commit()
-        app.logger.info(f'reset password - password is set for {user.username}')
-        return redirect(url_for("login"))
-
-    
-    # verify that the token is valid for the user
-    
-    if not user:
-        app.logger.info('reset password - user not found')
-        return redirect(url_for("login"))
-
-    
-    app.logger.info(f'hasnt gone in to submit')         
-    return render_template(
-        "set_password.html",
-        title="Pickr - Reset Password",
-        form=form,
-        no_header=True,
-        no_footer=True,
-        template="signup-page",
     )
 
 
@@ -423,12 +327,12 @@ def home():
             topics=topics,
         )
     niche_ids = [n.id for n in current_user.niches]
-    print(
-        "niche_ids -------------------------------------------------------",
-        niche_ids,
-    )
+    all_topics = ModeledTopic.query.filter(
+        ModeledTopic.niche_id.in_(niche_ids)
+    ).order_by(
+        ModeledTopic.size.desc()
+    ).all()
 
-    all_topics = ModeledTopic.query.filter(ModeledTopic.niche_id.in_(niche_ids)).order_by(ModeledTopic.size.desc()).all()
     if len(all_topics) == 0:
         return render_template(
             "home.html",
@@ -481,7 +385,13 @@ def all_topics():
         )
 
     niche_ids = [n.id for n in current_user.niches]
-    all_topics = ModeledTopic.query.filter(ModeledTopic.niche_id.in_(niche_ids)).order_by(ModeledTopic.size.desc()).all()
+    print("num niches", len(niche_ids))
+    all_topics = ModeledTopic.query.filter(
+        ModeledTopic.niche_id.in_(niche_ids)
+    ).order_by(
+        ModeledTopic.size.desc()
+    ).all()
+
     if len(all_topics) == 0:
         return render_template(
             "home.html",
@@ -499,6 +409,7 @@ def all_topics():
 
     for t in topics:
         random.shuffle(t.generated_posts)
+    print("current_user.niches --------------", current_user.niches)
     return render_template(
         "all_topics.html",
         title="Pickr - Topics & Curated Tweets",
@@ -521,11 +432,12 @@ def topic(topic_id):
         return abort(404)
     topic = ModeledTopic.query.get(uuid)
     generated_posts = topic.generated_posts
+
     return render_template(
         "topic.html",
         title="Pickr - Curated Tweets",
         topic=topic,
-        posts=topic.reddit_posts,
+        tweets=topic.tweets,
         generated_posts=generated_posts,
     )
 
