@@ -205,7 +205,7 @@ def set_password(token):
                 password,
                 method="pbkdf2:sha512:1000",
             )
-        user.password = generate_password_hash(password_hash)
+        user.password = password_hash
         db.session.add(user)
         db.session.commit()
         app.logger.info(f'reset password - password is set for {user.username}')
