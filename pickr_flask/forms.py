@@ -48,6 +48,17 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Log In")
 
+class ResetForm(FlaskForm):
+    email = StringField(
+        "Email",
+        validators=[DataRequired(), Email(message="Enter your email.")],
+    )
+    submit = SubmitField("Reset password")
+
+class SetPasswordForm(FlaskForm):
+    password = PasswordField("Password", validators=[DataRequired()])
+    submit = SubmitField("Set Password")
+
 
 def all_different(strs):
     """Check strings are different."""

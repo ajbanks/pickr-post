@@ -62,17 +62,4 @@ def init_app() -> Flask:
         from . import auth, routes, util  # noqa: disable=F401
 
         db.create_all()
-
-        app.logger.info("Loading initial data")
-        test_user_file = f"{app.root_path}/static/data/test-user.json"
-        with open(test_user_file) as f:
-            test_data = json.load(f)
-        load_res = util.load_initial_data(test_data)
-        if load_res:
-            app.logger.info(
-                "Loaded initial data and user, user loaded is %s",
-                test_data["user"]["username"],
-            )
-        else:
-            app.logger.info("Initial data has already been loaded")
         return app
