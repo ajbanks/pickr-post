@@ -23,9 +23,10 @@ class Config:
 
     # Database
     SQLALCHEMY_DATABASE_URI = environ.get("SQLALCHEMY_DATABASE_URI")
-    SQLALCHEMY_ECHO = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 6,
+        "pool_recycle": 120,
         "pool_pre_ping": True,
     }
 
@@ -45,13 +46,17 @@ class Config:
         task_ignore_result=True,
         beat_schedule={
             "task_update_reddit_every_morning": {
-                "task": "pickr_flask.tasks.daily_update",
+                "task": "pickr_flask.tasks.all_niches_reddit_update",
                 "schedule": crontab(hour=4, minute=30),  # morning schedule
             },
+            "task_run_topic_model_every_morning": {
+                "task": "pickr_flask.tasks.all_niches_run_model",
+                "schedule": crontab(hour=5, minute=0),
+            }
         }
     )
 
-	# SMTP settings
+    # SMTP settings
     MAIL_SERVER = environ.get("MAIL_SERVER")
     MAIL_PORT = 465
     MAIL_USE_SSL = True

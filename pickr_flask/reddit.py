@@ -326,7 +326,7 @@ def write_subreddit(
                 db.session.commit()
 
 
-def write_reddit_posts(posts) -> None:
+def write_reddit_posts(posts) -> int:
     num_written = 0
     for post in posts:
         record = (
@@ -344,5 +344,4 @@ def write_reddit_posts(posts) -> None:
             else:
                 db.session.commit()
                 num_written += 1
-
-    logging.info(f"wrote {num_written} reddit posts")
+    return num_written

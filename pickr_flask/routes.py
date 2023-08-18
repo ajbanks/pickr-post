@@ -1,11 +1,13 @@
 import json
 import random
+import logging
 from time import time
 from typing import List
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
-from typing import List
+from sqlalchemy import and_
+from sqlalchemy.sql.expression import func
 
 import jwt
 import stripe
@@ -32,9 +34,10 @@ from .subscription import (
     handle_subscription_deleted,
     handle_checkout_completed,
 )
-from .http import url_has_allowed_host_and_scheme
-from .models import Niche, db, PickrUser, ModeledTopic, GeneratedPost, StripeSubscription, StripeSubscriptionStatus
-from .forms import LoginForm, SignupForm, TopicForm
+from .models import (
+    Niche, db, PickrUser,
+    ModeledTopic, RedditPost
+)
 from .tasks import new_user_get_data
 
 
@@ -380,7 +383,11 @@ def home():
         )
     niche_ids = [n.id for n in current_user.niches]
 
-    all_topics = ModeledTopic.query.filter(ModeledTopic.niche_id.in_(niche_ids)).order_by(ModeledTopic.size.desc()).all()
+    all_topics = ModeledTopic.query.filter(
+        ModeledTopic.niche_id.in_(niche_ids)
+    ).order_by(
+        ModeledTopic.size.desc()
+    ).all()
     if len(all_topics) == 0:
         return render_template(
             "home.html",
@@ -464,12 +471,24 @@ def topic(topic_id):
     except ValueError:
         return abort(404)
     topic = ModeledTopic.query.get(uuid)
+    if topic is None:
+        return abort(404)
+
     generated_posts = topic.generated_posts
+    posts = RedditPost.query.filter(
+        and_(
+            RedditPost.modeled_topic_id == uuid,
+            func.length(RedditPost.body) > 10
+        )
+    ).order_by(
+        RedditPost.score
+    ).limit(30).all()
+
     return render_template(
         "topic.html",
         title="Pickr - Curated Tweets",
         topic=topic,
-        posts=topic.reddit_posts,
+        posts=posts,
         generated_posts=generated_posts,
     )
 

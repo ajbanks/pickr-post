@@ -25,24 +25,40 @@ from .reddit import (
 
 
 @shared_task
-def daily_update():
+def all_niches_reddit_update():
     '''
-    This is the main daily scheduled task. For each active niche,
-    it fetches recent posts then builds a topic model.
+    For each active niche, fetch recent posts.
     '''
     niches = Niche.query.filter(
-        and_(
-            Niche.is_active,
-            Niche.subreddits.any()
-        )
+        and_(Niche.is_active, Niche.subreddits.any())
+    ).order_by(
+        Niche.title
     ).all()
 
-    # TODO: this can be parallel with celery "group"
     for niche in niches:
-        update_niche_subreddits.apply_async(
-            args=(niche.id,),
-            link=run_niche_topic_model.s()
+        logging.info(
+            f"Updating subreddits for niche: {niche.title}"
         )
+        update_niche_subreddits.apply_async(
+            args=(niche.id,)
+        )
+
+
+@shared_task
+def all_niches_run_model():
+    niches = Niche.query.filter(
+        and_(Niche.is_active, Niche.subreddits.any())
+    ).order_by(
+        Niche.title
+    ).all()
+
+    # model runs are serial for now since we only have
+    # one worker machine
+    for niche in niches:
+        logging.info(
+            f"Running topic model for niche: {niche.title}"
+        )
+        run_niche_topic_model(niche.id)
 
 
 @shared_task
@@ -65,7 +81,12 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=100):
         logging.info(
             f"Fetched {len(posts)} posts for subredddit {subreddit.title}"
         )
-        write_reddit_posts(posts)
+
+        n_written = write_reddit_posts(posts)
+        logging.info(
+            f"Wrote {n_written} reddit posts for subredddit {subreddit.title}"
+        )
+
         all_posts.extend(posts)
 
     return niche_id
