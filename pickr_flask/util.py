@@ -13,6 +13,7 @@ from .models import (
     Subreddit,
 )
 
+
 # testing how to save modeled topic
 def save_model_result(model_result):
     user = (
@@ -82,7 +83,6 @@ def load_initial_data(data):
     db.session.commit()
 
     reddit_post_df = pd.read_csv("pickr_flask/static/data/RedditPost.csv")
-    reddit_post_df["modeled_topic_id"] = reddit_post_df["modeled_topic_id"].fillna('68e45622-0c4c-41b5-ab58-b4390757d32d')
     reddit_post_rows = reddit_post_df.to_dict(orient="records")
     reddit_posts = [RedditPost(**d) for d in reddit_post_rows]
     for p in reddit_posts:

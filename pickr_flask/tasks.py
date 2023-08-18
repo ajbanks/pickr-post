@@ -62,7 +62,7 @@ def all_niches_run_model():
 
 
 @shared_task
-def update_niche_subreddits(niche_id, posts_per_subreddit=100):
+def update_niche_subreddits(niche_id, posts_per_subreddit=200):
     '''
     Fetch new posts for each subreddit related to this niche.
     Save the results to DB.
@@ -79,12 +79,12 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=100):
             p["subreddit_id"] = subreddit.id
             p["clean_text"] = process_post(p)
         logging.info(
-            f"Fetched {len(posts)} posts for subredddit {subreddit.title}"
+            f"Fetched {len(posts)} posts: subredddit={subreddit.title}"
         )
 
         n_written = write_reddit_posts(posts)
         logging.info(
-            f"Wrote {n_written} reddit posts for subredddit {subreddit.title}"
+            f"Wrote {n_written} reddit posts: subreddit={subreddit.title}"
         )
 
         all_posts.extend(posts)
@@ -108,14 +108,15 @@ def run_niche_topic_model(niche_id):
         )
     ).all()
 
-    if len(posts) == 0:
-        logging.error(f"No posts found for niche: {niche.title}")
+    if len(posts) < 20:
+        logging.error(
+            f"Not enough posts for topic model: niche={niche.title}")
         return
 
     posts_df = pd.DataFrame([_to_dict(p) for p in posts])
     posts_df["text"] = posts_df["title"] + posts_df["body"]
 
-    logging.info(f"Building topic model for niche: {niche.title}")
+    logging.info(f"Building topic model: niche={niche.title}")
     (
         topic_overviews,
         generated_tweets
@@ -128,7 +129,7 @@ def run_niche_topic_model(niche_id):
         num_topics_from_topic_label=5,
     )
     if len(topic_overviews) == 0:
-        logging.info(f"No topics generated for niche: {niche.title}")
+        logging.info(f"No topics generated: niche={niche.title}")
         return
 
     write_reddit_modeled_overview(topic_overviews)
