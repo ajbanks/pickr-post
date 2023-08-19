@@ -36,7 +36,7 @@ from .http import url_has_allowed_host_and_scheme
 from .models import Niche, db, PickrUser, ModeledTopic, GeneratedPost, StripeSubscription, StripeSubscriptionStatus
 from .forms import LoginForm, SignupForm, TopicForm
 from .tasks import new_user_get_data
-
+from .util import log_login, log_all_topics_activity, log_topic_click_activity
 import random
 
 ###############################################################################
@@ -102,7 +102,7 @@ def login():
         app.logger.info(user)
         if user and check_password_hash(user.password, form.password.data):
             login_user(user, remember=True)
-
+            log_login(user)
             # validate redirect, if provided
             next_page = request.args.get("next")
             if next_page is not None and not url_has_allowed_host_and_scheme(
@@ -467,7 +467,7 @@ def home():
 @app.route("/all_topics")
 @login_required
 def all_topics():
-
+    log_all_topics_activity(current_user)
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
@@ -511,6 +511,7 @@ def all_topics():
 @login_required
 def topic(topic_id):
 
+    log_topic_click_activity(current_user, topic_id)
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))

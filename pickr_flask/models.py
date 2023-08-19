@@ -74,6 +74,19 @@ reddit_modeled_topic_assoc = db.Table(
     schema=DEFAULT_SCHEMA,
 )
 
+class ActivityLog(UserMixin, db.Model):
+    """ActivityLog represents one of our activity tracking events."""
+
+    __tablename__ = "activity_log"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    username = Column(String(100), nullable=False, unique=False)
+    email = Column(String(40), unique=True, nullable=False)
+    time = Column(DateTime, nullable=True)
+    event = Column(String(40),nullable=False)
+
+    def __repr__(self):
+        return f"<ActivityLog event={self.event} username={self.username} time={self.time}>"
 
 class PickrUser(UserMixin, db.Model):
     """PickrUser represents one of our users."""
