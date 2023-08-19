@@ -390,6 +390,8 @@ def generate_tweets_for_topic(
         lambda t: len(t["text"]) >= 30,
         generated_tweets
     ))
+    generated_tweets = [t.strip('"-') for t in generated_tweets]
+
     return related_topics, generated_tweets
 
 
@@ -406,7 +408,7 @@ def create_label(text):
 
 
 def convert_chat_gpt_response_to_list(str_response):
-    return re.split("\n", str_response)
+    return [s.strip("'-" + '"') for s in re.split("\n", str_response)]
 
 
 def generate_tweet(text, topic_label):

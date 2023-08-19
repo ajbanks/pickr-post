@@ -32,7 +32,7 @@
                 <h3>Trending Topic {{ loop.index }} 🔥: {{topic.name}}</h1>
                 <p>Click to view topic details</p>
                 <hr/>
-                <p>{{topic.description}}</p>
+                <p>{{topic.description if topic.description}}</p>
                 
 
                 <h2>Curated posts for you to Tweet</h2>
@@ -41,7 +41,6 @@
                     {% for post in topic.generated_posts[:3] %}
                     
                     <div class="card">
-                        
                         <div class="author">@{{ current_user.username }}</div>
                         <div class="suggested-post">
                             <p spellcheck="false">
