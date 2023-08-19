@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from datetime import datetime
 # from .models import db, Topic, ModeledTopic, Tweet, PickrUser, GeneratedPost, Niche
 from .models import (
     db,
@@ -52,7 +53,6 @@ def log_user_activity(user: PickrUser, event: str):
 
     # log the acitivity in the database
     activity_log = ActivityLog(
-        user_id=user.id,
         username=user.username,
         email=user.email,
         time=event_time,

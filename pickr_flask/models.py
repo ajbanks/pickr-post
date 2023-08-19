@@ -79,11 +79,10 @@ class ActivityLog(UserMixin, db.Model):
 
     __tablename__ = "activity_log"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
-    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     username = Column(String(100), nullable=False, unique=False)
-    email = Column(String(40), unique=True, nullable=False)
+    email = Column(String(40), unique=False, nullable=False)
     time = Column(DateTime, nullable=True)
-    event = Column(String(40),nullable=False)
+    event = Column(String(150),nullable=False)
 
     def __repr__(self):
         return f"<ActivityLog event={self.event} username={self.username} time={self.time}>"
