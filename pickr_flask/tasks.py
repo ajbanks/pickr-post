@@ -65,7 +65,6 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
     Save the results to DB.
     '''
     niche = Niche.query.filter(Niche.id == niche_id).one()
-    all_posts = []
     for subreddit in niche.subreddits:
         # do we want top/hot from previous day here instead?
         posts = fetch_subreddit_posts(
@@ -83,7 +82,6 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
         logging.info(
             f"Wrote {n_written} reddit posts: subreddit={subreddit.title}"
         )
-        all_posts.extend(posts)
 
     return niche_id
 
