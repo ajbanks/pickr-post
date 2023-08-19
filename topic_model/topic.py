@@ -390,7 +390,6 @@ def generate_tweets_for_topic(
         lambda t: len(t["text"]) >= 30,
         generated_tweets
     ))
-    generated_tweets = [t.strip('"-') for t in generated_tweets]
 
     return related_topics, generated_tweets
 
