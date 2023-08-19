@@ -2,7 +2,7 @@ import random
 from time import time
 from typing import List
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 from uuid import UUID
 from sqlalchemy import and_, exc
 from sqlalchemy.sql.expression import func
