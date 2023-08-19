@@ -79,6 +79,7 @@ class ActivityLog(UserMixin, db.Model):
 
     __tablename__ = "activity_log"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     username = Column(String(100), nullable=False, unique=False)
     email = Column(String(40), unique=False, nullable=False)
     time = Column(DateTime, nullable=True)
