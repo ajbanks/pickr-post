@@ -1,4 +1,3 @@
-from typing import List
 import logging
 import uuid
 from datetime import datetime, timedelta
@@ -16,10 +15,8 @@ from .models import (
 from .reddit import (
     process_post,
     fetch_subreddit_posts,
-    write_reddit_niche,
     write_reddit_modeled_overview,
     write_reddit_posts,
-    retrieve_niche_subreddit,
     write_generated_posts,
 )
 
@@ -137,84 +134,32 @@ def run_niche_topic_model(niche_id):
 
 
 @shared_task
-def update_niches_generate_posts():
+def generate_niche_topics(niche_id):
     '''
-    For each niche that doesn't have subreddits yet,
-    generate generic posts with GPT and save to database.
+    Generate modeled topics and posts for a niche.
     '''
-    niches = Niche.query.filter(~Niche.subreddits.any()).all()
+    niche = Niche.query.get(niche_id)
 
-    for niche in niches:
-        logging.info(f"niches without subreddits: {niche}")
-        gpt_generated_tweets_df = topic.generate_tweets_for_topic(
-            num_tweets=2, topic_label=niche, num_topics_from_topic_label=5
-        )
-        gpt_gen_topic_uuid_lookup = {
-            k: uuid.uuid4() for k in
-            gpt_generated_tweets_df["gpt_topic_label"].unique()
+    logging.info(
+        f"Generating GPT topics and posts: niche={niche.title}"
+    )
+    related_topics, generated_tweets = topic.generate_tweets_for_topic(
+        num_tweets=2, topic_label=niche.title, num_topics_from_topic_label=5
+    )
+    modeled_topics = []
+    for related_topic in related_topics:
+        # these are "psuedo" modeled topics since they
+        # aren't derived from BERTopic
+        modeled_topic = {
+            "id": uuid.uuid4(),
+            "name": related_topic,
+            "niche_id": niche_id,
+            "date": datetime.now(),
         }
-        gpt_generated_tweets_df["modeled_topic_id"] = gpt_generated_tweets_df[
-            "gpt_topic_label"
-        ].apply(lambda x: gpt_gen_topic_uuid_lookup[x])
-        gpt_topic_labels = gpt_generated_tweets_df["gpt_topic_label"].unique()
-        # create topic_overview_df for generated tweets
-        # that do not make use of trending topics
-        current_date = datetime.today().strftime("%Y-%m-%d")
-        n_labels = len(gpt_topic_labels)
-        gpt_topic_overview_data = {
-            "id": [gpt_gen_topic_uuid_lookup[i] for i in (gpt_topic_labels)],
-            "name": gpt_topic_labels,
-            "description": ["" for i in range(n_labels)],
-            "trend_type": ["" for i in range(n_labels)],
-            "niche_id": [niche.id for i in range(n_labels)],
-            "date": [current_date for i in range(n_labels)],
-            "size": [0 for i in range(n_labels)],
-        }
-        gpt_topic_overview_df = pd.DataFrame(data=gpt_topic_overview_data)
-        write_reddit_modeled_overview(gpt_topic_overview_df)
-        write_generated_posts(gpt_generated_tweets_df, "gpt")
+        for post in generated_tweets:
+            if post["topic_label"] == related_topic:
+                post["modeled_topic_id"] = modeled_topic["id"]
+        modeled_topics.append(modeled_topic)
 
-
-@shared_task
-def new_user_get_data(niches: List[str]):
-    """
-    For niches that are not in the database already, generated the
-    tweets using chatgpt then store the remaining niches in the database
-    """
-    niche_df = retrieve_niche_subreddit()
-
-    # split niches into those that are and aren't in the the DB
-    remaining_niches = list(set(niches) - set(niche_df["niche"].tolist()))
-    if len(remaining_niches) == 0:
-        return
-    write_reddit_niche(remaining_niches)
-    # get generated tweets for those niches that don't have a subreddit
-    for niche in remaining_niches:
-        gpt_generated_tweets_df = topic.generate_tweets_for_topic(
-            num_tweets=2, topic_label=niche, num_topics_from_topic_label=5
-        )
-        niche_uuid = niche_df.loc[niche_df["niche"] == niche, "niche_id"]
-        # create topic_overview_df for generated tweets that do not make use of trending topics
-        gpt_gen_topic_uuid_lookup = {
-            k: uuid.uuid4() for k in gpt_generated_tweets_df["gpt_topic_label"].unique()
-        }
-        gpt_generated_tweets_df["modeled_topic_id"] = gpt_generated_tweets_df[
-            "gpt_topic_label"
-        ].apply(lambda x: gpt_gen_topic_uuid_lookup[x])
-        gpt_topic_labels = gpt_generated_tweets_df["gpt_topic_label"].unique()
-        # create topic_overview_df for generated tweets that do not make use of trending topics
-        current_date = datetime.today().strftime("%Y-%m-%d")
-        gpt_topic_overview_data = {
-            "id": [gpt_gen_topic_uuid_lookup[i] for i in (gpt_topic_labels)],
-            "name": gpt_topic_labels,
-            "description": ["" for i in range(len(gpt_topic_labels))],
-            "trend_type": ["" for i in range(len(gpt_topic_labels))],
-            "niche_id": [niche_uuid for i in range(len(gpt_topic_labels))],
-            "date": [current_date for i in range(len(gpt_topic_labels))],
-            "size": [0 for i in range(len(gpt_topic_labels))],
-        }
-        gpt_topic_overview_df = pd.DataFrame(data=gpt_topic_overview_data)
-        write_reddit_modeled_overview(gpt_topic_overview_df)
-        write_generated_posts(
-            gpt_generated_tweets_df, "gpt"
-        )  # writing generated tweets here
+    write_reddit_modeled_overview(modeled_topics)
+    write_generated_posts(generated_tweets)

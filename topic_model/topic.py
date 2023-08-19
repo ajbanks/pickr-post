@@ -12,7 +12,6 @@ import re
 import openai
 import pandas as pd
 import numpy as np
-from bertopic import BERTopic
 from sklearn.feature_extraction.text import CountVectorizer
 # from sklearn.metrics.pairwise import cosine_similarity
 # from sentence_transformers import SentenceTransformer
@@ -40,12 +39,12 @@ def build_subtopic_model(
     num_gen_tweets: int = 2,
     num_topics_from_topic_label: int = 5,
 ):
-    # Format dataframe
+    # local import because this is import is slow
+    from bertopic import BERTopic
+
     tweet_df["created_at"] = tweet_df["created_at"].fillna(
         datetime.now().strftime("%Y-%m-%d")
     )
-    tweet_df["date"] = pd.to_datetime(tweet_df["created_at"])
-    tweet_df["created_at"] = pd.to_datetime(tweet_df["created_at"])
     tweet_df["date"] = pd.to_datetime(tweet_df["created_at"]).dt.date
     tweet_df["clean_text"] = tweet_df["clean_text"].astype(str)
     tweet_df["modeled_topic_id"] = np.nan
@@ -62,8 +61,6 @@ def build_subtopic_model(
     )
     topics, probs = topic_model.fit_transform(tweets)
 
-    logging.info("model trained")
-
     # TODO: Reintroduce gpt topic filter
     valid_topics = filter_topics(topics, probs)
 
@@ -76,7 +73,11 @@ def build_subtopic_model(
         topic_df = tweet_df.loc[tweet_idx]
         num_tweets = len(topic_df)
         # Get daily stats and the trend type of the topic
-        num_likes, num_retweets, topic_df_grp = get_topic_stats(topic_df, source)
+        (
+            num_likes,
+            num_retweets,
+            topic_df_grp
+        ) = get_topic_stats(topic_df, source)
         try:
             date_thres = datetime.today() - timedelta(days=trend_prev_days)
             recent_posts = topic_df_grp[topic_df_grp["date"] >= date_thres]
@@ -117,7 +118,7 @@ def build_subtopic_model(
         if valid_topic[:3] != "Yes":
             continue
         topic_id = uuid.uuid4()
-        # TODO: add probabiliotes so that tweets can be sprted by
+        # TODO(nathan): add probabilities so that tweets can be sorted by
         # probabilities in the UI
         tweet_df.loc[tweet_idx, 'modeled_topic_id'] = topic_id
         # Get topic label, description, generated tweets and final topic filter
@@ -127,7 +128,7 @@ def build_subtopic_model(
         ) = get_label_and_description(body)
 
         # generate tweets based on topic label
-        topic_gen_tweets = generate_tweets_for_topic(
+        _, topic_gen_tweets = generate_tweets_for_topic(
             num_gen_tweets, topic_label, num_topics_from_topic_label
         )
         for t in topic_gen_tweets:
@@ -139,6 +140,7 @@ def build_subtopic_model(
             "description": topic_desc,
             "size": size,
             "trend_type": trend,
+            "date": datetime.now(),
         })
         count += 1
 
@@ -310,7 +312,6 @@ def trend_type(points):
 
 
 def send_chat_gpt_message(message):  # TODO: check the temperature is correct
-
     while True:
         try:
             return (
@@ -343,7 +344,11 @@ def generate_tweets_for_topic(
         topic_label,
         num_topics_from_topic_label=5
 ):
-    """take a topic label and generate tweets for that topic label"""
+    """
+    Take a topic label and query GPT for related topics,
+    then generate tweets for each of those related topics.
+    Returns (related_topics, generated_tweets)
+    """
     num_tweets_per_tweet_type = math.ceil(
         num_tweets / num_topics_from_topic_label
     )
@@ -353,7 +358,8 @@ def generate_tweets_for_topic(
 
     # get topics related to topic label
     related_topics = generate_related_topics(
-        num_topics_from_topic_label, topic_label)[:num_topics_from_topic_label]
+        num_topics_from_topic_label, topic_label
+    )[:num_topics_from_topic_label]
     related_topics = [r for r in related_topics if r.strip() != ""]
     generated_tweets = []
     for topic in related_topics:
@@ -366,7 +372,7 @@ def generate_tweets_for_topic(
             num_tweets_per_tweet_type, topic)[:num_tweets_per_tweet_type]
         for t in info_tweets:
             generated_tweets.append({
-                "topic_label": topic_label,
+                "topic_label": topic,
                 "information_type": "informative",
                 "text": t,
             })
@@ -375,16 +381,16 @@ def generate_tweets_for_topic(
             num_tweets_per_tweet_type, topic)[:num_tweets_per_tweet_type]
         for t in future_tweets:
             generated_tweets.append({
-                "topic_label": topic_label,
+                "topic_label": topic,
                 "information_type": "future",
                 "text": t,
             })
 
-    generated_tweets = filter(
+    generated_tweets = list(filter(
         lambda t: len(t["text"]) >= 30,
         generated_tweets
-    )
-    return list(generated_tweets)
+    ))
+    return related_topics, generated_tweets
 
 
 def valid_topic_test(text):
