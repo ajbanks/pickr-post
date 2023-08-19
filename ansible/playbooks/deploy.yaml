@@ -7,6 +7,11 @@
     dotenv: "/home/web/.env"
     dest: "/home/web/topic-tweet"
   tasks:
+    - name: Clear tmp
+      file:
+        path: "/tmp/topic-tweet"
+        state: absent
+      become: yes
     - name: Clone repo
       git:
         repo: "{{ GIT_REPO }}"
@@ -43,5 +48,10 @@
     - name: restart gunicorn
       systemd:
         name: gunicorn.service
+        state: restarted
+      become: yes
+    - name: restart celery
+      systemd:
+        name: celery.service
         state: restarted
       become: yes

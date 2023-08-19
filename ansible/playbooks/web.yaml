@@ -17,7 +17,7 @@
 
     # celery
     CELERY_BIN: "/home/web/venv/bin/celery"
-    CELERY_APP: "pickr_flask.tasks:task_queue"
+    CELERY_APP: "pickr_flask.run_celery"
     CELERYD_NODES: "w1" # single worker node, multiple would be e.g. "w1 w2 w3"
     CELERYD_OPTS: "--time-limit=300 --concurrency=2"
     CELERYD_LOG_LEVEL: "INFO"

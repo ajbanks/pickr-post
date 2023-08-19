@@ -1,26 +1,25 @@
 """
-Module to compute and store topic info
+Module to compute topic info
 """
+import logging
 import time
+import os
 import math
 import uuid
 from datetime import datetime, timedelta
-from dataclasses import dataclass
-from typing import List
 
 import re
 import openai
 import pandas as pd
 import numpy as np
-from bertopic import BERTopic
 from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-#from sentence_transformers import SentenceTransformer
-from openai.error import RateLimitError
+# from sklearn.metrics.pairwise import cosine_similarity
+# from sentence_transformers import SentenceTransformer
+# from openai.error import RateLimitError
 
 RANDOM_STATE = 42
 
-openai.api_key = "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"  # TODO: remove
+openai.api_key = os.getenv("OPENAI_API_KEY")
 BRAND_VOICES = [
     "Playful and Youthful",
     "Professional and Authoritative",
@@ -28,15 +27,9 @@ BRAND_VOICES = [
     "Friendly and Supportive",
     "Bold and Innovative",
 ]
-GENERATED_TWEET_COLS = [
-    "id"
-    "topic_label",
-    "gpt_topic_label",
-    "text",
-    "information_type",
-]
 
 
+# TODO: split this into smaller functions
 def build_subtopic_model(
     tweet_df: pd.DataFrame,
     source: str,
@@ -46,12 +39,12 @@ def build_subtopic_model(
     num_gen_tweets: int = 2,
     num_topics_from_topic_label: int = 5,
 ):
-    # Format dataframe
+    # local import because this is import is slow
+    from bertopic import BERTopic
+
     tweet_df["created_at"] = tweet_df["created_at"].fillna(
         datetime.now().strftime("%Y-%m-%d")
     )
-    tweet_df["date"] = pd.to_datetime(tweet_df["created_at"])
-    tweet_df["created_at"] = pd.to_datetime(tweet_df["created_at"])
     tweet_df["date"] = pd.to_datetime(tweet_df["created_at"]).dt.date
     tweet_df["clean_text"] = tweet_df["clean_text"].astype(str)
     tweet_df["modeled_topic_id"] = np.nan
@@ -67,9 +60,9 @@ def build_subtopic_model(
         n_gram_range=(1, 2),
     )
     topics, probs = topic_model.fit_transform(tweets)
-    labels = topic_model.generate_topic_labels()
 
-    valid_topics = filter_topics(topics, probs)  # TODO: Reintroduce gpt topic filter
+    # TODO: Reintroduce gpt topic filter
+    valid_topics = filter_topics(topics, probs)
 
     # Remove topics that aren't trending
     topics_list = []
@@ -80,7 +73,11 @@ def build_subtopic_model(
         topic_df = tweet_df.loc[tweet_idx]
         num_tweets = len(topic_df)
         # Get daily stats and the trend type of the topic
-        num_likes, num_retweets, topic_df_grp = get_topic_stats(topic_df, source)
+        (
+            num_likes,
+            num_retweets,
+            topic_df_grp
+        ) = get_topic_stats(topic_df, source)
         try:
             date_thres = datetime.today() - timedelta(days=trend_prev_days)
             recent_posts = topic_df_grp[topic_df_grp["date"] >= date_thres]
@@ -98,11 +95,12 @@ def build_subtopic_model(
         )
 
     topics_list = sorted(topics_list, key=lambda tup: tup[2], reverse=True)
-    generated_tweets_df = pd.DataFrame()
-    topic_overview_df = pd.DataFrame()
+    topic_overviews = []
+    generated_tweets = []
     count = 0
     for vt, size, num_likes, num_retweets, trend, topic_df_grp in topics_list:
-        # get tweets from topic, ordered by probability of belonging to the topic
+        # get tweets from topic,
+        # ordered by probability of belonging to the topic
         tweet_idx_prob = [(idx, probs[idx]) for idx, t in enumerate(topics) if t == vt]
         tweet_idx_prob = sorted(tweet_idx_prob, key=lambda tup: tup[1], reverse=True)
         tweet_idx = [idx_prob[0] for idx_prob in tweet_idx_prob]
@@ -114,40 +112,42 @@ def build_subtopic_model(
         body = body[:4097]
         if count > max_relevant_topics:
             break
+
+        # (meiji163) is this a good strategy, seems overkill?
         valid_topic = send_chat_gpt_message(valid_topic_test(body))
         if valid_topic[:3] != "Yes":
             continue
         topic_id = uuid.uuid4()
-        tweet_df.loc[tweet_idx,'modeled_topic_id'] = topic_id #TODO: add probabiliotes so that tweets can be sprted by probabilities in the UI
+        # TODO(nathan): add probabilities so that tweets can be sorted by
+        # probabilities in the UI
+        tweet_df.loc[tweet_idx, 'modeled_topic_id'] = topic_id
         # Get topic label, description, generated tweets and final topic filter
         (
             topic_label,
             topic_desc,
         ) = get_label_and_description(body)
-        gen_tweets = generate_tweets_for_topic(
-                    num_gen_tweets, topic_label, num_topics_from_topic_label
-                )
-        gen_tweets["modeled_topic_id"] = topic_id
-        generated_tweets_df = pd.concat(
-            [
-                generated_tweets_df,
-                gen_tweets
-            ]
+
+        # generate tweets based on topic label
+        _, topic_gen_tweets = generate_tweets_for_topic(
+            num_gen_tweets, topic_label, num_topics_from_topic_label
         )
-        topic_overview_data = {
-            "id": [topic_id],
-            "name": [topic_label],
-            "description": [topic_desc],
-            "size": [size],
-            "trend type": [trend],
-            "date": dt.datetime.now().date()
-        }
-        topic_overview_df = pd.concat(
-            [topic_overview_df, pd.DataFrame(data=topic_overview_data)]
-        )
+        for t in topic_gen_tweets:
+            t["modeled_topic_id"] = topic_id
+        generated_tweets.extend(topic_gen_tweets)
+        topic_overviews.append({
+            "id": topic_id,
+            "name": topic_label,
+            "description": topic_desc,
+            "size": size,
+            "trend_type": trend,
+            "date": datetime.now(),
+        })
         count += 1
 
-    return topic_overview_df, format_relevant_posts(tweet_df, source), generated_tweets_df
+    return (
+        topic_overviews,
+        generated_tweets
+    )
 
 
 def get_topic_stats(df, source):
@@ -163,10 +163,13 @@ def get_topic_stats(df, source):
         return (
             df["score"].sum(),
             0,
-            df.groupby("date", as_index=False).agg({"score": "sum", "link": "count"}),
+            df.groupby("date", as_index=False).agg(
+                {"score": "sum", "url": "count"}
+            ),
         )
 
 
+# TODO: add rate limit backoff
 def get_label_and_description(body):
     """use gpt to get topic label and description"""
     while True:
@@ -263,14 +266,29 @@ def filter_topics(topics, probs):
 
 def format_relevant_posts(df, source):
     if source == "twitter":
-        cols = ["date", "username", "text", "likes", "retweets", "url","modeled_topic_id"]
+        cols = [
+            "date",
+            "username",
+            "text",
+            "likes",
+            "retweets",
+            "url",
+            "modeled_topic_id"
+        ]
         df = df.sort_values(by="likes", ascending=False)[cols]
         df["date"] = df["date"].astype(str)
         df["likes"] = df["likes"].astype(int)
         df["retweets"] = df["retweets"].astype(int)
-        
     elif source == "reddit":
-        cols = ["date", "title", "body", "score", "link","modeled_topic_id"]
+        cols = [
+            "reddit_id",
+            "date",
+            "title",
+            "body",
+            "score",
+            "url",
+            "modeled_topic_id"
+        ]
         df = df.sort_values(by="score", ascending=False)[cols]
         df["date"] = df["date"].astype(str)
         df["score"] = df["score"].astype(int)
@@ -294,7 +312,6 @@ def trend_type(points):
 
 
 def send_chat_gpt_message(message):  # TODO: check the temperature is correct
-
     while True:
         try:
             return (
@@ -322,57 +339,60 @@ def rewrite_tweets_in_brand_voices(tweet_list):
     return tweet_list + new_tweets
 
 
-def clean_tweet(tweet):
-    return re.sub(r"^\d+\.\s+", "", tweet)
-
-
-def generate_tweets_for_topic(num_tweets, topic_label, num_topics_from_topic_label=5):
-    """take a topic label and generate tweets for that topic label"""
-    num_tweets_per_tweet_type = math.ceil(num_tweets / num_topics_from_topic_label)
+def generate_tweets_for_topic(
+        num_tweets,
+        topic_label,
+        num_topics_from_topic_label=5
+):
+    """
+    Take a topic label and query GPT for related topics,
+    then generate tweets for each of those related topics.
+    Returns (related_topics, generated_tweets)
+    """
+    num_tweets_per_tweet_type = math.ceil(
+        num_tweets / num_topics_from_topic_label
+    )
     num_tweets_per_tweet_type = (
         1 if num_tweets_per_tweet_type <= 0 else num_tweets_per_tweet_type
     )
 
     # get topics related to topic label
-    related_topics = generate_related_topics(num_topics_from_topic_label, topic_label)[
-        :num_topics_from_topic_label
-    ]
+    related_topics = generate_related_topics(
+        num_topics_from_topic_label, topic_label
+    )[:num_topics_from_topic_label]
     related_topics = [r for r in related_topics if r.strip() != ""]
     generated_tweets = []
     for topic in related_topics:
-        # TODO: generate_informative_tweets_for_topic and generate_future_focused_tweets_for_topic dont reliably create the correct number of tweets (maybe due to temp value) and the split function doesnt accurately split tweets
-        generated_tweets.append(
-            (
-                uuid.uuid4(),
-                topic_label,
-                topic,
-                generate_informative_tweets_for_topic(num_tweets_per_tweet_type, topic)[
-                    :num_tweets_per_tweet_type
-                ],
-                "informative",
-            )
-        )
-        generated_tweets.append(
-            (
-                uuid.uuid4(),
-                topic_label,
-                topic,
-                generate_future_focused_tweets_for_topic(
-                    num_tweets_per_tweet_type, topic
-                )[:num_tweets_per_tweet_type],
-                "future focused",
-            )
-        )
+        # TODO: generate_informative_tweets_for_topic and
+        # generate_future_focused_tweets_for_topic dont reliably create
+        # the correct number of tweets (maybe due to temp value)
+        # and the split function doesnt accurately split tweets
 
-    df = pd.DataFrame(
-        data=generated_tweets,
-        columns=GENERATED_TWEET_COLS,
-    )
-    df = df.explode("text").reset_index(drop=True)
-    df = df[df["text"] != ""]
-    df = df[df["text"].str.len() >= 30]
+        info_tweets = generate_informative_tweets_for_topic(
+            num_tweets_per_tweet_type, topic)[:num_tweets_per_tweet_type]
+        for t in info_tweets:
+            generated_tweets.append({
+                "topic_label": topic,
+                "information_type": "informative",
+                "text": t,
+            })
 
-    return df
+        future_tweets = generate_future_focused_tweets_for_topic(
+            num_tweets_per_tweet_type, topic)[:num_tweets_per_tweet_type]
+        for t in future_tweets:
+            generated_tweets.append({
+                "topic_label": topic,
+                "information_type": "future",
+                "text": t,
+            })
+
+    generated_tweets = list(filter(
+        lambda t: len(t["text"]) >= 30,
+        generated_tweets
+    ))
+    generated_tweets = [t.strip('"-') for t in generated_tweets]
+
+    return related_topics, generated_tweets
 
 
 def valid_topic_test(text):
@@ -388,7 +408,7 @@ def create_label(text):
 
 
 def convert_chat_gpt_response_to_list(str_response):
-    return re.split("\n", str_response)
+    return [s.strip("'-" + '"') for s in re.split("\n", str_response)]
 
 
 def generate_tweet(text, topic_label):
@@ -417,10 +437,10 @@ def generate_future_focused_tweets_for_topic(num_tweets, topic):
 
 
 def generate_past_focused_tweets_for_topic(num_tweets, topic):
-    message = f"You are a historian social media content creator. You manage peoples social media profiles and have been asked to come up with tweets that your client should tweet. Create {num_tweets} tweets that talks about the history of {topic} and how it changed over time. Don't mention any specific twitter users or tools. Don't include any emoji's. Don't add any numbering to the tweets and separate each tweet with a new line character."
+    message = f"You are a historian social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Create {num_tweets} tweets that talks about the history of {topic} and how it changed over time. Don't mention any specific twitter users or tools. Don't include any emoji's. Don't add any numbering to the tweets and separate each tweet with a new line character."
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
 
 
 def rewrite_post_in_brand_voice(brand_voice, tweet):
-    message = f"You are a social media content creator. You manage peoples social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
+    message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))

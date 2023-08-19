@@ -27,24 +27,24 @@
     - gunicorn
     - celery
 
-- name: Install nginx
-  apt:
-    name: nginx
-    state: latest
-    update_cache: yes
+# - name: Install nginx
+#   apt:
+#     name: nginx
+#     state: latest
+#     update_cache: yes
 
-- name: Apply nginx template
-  template:
-    src: nginx.conf.j2
-    dest: /etc/nginx/sites-available/default
-  notify: restart nginx
+# - name: Apply nginx template
+#   template:
+#     src: nginx.conf.j2
+#     dest: /etc/nginx/sites-available/default
+#   notify: restart nginx
 
-- name: Enable nginx site
-  file:
-    src: /etc/nginx/sites-available/default
-    dest: /etc/nginx/sites-enabled/default
-    state: link
-  notify: restart nginx
+# - name: Enable nginx site
+#   file:
+#     src: /etc/nginx/sites-available/default
+#     dest: /etc/nginx/sites-enabled/default
+#     state: link
+#   notify: restart nginx
 
 - name: Create gunicorn socket
   template:

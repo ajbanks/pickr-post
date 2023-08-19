@@ -1,14 +1,13 @@
+from funcy import rcompose, lfilter, lmap, complement, partial
+from nltk.tokenize import TweetTokenizer
+from bs4 import BeautifulSoup
+from emoji import is_emoji
 import re
 
-from funcy import rcompose, lfilter, lmap, complement, partial
-from langdetect import detect
-from nltk.tokenize import TweetTokenizer
-from emoji import is_emoji
 
 tweet_tokenizer = TweetTokenizer(
     preserve_case=False, reduce_len=True, strip_handles=True
 )
-
 remove_emojis = partial(lfilter, complement(is_emoji))
 strip_hashtags = partial(lmap, lambda w: w.lstrip("#"))
 normalise_tweet = rcompose(
@@ -21,12 +20,5 @@ normalise_tweet = rcompose(
 )
 
 
-def create_hashtag_from_string(term: str) -> str:
-    return "#" + term.replace(" ", "")
-
-
-def lang(text):
-    try:
-        return detect(text)
-    except:
-        return "na"
+def parse_html(text):
+    return BeautifulSoup(text, "html.parser").get_text()

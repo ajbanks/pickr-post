@@ -20,7 +20,7 @@
                 <h3>Trending Topic {{ loop.index }}  🔥: {{topic.name}}</h3>
                 <p>Click to view curated tweets and related posts</p>
                 <hr/>
-                <p>{{topic.description}}</p>
+                <p>{{topic.description if topic.description}}</p>
             </div>
             {% endfor %}
         </div>

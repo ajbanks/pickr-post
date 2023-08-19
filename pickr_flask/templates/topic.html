@@ -13,7 +13,7 @@
     <div class="content content_large">
         <div class="topic">
             <h1>{{topic.name}}</h1>
-            <p>{{topic.description}}</p>
+            <p>{{topic.description if topic.description}}</p>
 
             <h2>Curated posts for you to Tweet</h2>
             <div class="container cards">
@@ -32,7 +32,6 @@
                             Tweet
                         </a>
                     </div>
-                    <small><b>Click 'Tweet' button to post/schedule/edit</b></small> 
 
                 </div>
                 {% endfor %}
@@ -40,9 +39,10 @@
 
             <h2>Posts from this topic</h2>
             <div class="container cards">
-                {% for pst in posts %}
+                {% for post in posts %}
                 <div class="card">
-                    <p>{{ pst.body|e }}</p>
+                    <p>{{post.title }}</p>
+                    <p>{{ post.body | truncate(300)}}</p>
                 </div>
                 {% endfor %}
             </div>

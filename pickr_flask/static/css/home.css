@@ -13,7 +13,6 @@
   padding: 0 1rem;
   background: var(--main-color);
   height: 4rem;
-  font-family: Inter;
 }
 
 .left,
@@ -64,6 +63,7 @@
 .sidebar {
   position: relative;
   width: 20%;
+  max-width: 200px;
   background: #F9F9F9;
   border-right: 1px solid #CCC;
   flex-shrink: 0;
@@ -84,7 +84,6 @@
   color: #444;
   text-align: center;
   margin-bottom: 0px;
-  font-family: Inter;
 }
 
 .content h2 {
@@ -169,11 +168,9 @@
   font-weight: 350;
   font-size: 1.4rem;
   color: #555;
-  font-family: Inter;
 }
 
 .topic h3 {
-  font-family: Inter;
 }
 
 .topic p {
@@ -245,7 +242,6 @@
 
 .no_topics {
   color: red;
-  font-weight: bold;
 }
 
 @media (max-width: 600px) {
