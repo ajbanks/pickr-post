@@ -36,7 +36,8 @@ from .http import url_has_allowed_host_and_scheme
 from .models import Niche, db, PickrUser, ModeledTopic, GeneratedPost, StripeSubscription, StripeSubscriptionStatus
 from .forms import LoginForm, SignupForm, TopicForm
 from .tasks import new_user_get_data
-from .util import log_login, log_all_topics_activity, log_topic_click_activity
+from .util import log_user_activity
+
 import random
 
 ###############################################################################
@@ -102,7 +103,7 @@ def login():
         app.logger.info(user)
         if user and check_password_hash(user.password, form.password.data):
             login_user(user, remember=True)
-            log_login(user)
+            log_user_activity(user, "login")
             # validate redirect, if provided
             next_page = request.args.get("next")
             if next_page is not None and not url_has_allowed_host_and_scheme(
@@ -152,6 +153,7 @@ def signup():
             db.session.commit()
 
             login_user(user)
+            log_user_activity(user, "completed_signup_step_1")
             return redirect(url_for("picker"))
 
         flash("An account already exists with that email address.")
@@ -414,6 +416,8 @@ def home():
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
+    log_user_activity(current_user, "home")
+
     topics = []
     if len(current_user.niches) == 0:
         return render_template(
@@ -467,7 +471,7 @@ def home():
 @app.route("/all_topics")
 @login_required
 def all_topics():
-    log_all_topics_activity(current_user)
+    log_user_activity(current_user, "all_topics")
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
@@ -511,7 +515,7 @@ def all_topics():
 @login_required
 def topic(topic_id):
 
-    log_topic_click_activity(current_user, topic_id)
+    log_user_activity(current_user, f"topic_click:{topic_id} ")
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
@@ -571,6 +575,8 @@ def picker():
         # TODO: run task for new user, check celery docs
         if len(user_custom_niches) > 0:
             new_user_get_data.delay(user_custom_niches)
+
+        log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
 
     return render_template(

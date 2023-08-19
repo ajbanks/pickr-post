@@ -31,22 +31,6 @@ def save_model_result(model_result):
 
     db.session.commit()
 
-
-def log_user_url_change(user: PickrUser):
-    log_user_activity(user, "url_change")
-
-def log_all_topics_activity(user: PickrUser):
-    log_user_activity(user, "all_topics")
-
-def log_topic_click_activity(user: PickrUser, topic_id):
-    log_user_activity(user, f"topic_click:{topic_id} ")
-
-def log_login(user: PickrUser):
-    log_user_activity(user, "login")
-
-def log_signup(user: PickrUser):
-    log_user_activity(user, "signup")
-
 def log_user_activity(user: PickrUser, event: str):
     """ log a user activity event in the acitivty database"""
     event_time = datetime.now()
