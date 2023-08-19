@@ -83,7 +83,6 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
         logging.info(
             f"Wrote {n_written} reddit posts: subreddit={subreddit.title}"
         )
-
         all_posts.extend(posts)
 
     return niche_id

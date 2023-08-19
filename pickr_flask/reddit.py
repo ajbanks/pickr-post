@@ -24,7 +24,10 @@ reddit = praw.Reddit(
 )
 
 
-def _to_dict(post):
+def _to_dict(post: praw.models.Submission) -> dict:
+    '''
+    Extract fields from reddit submission into dictionary.
+    '''
     return {
         "reddit_id": post.id,
         "author": post.__dict__.get("author_fullname"),  # may be undefined
@@ -36,7 +39,7 @@ def _to_dict(post):
     }
 
 
-def process_post(p) -> str:
+def process_post(p: dict) -> str:
     return normalise_tweet(
         parse_html(p["title"] + "\n" + p["body"])
     )
@@ -46,36 +49,14 @@ def search_subreddit_for_term(
         subreddit_string,
         search_term,
         time_filter="week"
-):
+) -> List[dict]:
     output_rows = []
     sub_generator = reddit.subreddit(subreddit_string).search(
         search_term, time_filter=time_filter
     )
     for submission in sub_generator:
         output_rows.append(_to_dict(submission))
-
-    reddit_df = pd.DataFrame(output_rows)
-    reddit_df["title"] = reddit_df["title"].apply(parse_html)
-    reddit_df["body"] = reddit_df["body"].apply(parse_html)
-    reddit_df["text"] = reddit_df["title"] + reddit_df["body"]
-    reddit_df["clean_text"] = reddit_df["text"].apply(normalise_tweet)
-
-    return reddit_df
-
-
-def get_hot_submissions_from_subreddit_list(subreddit_list):
-    post_rows = []
-    for subreddit_string in subreddit_list:
-        post_rows += get_hot_submissions(reddit.subreddit(subreddit_string))
-
-    reddit_df = pd.DataFrame(post_rows)
-    reddit_df["title"] = reddit_df["title"].apply(parse_html)
-    reddit_df["body"] = reddit_df["body"].apply(parse_html)
-    reddit_df["text"] = reddit_df["title"] + reddit_df["body"]
-    reddit_df["clean_text"] = reddit_df["text"].apply(normalise_tweet)
-    # reddit_df["lang"] = reddit_df["clean_text"].apply(lang)
-    # reddit_df = reddit_df[reddit_df["lang"] == "en"]
-    return reddit_df
+    return output_rows
 
 
 def get_hot_submissions(subreddit):
@@ -114,39 +95,34 @@ def fetch_subreddit_posts(subreddit_name, num_posts=1000):
     return submissions
 
 
-def fetch_niche_subreddit_posts(
-        subreddits,
-        num_posts_per_subreddit=100,
-        time_filter="all",
-):
-    """"""
-    output_rows = []
-    try:
-        for subred in subreddits:
-            sub_generator = reddit.subreddit(subred.title).new(
-                limit=num_posts_per_subreddit,
-                time_filter=time_filter
-            )
-            for submission in sub_generator:
-                output_rows.append(_to_dict(submission))
-
-    except Exception as e:
-        raise Exception(f"Failed to get any posts: {e}")
-
-    df = pd.DataFrame(output_rows)
-    df["title"] = df["title"].astype(str)
-    df["body"] = df["body"].astype(str)
-    df["text"] = df["title"] + " " + df["body"]
-    df["clean_text"] = df["text"].apply(normalise_tweet)
-    return df
-
-
 #############################################################################
 #
 
 
-def write_generated_posts(generated_posts) -> None:
-    """ """
+def write_reddit_posts(posts: List[dict]) -> int:
+    num_written = 0
+    for post in posts:
+        record = (
+            db.session.query(RedditPost)
+            .filter(RedditPost.reddit_id == post["reddit_id"])
+            .first()
+        )
+        if record is None:
+            record = RedditPost(**post)
+            try:
+                db.session.add(record)
+            except exc.SQLAlchemyError as e:
+                db.session.rollback()
+                logging.error(f"Error writing reddit post: {e}")
+            else:
+                db.session.commit()
+                num_written += 1
+    return num_written
+
+
+def write_generated_posts(generated_posts: List[dict]) -> None:
+    """
+    """
     for post in generated_posts:
         record = GeneratedPost(**post)
         try:
@@ -158,7 +134,7 @@ def write_generated_posts(generated_posts) -> None:
             db.session.commit()
 
 
-def write_reddit_modeled_overview(topic_overviews) -> None:
+def write_reddit_modeled_overview(topic_overviews: List[dict]) -> None:
     """
     """
     for topic in topic_overviews:
@@ -324,24 +300,3 @@ def write_subreddit(
                 logging.error(e)
             else:
                 db.session.commit()
-
-
-def write_reddit_posts(posts) -> int:
-    num_written = 0
-    for post in posts:
-        record = (
-            db.session.query(RedditPost)
-            .filter(RedditPost.reddit_id == post["reddit_id"])
-            .first()
-        )
-        if record is None:
-            record = RedditPost(**post)
-            try:
-                db.session.add(record)
-            except exc.SQLAlchemyError as e:
-                db.session.rollback()
-                logging.error(f"Error writing reddit post: {e}")
-            else:
-                db.session.commit()
-                num_written += 1
-    return num_written
