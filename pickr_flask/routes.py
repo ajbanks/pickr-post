@@ -4,7 +4,7 @@ from typing import List
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
-from sqlalchemy import and_, exc
+from sqlalchemy import Date, cast, and_, exc
 from sqlalchemy.sql.expression import func
 
 import jwt
@@ -385,10 +385,10 @@ def home():
     niche_ids = [n.id for n in current_user.niches]
     topics = ModeledTopic.query.filter(
         and_(
-            ModeledTopic.niche_id.in_(niche_ids),
-            ModeledTopic.date > datetime.now().date()
+            ModeledTopic.niche_id.in_(niche_ids)
         )
     ).order_by(
+        ModeledTopic.date.desc(),
         ModeledTopic.size.desc()
     ).limit(3).all()
 
@@ -412,7 +412,8 @@ def all_topics():
         return redirect(url_for("upgrade"))
 
     niche_ids = [n.id for n in current_user.niches]
-    topics = ModeledTopic.query.filter(
+
+    '''topics = ModeledTopic.query.filter(
         and_(
             ModeledTopic.niche_id.in_(niche_ids),
             ModeledTopic.date > datetime.now().date()
@@ -422,8 +423,26 @@ def all_topics():
     ).all()
 
     for t in topics:
-        random.shuffle(t.generated_posts)
+        random.shuffle(t.generated_posts)'''
 
+    topics = []
+    for n in niche_ids:
+        max_date = ModeledTopic.query.filter(
+            ModeledTopic.niche_id.in_(niche_ids),
+            ).order_by(
+                ModeledTopic.date
+        ).first().date.date()
+        topics += ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id.in_([n]),
+                cast(ModeledTopic.date, Date) == max_date
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).all()
+
+        for t in topics:
+            random.shuffle(t.generated_posts)
     return render_template(
         "all_topics.html",
         title="Pickr - Topics & Curated Tweets",
