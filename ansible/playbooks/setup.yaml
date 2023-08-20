@@ -16,8 +16,9 @@
       - nathan_francis
     packages:
       - tree
-      - nano
+      - vim
       - htop
+      - zstd
       - tmux
       - ncurses-term
       - python3
