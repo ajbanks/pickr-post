@@ -123,7 +123,7 @@ class ModeledTopic(db.Model):
     __table_args__ = {"schema": DEFAULT_SCHEMA}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     name = Column(String(1000), nullable=True)
-    description = Column(String(1000), nullable=True)
+    description = Column(String, nullable=True)
     size = Column(Integer, nullable=False, default=0)
     trend_type = Column(String(32), nullable=True)
     niche_id = Column(
