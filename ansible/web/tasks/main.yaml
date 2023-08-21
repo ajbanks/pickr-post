@@ -51,20 +51,15 @@
     src: gunicorn.socket
     dest: /etc/systemd/system/gunicorn.socket
 
-- name: Create gunicorn service
+- name: Create systemd services
   template:
-    src: gunicorn.service.j2
-    dest: /etc/systemd/system/gunicorn.service
-
-- name: Create celery service
-  template:
-    src: celery.service.j2
-    dest: /etc/systemd/system/celery.service
-
-- name: Create celerybeat service
-  template:
-    src: celerybeat.service.j2
-    dest: /etc/systemd/system/celerybeat.service
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+  with_items:
+    - gunicorn.service
+    - celery.service
+    - celerybeat.service
+    - flower.service
 
 - name: Celery log dir
   file:
@@ -85,6 +80,7 @@
     - gunicorn.socket
     - celery.service
     - celerybeat.service
+    - flower.service
 
 - name: Start gunicorn service
   systemd:

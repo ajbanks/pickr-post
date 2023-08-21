@@ -25,5 +25,6 @@
     CELERYD_LOG_FILE: "/var/log/celery/%n%I.log"
     CELERYBEAT_PID_FILE: "/var/run/celery/beat.pid"
     CELERYBEAT_LOG_FILE: "/var/run/celery/beat.log"
+    FLOWERD_OPTS: "--port=5555"
   roles:
     - web

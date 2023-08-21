@@ -29,7 +29,16 @@
     - secure
     - users
 
-- hosts: database
+- name: Add Cloud Ops Agent to hosts
+  hosts: all
+  become: true
+  roles:
+  - role: google-cloud-ops-agents-ansible
+    vars:
+      agent_type: ops-agent
+
+- name: Install postgres and redis
+  hosts: database
   become: yes
   vars:
     ############ postgres ############
@@ -64,11 +73,6 @@
     redis_bind: 127.0.0.1
     redis_protected_mode: "no"
 
-    ########## google cloud ##########
-    # install ops-agent
-    agent_type: ops-agent
-
   roles:
     - geerlingguy.postgresql
     - davidwittman.redis
-    - google-cloud-ops-agent-ansible
