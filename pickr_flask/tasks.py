@@ -126,7 +126,7 @@ def run_niche_topic_model(niche_id):
         logging.info(f"No topics generated: niche={niche.title}")
         return
     for t in topic_overviews:
-        t.niche_id = niche_id
+        t["niche_id"] = niche_id
 
     write_reddit_modeled_overview(topic_overviews)
     write_generated_posts(generated_tweets)
