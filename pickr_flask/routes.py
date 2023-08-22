@@ -358,7 +358,7 @@ def webhook():
 @app.route("/")
 @login_required
 def index():
-    return render_template_string("Hello. This is a Pickr URL")
+    return redirect(url_for("home"))
 
 
 @app.route("/upgrade")
@@ -445,7 +445,7 @@ def all_topics():
             random.shuffle(t.generated_posts)
     return render_template(
         "all_topics.html",
-        title="Pickr - Topics & Curated Tweets",
+        title="Pickr - Topics & Generated Tweets",
         date=datetime.today().strftime("%Y-%m-%d"),
         topics=topics,
     )
