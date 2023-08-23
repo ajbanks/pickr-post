@@ -17,7 +17,8 @@ to `inventory.yaml` like the following.
 3. Install ansible and download dependencies
 ```
 python3 -m pip install --user ansible
-ansible-galaxy install geerlingguy.postgresql davidwittman.redis
+ansible-galaxy install geerlingguy.postgresql davidwittman.redis googlecloudplatform.google_cloud_ops_agents
+
 ```
 
 4. Run the setup playbooks. This secures the servers, installs postgresql, redis, python, among other things.

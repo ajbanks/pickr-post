@@ -1,5 +1,6 @@
 from os import environ, path
 from dotenv import load_dotenv
+from celery.schedules import crontab
 
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
@@ -22,9 +23,10 @@ class Config:
 
     # Database
     SQLALCHEMY_DATABASE_URI = environ.get("SQLALCHEMY_DATABASE_URI")
-    SQLALCHEMY_ECHO = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 6,
+        "pool_recycle": 120,
         "pool_pre_ping": True,
     }
 
@@ -36,12 +38,23 @@ class Config:
     STRIPE_ENDPOINT_SECRET = environ.get("STRIPE_ENDPOINT_SECRET")
     STRIPE_WEBHOOK_LOG = "./stripe-webhook.log"
 
-    # timezone for cron jobs
-    timezone = "Europe/London"
-    
-    # Celery for redis broker address - this requires a working redis server
-    CELERY_BROKER_URL = environ.get("CELERY_BROKER_URL")
-    CELERY_RESULT_BACKEND = environ.get("CELERY_RESULT_BACKEND")
+    # Celery
+    timezone = "Europe/London"  # timezone for cron jobs
+    CELERY = dict(
+        broker_url=environ.get("CELERY_BROKER_URL"),
+        result_backend=environ.get("CELERY_RESULT_BACKEND"),
+        task_ignore_result=True,
+        beat_schedule={
+            "task_update_reddit_every_morning": {
+                "task": "pickr_flask.tasks.all_niches_reddit_update",
+                "schedule": crontab(hour=4, minute=30),  # morning schedule
+            },
+            "task_run_topic_model_every_morning": {
+                "task": "pickr_flask.tasks.all_niches_run_model",
+                "schedule": crontab(hour=5, minute=0),
+            }
+        }
+    )
 
     # SMTP settings
     MAIL_SERVER = environ.get("MAIL_SERVER")

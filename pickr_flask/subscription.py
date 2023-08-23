@@ -7,12 +7,50 @@ from sqlalchemy.orm.exc import NoResultFound
 from .models import PickrUser, StripeSubscription, StripeSubscriptionStatus, db
 
 
-def has_free_trial(user: PickrUser):
-    return user.created_at + timedelta(days=7) <= datetime.now()
+def is_user_stripe_subscription_active(pickr_user):
+    stripe_subscription = StripeSubscriptionStatus(
+        get_stripe_subscription_status(pickr_user.id))
+    if stripe_subscription != StripeSubscriptionStatus.active \
+       and stripe_subscription != StripeSubscriptionStatus.trialing:
+        return False
+    else:
+        return True
 
 
-def has_active_sub(user: PickrUser):
-    return user.stripe_subscriptions
+def is_user_account_valid(pickr_user):
+    "check if a user is allowed to use pickr features"
+    valid = True
+
+    if is_user_older_than_14days(pickr_user) \
+       and not is_user_stripe_subscription_active(pickr_user):
+        valid = False
+
+    return valid
+
+
+def is_user_older_than_14days(pickr_user):
+    """Check if a users account is older than 14 days"""
+    plus_14_days_old = False
+    delta = datetime.today() - pickr_user.created_at
+
+    if delta.days >= 14:
+        plus_14_days_old = True
+
+    return plus_14_days_old
+
+
+def get_stripe_subscription_status(user_id):
+    stripe_subscription = StripeSubscription.query.filter_by(
+            user_id=user_id,
+        ).first()
+
+    if stripe_subscription is None:
+        return StripeSubscriptionStatus.canceled
+
+    retrieve_sub = stripe.Subscription.retrieve(
+        stripe_subscription.stripe_subscription_id)
+    status = retrieve_sub.status
+    return status
 
 
 def handle_checkout_completed(event):
