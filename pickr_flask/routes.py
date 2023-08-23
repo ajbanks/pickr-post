@@ -5,7 +5,8 @@ from typing import List
 from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
-from typing import List
+from sqlalchemy import Date, cast, and_, exc
+from sqlalchemy.sql.expression import func
 
 import jwt
 import stripe
@@ -23,64 +24,31 @@ from flask import current_app as app
 from flask_login import current_user, login_required, login_user, logout_user
 from flask_mail import Mail, Message
 from werkzeug.security import check_password_hash, generate_password_hash
-from sqlalchemy import Date
 from .forms import LoginForm, SignupForm, TopicForm, ResetForm, SetPasswordForm
 from .http import url_has_allowed_host_and_scheme
 from .subscription import (
-    handle_subscription_created,
+    is_user_stripe_subscription_active,
+    is_user_account_valid,
     handle_subscription_updated,
     handle_subscription_deleted,
     handle_checkout_completed,
 )
-from .http import url_has_allowed_host_and_scheme
-from .models import Niche, db, PickrUser, ModeledTopic, GeneratedPost, StripeSubscription, StripeSubscriptionStatus
-from .forms import LoginForm, SignupForm, TopicForm
-from .tasks import new_user_get_data
+from .models import (
+    db, Niche, PickrUser,
+    ModeledTopic, RedditPost
+)
+from .tasks import generate_niche_topics
+from .util import log_user_activity
 
-import random
+@app.errorhandler(exc.SQLAlchemyError)
+def handle_db_exception(e):
+    app.logger.error(e)
+    db.session.rollback()
+
 
 ###############################################################################
 # Authentication endpoints
 
-def is_user_stripe_subscription_active(pickr_user):
-    stripe_subscription = StripeSubscriptionStatus(get_stripe_subscription_status(
-        pickr_user.id))
-    if stripe_subscription != StripeSubscriptionStatus.active and stripe_subscription != StripeSubscriptionStatus.trialing:
-
-        return False
-    else:
-        return True
-
-def is_user_account_valid(pickr_user):
-    "check if a user is allowed to use pickr features"
-    valid = True
-
-    if is_user_older_than_14days(pickr_user) and not is_user_stripe_subscription_active(pickr_user):
-        valid = False
-
-    return valid
-
-def is_user_older_than_14days(pickr_user):
-    """Check if a users account is older than 14 days"""
-    plus_14_days_old = False
-    delta = datetime.today() - pickr_user.created_at
-
-    if delta.days >= 14:
-        plus_14_days_old = True
-
-    return plus_14_days_old
-
-def get_stripe_subscription_status(user_id):
-    stripe_subscription = StripeSubscription.query.filter_by(
-            user_id=user_id,
-        ).first()
-
-    if stripe_subscription is None:
-        return StripeSubscriptionStatus.canceled
-
-    retrieve_sub = stripe.Subscription.retrieve(stripe_subscription.stripe_subscription_id)
-    status = retrieve_sub.status
-    return status
 
 @app.route("/favicon.ico")
 def favicon():
@@ -102,7 +70,7 @@ def login():
         app.logger.info(user)
         if user and check_password_hash(user.password, form.password.data):
             login_user(user, remember=True)
-
+            log_user_activity(user, "login")
             # validate redirect, if provided
             next_page = request.args.get("next")
             if next_page is not None and not url_has_allowed_host_and_scheme(
@@ -131,7 +99,6 @@ def signup():
     """GET requests serve sign-up page.
     POST requests validate form & creates user.
     """
-
     form = SignupForm()
     if form.validate_on_submit():
         existing_user = PickrUser.query.filter_by(
@@ -148,10 +115,14 @@ def signup():
                 password=password_hash,
                 created_at=datetime.now(),
             )
+            app.logger.info(
+                f"New user signup: username={user.username}"
+            )
             db.session.add(user)
             db.session.commit()
 
             login_user(user)
+            log_user_activity(user, "completed_signup_step_1")
             return redirect(url_for("picker"))
 
         flash("An account already exists with that email address.")
@@ -182,17 +153,20 @@ def reset():
         existing_user = PickrUser.query.filter_by(
             email=form.email.data,
         ).first()
-        
         if existing_user:
             # send email
             mail = Mail(app)
 
             msg = Message()
             msg.subject = "Pickr Social - Reset Password"
-            msg.recipients = [existing_user.email] # existing_user.email #
+            msg.recipients = [existing_user.email]
             msg.sender = 'account@pickrsocial.com'
-            token = get_reset_token(existing_user.username) 
-            msg.html = render_template('reset_email_body.html', user=existing_user.username, token=token)
+            token = get_reset_token(existing_user.username)
+            msg.html = render_template(
+                'reset_email_body.html',
+                user=existing_user.username,
+                token=token
+            )
             mail.send(msg)
             return render_template(
                 "reset_email_sent.html",
@@ -213,22 +187,28 @@ def reset():
         template="signup-page",
     )
 
+
 def get_reset_token(username, expires=500):
-    return jwt.encode({'reset_password':    username,
-            'exp':    time() + expires},
-            algorithm='HS256',
-            key=app.config['SECRET_KEY']
+    return jwt.encode(
+        {'reset_password': username, 'exp': time() + expires},
+        algorithm='HS256',
+        key=app.config['SECRET_KEY']
     )
+
 
 def verify_reset_token(token):
     try:
-        username = jwt.decode(token,
-            key=app.config['SECRET_KEY'], algorithms=['HS256'])['reset_password']
+        username = jwt.decode(
+            token,
+            key=app.config['SECRET_KEY'],
+            algorithms=['HS256']
+        )['reset_password']
         app.logger.info(f'reset password - username from token {username}')
     except Exception as e:
-        app.logger.info(f'reset password - caught exception when trying to get token {e}')
+        app.logger.error(f'reset password - caught exception when trying to get token {e}')
         return
     return PickrUser.query.filter_by(username=username).first()
+
 
 @app.route("/set_password/<token>", methods=["GET", "POST"])
 def set_password(token):
@@ -236,28 +216,24 @@ def set_password(token):
     user = verify_reset_token(token)
     password = form.password.data
     app.logger.info(f'reset password - new password  {password}')
-    print('validate_on_submit()', form.validate_on_submit())
     if form.validate_on_submit():
         password = form.password.data
         password_hash = generate_password_hash(
                 password,
                 method="pbkdf2:sha512:1000",
             )
-        user.password = generate_password_hash(password)
+        user.password = password_hash
         db.session.add(user)
         db.session.commit()
         app.logger.info(f'reset password - password is set for {user.username}')
         return redirect(url_for("login"))
 
-    
     # verify that the token is valid for the user
-    
     if not user:
         app.logger.info('reset password - user not found')
         return redirect(url_for("login"))
 
-    
-    app.logger.info(f'hasnt gone in to submit')         
+    app.logger.info(f'hasnt gone in to submit')
     return render_template(
         "set_password.html",
         title="Pickr - Reset Password",
@@ -280,7 +256,6 @@ def logout():
 
 # TODO: show user subscription status
 # TODO: ability to cancel subscription
-# TODO: implement usage limits based on subscription
 
 
 @app.route("/stripe-pub-key", methods=["GET"])
@@ -312,7 +287,7 @@ def stripe_checkout_session():
             subscription_data={},
             payment_method_collection="if_required",
             mode="subscription",
-            metadata={"user_id" : current_user.id},
+            metadata={"user_id": current_user.id},
             line_items=[
                 {
                     "price": app.config["STRIPE_SUBSCRIPTION_PRICE_ID"],
@@ -338,6 +313,7 @@ def stripe_checkout_cancel():
     app.logger.info('stripe_checkout_cancelled')
     return render_template("cancel.html")
 
+
 @app.route("/webhooks", methods=["POST"])
 def webhook():
     """
@@ -360,13 +336,7 @@ def webhook():
         app.logger.info('webhook ValueError')
         return jsonify(error="Invalid payload"), 400
 
-    # log all stripe events in case we need them
-    with open(app.config["STRIPE_WEBHOOK_LOG"], "a") as f:
-        json.dump(event, f)
-        f.write("\n")
-
-    app.logger.info('event type')
-    app.logger.info(event["type"])
+    app.logger.info(f'stripe event type: {event["type"]}')
 
     if event["type"] == "checkout.session.completed":
         app.logger.info('checkout.session.completed')
@@ -383,6 +353,7 @@ def webhook():
 
     return jsonify(success=True)
 
+
 ###############################################################################
 # Main app page routes
 
@@ -390,7 +361,7 @@ def webhook():
 @app.route("/")
 @login_required
 def index():
-    return render_template_string("Hello. This is a Pickr URL")
+    return redirect(url_for("home"))
 
 
 @app.route("/upgrade")
@@ -413,49 +384,22 @@ class UITopic:
 def home():
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
-
-    topics = []
-    if len(current_user.niches) == 0:
-        return render_template(
-            "home.html",
-            title="Pickr - Your Daily Topics & Curated Tweets",
-            date=datetime.today().strftime("%Y-%m-%d"),
-            topics=topics,
-        )
+    log_user_activity(current_user, "home")
     niche_ids = [n.id for n in current_user.niches]
-    print(
-        "niche_ids -------------------------------------------------------",
-        niche_ids,
-    )
-
-    all_topics = ModeledTopic.query.filter(ModeledTopic.niche_id.in_(niche_ids)).order_by(ModeledTopic.size.desc()).all()
-    if len(all_topics) == 0:
-        return render_template(
-            "home.html",
-            title="Pickr - Your Daily Topics & Curated Tweets",
-            date=datetime.today().strftime("%Y-%m-%d"),
-            topics=topics,
+    topics = ModeledTopic.query.filter(
+        and_(
+            ModeledTopic.niche_id.in_(niche_ids)
         )
-    max_date = max([t.date.date() for t in all_topics])
-    topics = [t for t in all_topics if t.date.date() == max_date][:3]
-    for t in topics:
-        if t.generated_posts is not None:
-            print('num gen posts', len(t.generated_posts))
-            print('type gen posts', type(t.generated_posts))
-            print('gen posts', t.generated_posts[:2])
-            random.shuffle(t.generated_posts)
-            #print(posts)
-            #t.generated_posts = posts
+    ).order_by(
+        ModeledTopic.date.desc(),
+        ModeledTopic.size.desc()
+    ).limit(3).all()
 
-    print('unique niches in topics ', len(set([t.niche_id for t in topics])))
-    '''topics = (
-        ModeledTopic.query.filter(ModeledTopic.date.cast(Date) == max_date)
-        .order_by(ModeledTopic.size.desc())
-        .all()
-    )[
-        :3
-    ]'''  # TODO: Should split these between niches and also max date may be different for each niche
-    print("current_user.niches --------------", current_user.niches)
+    for t in topics:
+        random.shuffle(t.generated_posts)
+
+    # TODO: Should split these between niches and also max date may
+    # be different for each niche
     return render_template(
         "home.html",
         title="Pickr - Your Daily Topics & Curated Tweets",
@@ -467,41 +411,45 @@ def home():
 @app.route("/all_topics")
 @login_required
 def all_topics():
-
+    log_user_activity(current_user, "all_topics")
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
-    topics = []
-    if len(current_user.niches) == 0:
-        return render_template(
-            "home.html",
-            title="Pickr - Your Daily Topics & Curated Tweets",
-            date=datetime.today().strftime("%Y-%m-%d"),
-            topics=topics,
-        )
-
     niche_ids = [n.id for n in current_user.niches]
-    all_topics = ModeledTopic.query.filter(ModeledTopic.niche_id.in_(niche_ids)).order_by(ModeledTopic.size.desc()).all()
-    if len(all_topics) == 0:
-        return render_template(
-            "home.html",
-            title="Pickr - Your Daily Topics & Curated Tweets",
-            date=datetime.today().strftime("%Y-%m-%d"),
-            topics=topics,
+
+    '''topics = ModeledTopic.query.filter(
+        and_(
+            ModeledTopic.niche_id.in_(niche_ids),
+            ModeledTopic.date > datetime.now().date()
         )
-    max_date = max([t.date.date() for t in all_topics])
-    '''topics = (
-        ModeledTopic.query.filter(ModeledTopic.date.cast(Date) == max_date)
-        .order_by(ModeledTopic.size.desc())
-        .all()
-    )'''
-    topics = [t for t in all_topics if t.date.date() == max_date]
+    ).order_by(
+        ModeledTopic.size.desc()
+    ).all()
 
     for t in topics:
-        random.shuffle(t.generated_posts)
+        random.shuffle(t.generated_posts)'''
+
+    topics = []
+    for n in niche_ids:
+        max_date = ModeledTopic.query.filter(
+            ModeledTopic.niche_id.in_(niche_ids),
+            ).order_by(
+                ModeledTopic.date
+        ).first().date.date()
+        topics += ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id.in_([n]),
+                cast(ModeledTopic.date, Date) == max_date
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).all()
+
+        for t in topics:
+            random.shuffle(t.generated_posts)
     return render_template(
         "all_topics.html",
-        title="Pickr - Topics & Curated Tweets",
+        title="Pickr - Topics & Generated Tweets",
         date=datetime.today().strftime("%Y-%m-%d"),
         topics=topics,
     )
@@ -511,6 +459,7 @@ def all_topics():
 @login_required
 def topic(topic_id):
 
+    log_user_activity(current_user, f"topic_click:{topic_id} ")
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
@@ -520,12 +469,24 @@ def topic(topic_id):
     except ValueError:
         return abort(404)
     topic = ModeledTopic.query.get(uuid)
+    if topic is None:
+        return abort(404)
+
     generated_posts = topic.generated_posts
+    posts = RedditPost.query.filter(
+        and_(
+            RedditPost.modeled_topic_id == uuid,
+            func.length(RedditPost.body) > 10
+        )
+    ).order_by(
+        RedditPost.score
+    ).limit(30).all()
+
     return render_template(
         "topic.html",
         title="Pickr - Curated Tweets",
         topic=topic,
-        posts=topic.reddit_posts,
+        posts=posts,
         generated_posts=generated_posts,
     )
 
@@ -533,16 +494,18 @@ def topic(topic_id):
 @app.route("/picker", methods=["GET", "POST"])
 @login_required
 def picker():
-
     """GET requests serve page for user to pick topics.
     POST requests validate form & associates topics with user.
     """
-    # all_topics = Niche.query.order_by(Niche.category).all()
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
-    all_topics = Niche.query.order_by(Niche.title).all()
-    all_topics = [n for n in all_topics if n.is_active is True and n.title != 'Empty Niche']
+    all_topics = Niche.query.filter(
+        Niche.is_active
+    ).order_by(
+        Niche.title
+    ).all()
+
     form = TopicForm()
     choices = [("", "")] + [(t.id, t.title) for t in all_topics]
     form.topic_1.choices = choices
@@ -560,16 +523,23 @@ def picker():
         current_user.niches = list(filter(lambda t: t.id in ids, all_topics))
 
         # TODO: form.custom_niche.data needs to be sanitized/processed
-        user_custom_niches = []
+        custom_niches = []
         if form.custom_niche.data != "":
-            user_custom_niches = form.custom_niche.data.split(",")
-            user_custom_niches = [cn.strip().title() for cn in user_custom_niches]
-            for n in user_custom_niches:
-                current_user.niches.append(Niche(title=n))
-        db.session.commit()
-        # TODO: run task for new user, check celery docs
-        if len(user_custom_niches) > 0:
-            new_user_get_data.delay(user_custom_niches)
+            custom_niche_names = [
+                cn.strip().title() for cn in
+                form.custom_niche.data.split(",")
+            ]
+            for n in custom_niche_names:
+                # Save niche and start task to generate GPT topics for it
+                custom_niche = Niche(title=n, is_active=False, is_custom=True)
+                current_user.niches.append(custom_niche)
+                custom_niches.append(custom_niche)
+                db.session.commit()
+
+                generate_niche_topics.apply_async(
+                    args=(custom_niche.id,)
+                )
+        log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
 
     return render_template(

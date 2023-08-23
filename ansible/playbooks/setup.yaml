@@ -16,8 +16,11 @@
       - nathan_francis
     packages:
       - tree
-      - nano
+      - vim
       - htop
+      - zstd
+      - tmux
+      - ncurses-term
       - python3
       - python3-pip
       - python3-dev
@@ -26,10 +29,19 @@
     - secure
     - users
 
-- hosts: database
+- name: Add Cloud Ops Agent to hosts
+  hosts: all
+  become: true
+  roles:
+  - role: google-cloud-ops-agents-ansible
+    vars:
+      agent_type: ops-agent
+
+- name: Install postgres and redis
+  hosts: database
   become: yes
   vars:
-    # postgres
+    ############ postgres ############
     postgres_users_no_log: false
     postgresql_python_library: python3-psycopg2
     postgresql_hba_entries:
@@ -55,7 +67,7 @@
       - name: pickr
         owner: pickr_super
 
-    # redis
+    ############# redis  #############
     # creates a systemd service called redis_6379
     redis_version: 7.0.7
     redis_bind: 127.0.0.1

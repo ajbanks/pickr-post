@@ -1,18 +1,24 @@
 ---
 - hosts: all
   vars:
-    GIT_REPO: git@github.com:pickrsocial/topic-tweet.git
+    GIT_REPO: "git@github.com:pickrsocial/topic-tweet.git"
     GIT_BRANCH: main
     web_user: web
     dotenv: "/home/web/.env"
     dest: "/home/web/topic-tweet"
   tasks:
+    - name: Clear tmp
+      file:
+        path: "/tmp/topic-tweet"
+        state: absent
+      become: yes
     - name: Clone repo
       git:
         repo: "{{ GIT_REPO }}"
         version: "{{ GIT_BRANCH }}"
         dest: "/tmp/topic-tweet"
         accept_hostkey: yes
+        single_branch: yes
         depth: 1
       become: no
     - name: Delete existing repo
@@ -40,8 +46,12 @@
       command:
         "cp {{ dotenv }} {{ dest }}"
       become: yes
-    - name: restart gunicorn
+    - name: Restart app services
       systemd:
-        name: gunicorn.service
+        name: "{{ item }}"
         state: restarted
+      with_items:
+        - gunicorn.service
+        - celerybeat.service
+        - celery.service
       become: yes

@@ -32,3 +32,4 @@ pandera
 pandasql
 flask-mail
 flask-jwt-extended
+psycopg2
