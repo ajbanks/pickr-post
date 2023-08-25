@@ -63,16 +63,10 @@ def get_generated_post_id(username, post_text, cur):
     return gp_ids
 
 
-def modify_modeled_topic(username, topic_name, new_name, cur):
+def modify_modeled_topic(mt_id, new_name, cur):
     # set modeled topic name to new_name for posts with whose name is equal to post_name
-    mt_ids = get_modeled_topic_id(username, topic_name, cur)
-    
-    # update row(s) with the id(s) we havve returned
-    if len(mt_ids) == 0:
-        logging.info(f"no rows found for {username} and {topic_name[:20]}...")
-        return
     try:
-        logging.info(f"Modeled Topic IDs {mt_ids}")
+        logging.info(f"Modeled Topic IDs {mt_id}")
         cur.execute(
             """
             update pickr.modeled_topic
@@ -80,32 +74,27 @@ def modify_modeled_topic(username, topic_name, new_name, cur):
             name = %(new_name)s
             where id in (%(mt_ids)s)
             """,
-            {'new_name': new_name, 'mt_ids': tuple(mt_ids)}
+            {'new_name': new_name, 'mt_ids': tuple([mt_id])}
         )
-        logging.info(f"modify_modeled_topic - Modifyed {topic_name[:20]}...")
+        logging.info(f"modify_modeled_topic - Modifyed {mt_id}...")
     except Exception as e:
         logging.info('modify_modeled_topic exception', e)
         cur.execute("rollback")
 
 
-def delete_modeled_topic(username, topic_name, cur):
-    # delete modeleted topic with topic_name as its name
-    mt_ids = get_modeled_topic_id(username, topic_name, cur)
-    
+def delete_modeled_topic(mt_id, cur):
     # delete row(s) with the id(s) we have returned, must also delete generated posts in generated_post table and set modeleted_topic_id to NULL in reddit table
-    if len(mt_ids) == 0:
-        logging.info(f"no rows found for {username} and {topic_name[:20]}...")
-        return
+
     try:
-        logging.info(f"Modeled Topic IDs {mt_ids}")
+        logging.info(f"Modeled Topic IDs {mt_id}")
         cur.execute(
             """
             delete from pickr.generated_post gp
             where gp.modeled_topic_id in (%(mt_ids)s)
             """,
-            {'mt_ids': tuple(mt_ids)}
+            {'mt_ids': tuple([mt_id])}
         )
-        logging.info(f"delete_modeled_topic - Deleted Generated Posts Under Modeled Topic {topic_name[:20]}...")
+        logging.info(f"delete_modeled_topic - Deleted Generated Posts Under Modeled Topic {mt_id}...")
 
         cur.execute(
             """
@@ -114,18 +103,18 @@ def delete_modeled_topic(username, topic_name, cur):
             modeled_topic_id = NULL
             where modeled_topic_id in (%(mt_ids)s)
             """,
-            {'mt_ids': tuple(mt_ids)}
+            {'mt_ids': tuple([mt_id])}
         )
-        logging.info(f"delete_modeled_topic - Deleted Generated Posts Under Modeled Topic {topic_name[:20]}...")
+        logging.info(f"delete_modeled_topic - Deleted Generated Posts Under Modeled Topic {mt_id}...")
         
         cur.execute(
             """
             delete from pickr.modeled_topic mt
             where mt.id in (%(mt_ids)s)
             """,
-            {'mt_ids': tuple(mt_ids)}
+            {'mt_ids': tuple([mt_id])}
         )
-        logging.info(f"delete_modeled_topic - Deleted Modeled Topic {topic_name[:20]}...")
+        logging.info(f"delete_modeled_topic - Deleted Modeled Topic {mt_id}...")
     except Exception as e:
         logging.info('delete_modeled_topic exception', e)
         cur.execute("rollback")
@@ -199,19 +188,17 @@ def update_db():
 
     logging.info('Running Modeled Topic Modify')
     for idx, row in modeled_topic_modify_df.iterrows():
-        username = row["username"]
-        topic_name = row["modeled_topic_name"]
+        mt_id = row["id"]
         new_name = row["new_name"]
         with conn.cursor() as cur:
-            modify_modeled_topic(username, topic_name, new_name, cur)
+            modify_modeled_topic(mt_id, new_name, cur)
             conn.commit()
 
     logging.info('Running Modeled Topic Delete')
     for idx, row in modeled_topic_delete_df.iterrows():
-        username = row["username"]
-        topic_name = row["modeled_topic_name"]
+        mt_id = row["id"]
         with conn.cursor() as cur:
-            delete_modeled_topic(username, topic_name, cur)
+            delete_modeled_topic(mt_id, cur)
             conn.commit()
 
     logging.info('Running Generated Post Modify')
