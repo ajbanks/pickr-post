@@ -119,6 +119,7 @@ def run_niche_topic_model(niche_id):
     ) = topic.build_subtopic_model(
         posts_df,
         "reddit",
+        niche.title,
         trend_prev_days=14,
         max_relevant_topics=20,
         num_gen_tweets=2,
@@ -132,7 +133,7 @@ def run_niche_topic_model(niche_id):
     for t in topic_overviews:
         t["niche_id"] = niche_id
     for p, mt_id in zip(posts, reddit_post_modeled_topic_ids):
-        if mt_id is not None:
+        if isinstance(mt_id, uuid.UUID):
             p.modeled_topic_id = mt_id
 
     update_reddit_posts(posts)
