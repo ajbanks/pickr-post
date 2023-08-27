@@ -98,6 +98,11 @@ def fetch_subreddit_posts(subreddit_name, num_posts=1000):
 #############################################################################
 #
 
+def update_reddit_posts(posts: List[RedditPost]):
+    for p in posts:
+        db.session.merge(p)
+    db.session.commit()
+
 
 def write_reddit_posts(posts: List[dict]) -> int:
     num_written = 0

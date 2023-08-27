@@ -15,6 +15,7 @@ from .models import (
 from .reddit import (
     process_post,
     fetch_subreddit_posts,
+    update_reddit_posts,
     write_reddit_modeled_overview,
     write_reddit_posts,
     write_generated_posts,
@@ -102,7 +103,7 @@ def run_niche_topic_model(niche_id):
         )
     ).all()
 
-    if len(posts) < 20:
+    if len(posts) < 2:
         logging.error(
             f"Not enough posts for topic model: niche={niche.title}")
         return
@@ -113,7 +114,8 @@ def run_niche_topic_model(niche_id):
     logging.info(f"Building topic model: niche={niche.title}")
     (
         topic_overviews,
-        generated_tweets
+        generated_tweets,
+        reddit_post_modeled_topic_ids
     ) = topic.build_subtopic_model(
         posts_df,
         "reddit",
@@ -125,9 +127,15 @@ def run_niche_topic_model(niche_id):
     if len(topic_overviews) == 0:
         logging.info(f"No topics generated: niche={niche.title}")
         return
+    
+    # update ids in both topic overviews and reddit posts
     for t in topic_overviews:
         t["niche_id"] = niche_id
+    for p, mt_id in zip(posts, reddit_post_modeled_topic_ids):
+        if mt_id is not None:
+            p.modeled_topic_id = mt_id
 
+    update_reddit_posts(posts)
     write_reddit_modeled_overview(topic_overviews)
     write_generated_posts(generated_tweets)
 

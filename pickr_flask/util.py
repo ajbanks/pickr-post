@@ -31,6 +31,7 @@ def save_model_result(model_result):
 
     db.session.commit()
 
+
 def log_user_activity(user: PickrUser, event: str):
     """ log a user activity event in the acitivty database"""
     event_time = datetime.now()
@@ -45,6 +46,7 @@ def log_user_activity(user: PickrUser, event: str):
 
     db.session.add(activity_log)
     db.session.commit()
+
 
 def load_initial_data(data):
     n = Niche.query.first()

@@ -41,6 +41,7 @@ def build_subtopic_model(
 ):
     # local import because this is import is slow
     from bertopic import BERTopic
+    from hdbscan import HDBSCAN
 
     tweet_df["created_at"] = tweet_df["created_at"].fillna(
         datetime.now().strftime("%Y-%m-%d")
@@ -55,14 +56,18 @@ def build_subtopic_model(
 
     # train model
     vectorizer_model = CountVectorizer(stop_words="english")
+    hdbscan_model = HDBSCAN(min_cluster_size=3, min_samples=1, metric='euclidean', cluster_selection_method='eom', prediction_data=True)
     topic_model = BERTopic(
         vectorizer_model=vectorizer_model,
         n_gram_range=(1, 2),
+        hdbscan_model=hdbscan_model
     )
     topics, probs = topic_model.fit_transform(tweets)
+    print('built model')
 
     # TODO: Reintroduce gpt topic filter
     valid_topics = filter_topics(topics, probs)
+    print('filtered topics')
 
     # Remove topics that aren't trending
     topics_list = []
@@ -71,7 +76,7 @@ def build_subtopic_model(
         # get all tweets in this topic and put them in a df
         tweet_idx = [idx for idx, t in enumerate(topics) if t == vt]
         topic_df = tweet_df.loc[tweet_idx]
-        num_tweets = len(topic_df)
+        num_posts = len(topic_df)
         # Get daily stats and the trend type of the topic
         (
             num_likes,
@@ -82,23 +87,33 @@ def build_subtopic_model(
             date_thres = datetime.today() - timedelta(days=trend_prev_days)
             recent_posts = topic_df_grp[topic_df_grp["date"] >= date_thres]
             if len(recent_posts == 0):
-                trend = "No longer trending"
+                trend = 5
                 continue
             if source == "twitter":
                 trend = trend_type(recent_posts["likes"].values)
             elif source == "reddit":
                 trend = trend_type(recent_posts["score"].values)
         except Exception:
-            trend = "Trend just started"
+            trend = 3
         topics_list.append(
-            (vt, num_tweets, num_likes, num_retweets, trend, topic_df_grp)
+            (vt, num_posts, num_likes, num_retweets, trend, topic_df_grp)
         )
 
-    topics_list = sorted(topics_list, key=lambda tup: tup[2], reverse=True)
+    print('calculated trend ')
+
+    #sort topics first by trend and then by number of posts in the topic
+    s_topics_list = sorted(topics_list, key=lambda x: (x[4], -x[1]))
+    #update topic size
+    topics_list = []
+    for idx, t in enumerate(s_topics_list, start=-len(topics_list)):
+        topics_list.append((t[0], abs(idx), t[2], t[3], t[4], t[5]))
+
     topic_overviews = []
     generated_tweets = []
     count = 0
+    print('numtopis', len(topics_list))
     for vt, size, num_likes, num_retweets, trend, topic_df_grp in topics_list:
+        print('gen posts ')
         # get tweets from topic,
         # ordered by probability of belonging to the topic
         tweet_idx_prob = [(idx, probs[idx]) for idx, t in enumerate(topics) if t == vt]
@@ -112,9 +127,12 @@ def build_subtopic_model(
         body = body[:4097]
         if count > max_relevant_topics:
             break
+        print('made poists')
 
         # (meiji163) is this a good strategy, seems overkill?
+        # TODO: check if topic is part of the niche via gpt
         valid_topic = send_chat_gpt_message(valid_topic_test(body))
+        print('valid topic test')
         if valid_topic[:3] != "Yes":
             continue
         topic_id = uuid.uuid4()
@@ -126,8 +144,9 @@ def build_subtopic_model(
             topic_label,
             topic_desc,
         ) = get_label_and_description(body)
-
+        print('got label and describoption posts ')
         # generate tweets based on topic label
+        print('gen tweets ')
         _, topic_gen_tweets = generate_tweets_for_topic(
             num_gen_tweets, topic_label, num_topics_from_topic_label
         )
@@ -146,7 +165,8 @@ def build_subtopic_model(
 
     return (
         topic_overviews,
-        generated_tweets
+        generated_tweets,
+        tweet_df["modeled_topic_id"].values
     )
 
 
@@ -233,7 +253,7 @@ def filter_topics(topics, probs):
     count_prob_valid_topics = [
         i
         for i in range(len(set(topics)))
-        if topic_avg_prob[i] >= 0.5 and topic_count[i] >= 10
+        if topic_avg_prob[i] >= 0.5
     ]
 
     # for the remaining valid topics get in-topic similarity
@@ -302,13 +322,13 @@ def trend_type(points):
     # Fit line
     slope, intercept = np.polyfit(x, y, 1)
     if slope >= 0.7:
-        return "Hot Trend"
+        return 0
     elif slope >= 0.4:
-        return "Bubbling Trend"
+        return 1
     elif slope >= 0:
-        return "Slowly Growing Trend"
+        return 2
     else:
-        return "Trend getting smaller"
+        return 4
 
 
 def send_chat_gpt_message(message):  # TODO: check the temperature is correct
@@ -368,21 +388,21 @@ def generate_tweets_for_topic(
         # the correct number of tweets (maybe due to temp value)
         # and the split function doesnt accurately split tweets
 
-        info_tweets = generate_informative_tweets_for_topic(
+        info_tweets = generate_controversial_tweets_for_topic(
             num_tweets_per_tweet_type, topic)[:num_tweets_per_tweet_type]
         for t in info_tweets:
             generated_tweets.append({
-                "topic_label": topic,
-                "information_type": "informative",
+                "topic_label": topic_label + "; " + topic,
+                "information_type": "controversial",
                 "text": t,
             })
 
-        future_tweets = generate_future_focused_tweets_for_topic(
+        future_tweets = generate_hyperbole_tweets_for_topic(
             num_tweets_per_tweet_type, topic)[:num_tweets_per_tweet_type]
         for t in future_tweets:
             generated_tweets.append({
-                "topic_label": topic,
-                "information_type": "future",
+                "topic_label": topic_label + "; " + topic,
+                "information_type": "hyperbole",
                 "text": t,
             })
 
@@ -398,12 +418,16 @@ def valid_topic_test(text):
     return f"Are the tweets below about the same topics? Answer Yes or No. {text}"
 
 
+def topic_related_to_niche(topic_label, niche_label):
+    return f"You will answer my questions to the best of your ability and truthfully. Is the topic label '{topic_label}' related to {niche_label}? Answer Yes or No."
+
+
 def create_description(text):
     return f"Create a one sentence summary that describes the key topics in the tweets below. Start the description  'The posts in this topic are about'. Each tweet starts with the word Message. {text}"
 
 
 def create_label(text):
-    return f"Provide a short label that captures the key words in all the messages below. The label should be a maximum of five words long. Each message starts with the word Message. {text}"
+    return f"You are my assistant and will reply with an answer that follows my instruction perfectly. Provide a short label that captures the key words in all the messages below. The label must be a maximum of five words long. Each message starts with the word Message. {text}"
 
 
 def convert_chat_gpt_response_to_list(str_response):
@@ -440,6 +464,17 @@ def generate_past_focused_tweets_for_topic(num_tweets, topic):
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
 
 
+def generate_controversial_tweets_for_topic(num_tweets, topic):
+    message = f"You are a controversial Twitter content creator that creates viral tweets with lots of likes and retweets. Create {num_tweets} tweets about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. Don't add any numbering to the tweets and separate each tweet with a new line character."
+    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+
+
+def generate_hyperbole_tweets_for_topic(num_tweets, topic):
+    message = f"You are a Twitter content creator that creates viral tweets with lots of likes and retweets. You use emotive and hyperbolic language. Create {num_tweets} tweets about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. Don't add any numbering to the tweets and separate each tweet with a new line character."
+    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+
+
 def rewrite_post_in_brand_voice(brand_voice, tweet):
     message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+
