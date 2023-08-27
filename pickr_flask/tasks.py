@@ -135,10 +135,10 @@ def run_niche_topic_model(niche_id):
     for p, mt_id in zip(posts, reddit_post_modeled_topic_ids):
         if isinstance(mt_id, uuid.UUID):
             p.modeled_topic_id = mt_id
-
-    update_reddit_posts(posts)
+    
     write_reddit_modeled_overview(topic_overviews)
     write_generated_posts(generated_tweets)
+    update_reddit_posts(posts)
 
 
 @shared_task
