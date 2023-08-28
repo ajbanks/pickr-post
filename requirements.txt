@@ -33,3 +33,4 @@ pandasql
 flask-mail
 flask-jwt-extended
 psycopg2
+backoff

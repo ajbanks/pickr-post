@@ -1,21 +1,21 @@
 """
 Module to compute topic info
 """
-import logging
 import time
+import string
 import os
 import math
 import uuid
+from typing import List
 from datetime import datetime, timedelta
-
 import re
+
+import backoff
 import openai
 import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
 # from sklearn.metrics.pairwise import cosine_similarity
-# from sentence_transformers import SentenceTransformer
-# from openai.error import RateLimitError
 
 RANDOM_STATE = 42
 
@@ -29,258 +29,223 @@ BRAND_VOICES = [
 ]
 
 
-# TODO: split this into smaller functions
-def build_subtopic_model(
-    tweet_df: pd.DataFrame,
-    source: str,
-    niche_title: str,
-    min_date=None,
-    trend_prev_days: int = 14,
-    max_relevant_topics: int = 20,
-    num_gen_tweets: int = 2,
-    num_topics_from_topic_label: int = 5,
-):
-    # local import because this is import is slow
+def build_subtopic_model(texts: List[str]):
+    '''
+    Take a list of document text and returns trained BERTopic model.
+    '''
+    # local import because this import is slow
     from bertopic import BERTopic
+    from bertopic.representation import KeyBERTInspired
     from hdbscan import HDBSCAN
+    from sentence_transformers import SentenceTransformer
 
-    tweet_df = tweet_df.reset_index(drop=True)
-    tweet_df["created_at"] = tweet_df["created_at"].fillna(
-        datetime.now().strftime("%Y-%m-%d")
-    )
-    tweet_df["date"] = pd.to_datetime(tweet_df["created_at"]).dt.date
-    tweet_df["clean_text"] = tweet_df["clean_text"].astype(str)
-    tweet_df["modeled_topic_id"] = np.nan
-    if min_date is not None:
-        tweet_df = tweet_df[tweet_df["created_at"] >= min_date]
-    tweets = tweet_df["clean_text"].tolist()
-
-    # train model
     vectorizer_model = CountVectorizer(stop_words="english")
-    hdbscan_model = HDBSCAN(min_cluster_size=3, min_samples=1, metric='euclidean', cluster_selection_method='eom', prediction_data=True)
+    sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
+    representation_model = KeyBERTInspired()
+    hdbscan_model = HDBSCAN(
+        min_cluster_size=3,
+        min_samples=1,
+        metric='euclidean',
+        cluster_selection_method='eom',
+        prediction_data=True
+    )
     topic_model = BERTopic(
         vectorizer_model=vectorizer_model,
         n_gram_range=(1, 2),
-        hdbscan_model=hdbscan_model
+        embedding_model=sentence_model,
+        hdbscan_model=hdbscan_model,
+        representation_model=representation_model
     )
-    topics, probs = topic_model.fit_transform(tweets)
 
-    # TODO: Reintroduce gpt topic filter
+    embeddings = sentence_model.encode(texts, show_progress_bar=False)
+    topics, probs = topic_model.fit_transform(texts, embeddings)
+    return topic_model
+
+
+def analyze_topics(
+        topic_model,
+        posts: List[dict],
+        source: str,
+        min_date=None,
+        trend_prev_days=14,
+):
+    '''
+    Analyze the trend and size of each topic given
+    a trained BERTopic model and the posts it was trained on.
+    '''
+    topics = topic_model.topics_
+    probs = topic_model.probabilities_
     valid_topics = filter_topics(topics, probs)
 
-    # Remove topics that aren't trending
-    topics_list = []
-    for vt in valid_topics:
+    posts_df = pd.DataFrame(posts)
+    posts_df["date"] = posts_df["created_at"].apply(lambda x: x.date())
 
+    topics_list = []
+    for topic_id in valid_topics:
         # get all tweets in this topic and put them in a df
-        tweet_idx = [idx for idx, t in enumerate(topics) if t == vt]
-        topic_df = tweet_df.iloc[tweet_idx]
+        topic_posts_idx = [
+            i for i, t in enumerate(topics) if t == topic_id
+        ]
+        topic_df = posts_df.iloc[topic_posts_idx]
         num_posts = len(topic_df)
-        # Get daily stats and the trend type of the topic
-        (
-            num_likes,
-            num_retweets,
-            topic_df_grp
-        ) = get_topic_stats(topic_df, source)
+
+        # Get daily stats and trend type of the topic
+        num_likes, topic_df_grp = get_topic_stats(topic_df, source)
         date_thres = datetime.now() - timedelta(days=trend_prev_days)
         recent_posts = topic_df_grp[topic_df_grp["date"] >= date_thres.date()]
-        try:
-            if len(recent_posts) == 0:
-                trend = 5
-            elif source == "twitter":
-                trend = trend_type(recent_posts["likes"].values)
-            elif source == "reddit":
-                trend = trend_type(recent_posts["score"].values)
-        except Exception as e:
-            trend = 3
-        topics_list.append(
-            (vt, num_posts, num_likes, num_retweets, trend, topic_df_grp)
-        )
+
+        if len(recent_posts) == 0:
+            trend = 5
+        elif source == "twitter":
+            trend = trend_type(recent_posts["likes"].values)
+        elif source == "reddit":
+            trend = trend_type(recent_posts["score"].values)
+        else:
+            trend = 5
+
+        topics_list.append({
+            "topic_id": topic_id,
+            "size": num_posts,
+            "likes": num_likes,
+            "trend_size": trend,
+        })
+
+    # sort topics first by trend then by number of posts in the topic
+    return sorted(
+        topics_list,
+        key=lambda t: (t["trend_size"], -t["size"])
+    )
 
 
-    # sort topics first by trend and then by number of posts in the topic
-    s_topics_list = sorted(topics_list, key=lambda x: (x[4], -x[1]))
-
-    # update topic size
-    topics_list = []
-    topic_rank = len(s_topics_list)
-    for t in s_topics_list:
-        topics_list.append((t[0], topic_rank, t[2], t[3], t[4], t[5]))
-        topic_rank -= 1
-
-    topic_overviews = []
+def generate_topic_overviews(
+        topic_model,
+        topics: List[dict],
+        niche_title: str,
+        max_relevant_topics=20,
+        num_gen_tweets=2,
+        num_topics_from_topic_label=5,
+):
     generated_tweets = []
     count = 0
-    for vt, size, num_likes, num_retweets, trend, topic_df_grp in topics_list:
-        # get tweets from topic,
-        # ordered by probability of belonging to the topic
-        tweet_idx_prob = [(idx, probs[idx]) for idx, t in enumerate(topics) if t == vt]
-        tweet_idx_prob = sorted(tweet_idx_prob, key=lambda tup: tup[1], reverse=True)
-        tweet_idx = [idx_prob[0] for idx_prob in tweet_idx_prob]
-        topic_df = tweet_df.iloc[tweet_idx]
 
-        body = ""
-        for twt in topic_df["clean_text"].tolist()[:5]:
-            body += "\n\nMessage: " + twt
-        body = body[:4097]
-        if count >= max_relevant_topics:
-            break
-
-        # (meiji163) is this a good strategy, seems overkill?
-        # TODO: check if topic is part of the niche via gpt
-        valid_topic = send_chat_gpt_message(valid_topic_test(body), temperature=0.2)
-        if valid_topic[:3] != "Yes":
-            continue
-        
-        # Get topic label, description, generated tweets and final topic filter
-        (
-            topic_label,
-            topic_desc,
-        ) = get_label_and_description(body)
-        valid_topic = send_chat_gpt_message(is_topic_related_to_niche(niche_title, topic_label), temperature=0.2)
-        if valid_topic[:3] != "Yes":
+    for topic in topics:
+        tid = topic["topic_id"]
+        body = "\n\n".join([
+            "Message:    " + d[:1000]
+            for d in topic_model.representative_docs_[tid]
+        ])
+        if not is_valid_topic_gpt(body):
             continue
 
-        topic_id = uuid.uuid4()
-        # TODO(nathan): add probabilities so that tweets can be sorted by
-        # probabilities in the UI
-        tweet_df.loc[tweet_idx, 'modeled_topic_id'] = topic_id
+        topic_label, topic_desc = get_label_and_description(body)
+        if not is_topic_relevant_gpt(niche_title, topic_label):
+            continue
+
+        topic["name"] = topic_label
+        topic["description"] = topic_desc
+
         # generate tweets based on topic label
+        # (meiji163) Use the BERTopic keywords for generation too
         _, topic_gen_tweets = generate_tweets_for_topic(
             num_gen_tweets, topic_label, num_topics_from_topic_label
         )
-        for t in topic_gen_tweets:
-            t["modeled_topic_id"] = topic_id
         generated_tweets.extend(topic_gen_tweets)
-        topic_overviews.append({
-            "id": topic_id,
-            "name": topic_label,
-            "description": topic_desc,
-            "size": size,
-            "trend_type": trend,
-            "date": datetime.now(),
-        })
         count += 1
 
-    return (
-        topic_overviews,
-        generated_tweets,
-        tweet_df["modeled_topic_id"].values
-    )
+    return topics, generated_tweets
 
 
 def get_topic_stats(df, source):
     if source == "twitter":
         return (
             df["likes"].sum(),
-            df["retweets"].sum(),
             df.groupby("date", as_index=False).agg(
-                {"likes": "sum", "retweets": "sum", "url": "count"}
+                {"likes": "sum", "url": "count"}
             ),
         )
     elif source == "reddit":
         return (
             df["score"].sum(),
-            0,
             df.groupby("date", as_index=False).agg(
                 {"score": "sum", "url": "count"}
             ),
         )
 
 
-# TODO: add rate limit backoff
+def is_valid_topic_gpt(body: str) -> bool:
+    resp = send_chat_gpt_message(
+        valid_topic_test(body),
+        temperature=0.2
+    )
+    return resp.lower().strip(string.punctuation) == "yes"
+
+
+def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
+    resp = send_chat_gpt_message(
+        is_topic_related_to_niche(niche, topic),
+        temperature=0.2
+    )
+    return resp.lower().strip(string.punctuation) == "yes"
+
+
+@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
 def get_label_and_description(body):
     """use gpt to get topic label and description"""
-    while True:
-        try:
-            topic_label = (
-                openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": create_label(body)}],
-                    temperature=0.2,
-                )
-                .choices[0]
-                .message.content
-            )
-        except:
-            time.sleep(60)
-            continue
-        break
+    topic_label = (
+        openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": create_label(body)}],
+            temperature=0.2,
+        )
+        .choices[0]
+        .message.content
+    )
 
     # fix formatting of topic label
-    if "Label: " in topic_label:
+    if topic_label.startswith("Label:"):
         topic_label = topic_label.split("Label: ", 1)[1]
 
-    while True:
-        try:
-            topic_desc = (
-                openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": create_description(body)}],
-                    temperature=0.2,
-                )
-                .choices[0]
-                .message.content
-            )
-        except:
-            time.sleep(60)
-            continue
-        break
+    topic_desc = (
+        openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": create_description(body)}],
+            temperature=0.2,
+        )
+        .choices[0]
+        .message.content
+    )
 
     return topic_label, topic_desc
 
 
-def filter_topics(topics, probs):
-    # Filter Topics
-    topic_max_prob = [0] * len(set(topics))
-    topic_avg_prob = [0] * len(set(topics))
-    topic_count = [0] * len(set(topics))
-    # get topic statistics
-    for t_i, p in zip(topics, probs):
-        if topic_count[t_i] > 0:
-            # update avergae
-            topic_avg_prob[t_i] = (topic_count[t_i] * topic_avg_prob[t_i] + p) / (
-                topic_count[t_i] + 1
-            )
-        else:
-            topic_avg_prob[t_i] = p
-        topic_count[t_i] += 1
-        if topic_max_prob[t_i] < p:
-            topic_max_prob[t_i] = p
+def filter_topics(
+        topics: List[int],
+        probs: List[float],
+        min_count=3,
+        min_avg_prob=0.5
+) -> List[int]:
+    '''
+    Given output of BERTopic model, filter topic int IDs
+    by avg. document probabilty.
+    '''
+    n_topics = max(topics) + 1
+    topic_avg_prob = [0] * n_topics
+    topic_count = [0] * n_topics
 
-    # filter out invalide topics using their statistics
-    count_prob_valid_topics = [
-        i
-        for i in range(len(set(topics)))
-        if topic_avg_prob[i] >= 0.5
-    ]
+    for topic_id, pr in zip(topics, probs):
+        if topic_id == -1:
+            # in BERTopic -1 is the "catchall topic"
+            continue
+        topic_count[topic_id] += 1
+        topic_avg_prob[topic_id] += pr
+    for i, pr in enumerate(topic_avg_prob):
+        if topic_count[i] > 0:
+            topic_avg_prob[i] = pr / topic_count[i]
 
-    # for the remaining valid topics get in-topic similarity
-    # for each topic get embeddings for each document
-    """doc_embeddings = {}
-    i_doc = []
-    sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
-    for i, doc in enumerate(tweets):
-        if topics[i] in count_prob_valid_topics:
-            i_doc.append((i, doc))
-
-    embs = sentence_model.encode([item[1] for item in i_doc])
-    doc_embeddings = {i_doc[i][0]: e for i, e in enumerate(embs)}
-
-    # do cosine simialrity between every document and calculate average
-    valid_topics = []
-    for ti in count_prob_valid_topics:
-        topic_doc_embeddings = [
-            doc_embeddings[i]
-            for i, tweet_topic_index in enumerate(topics)
-            if tweet_topic_index == ti
-        ]
-        avg_sim = np.mean(cosine_similarity(topic_doc_embeddings, topic_doc_embeddings))
-        if (avg_sim) >= 0.4:
-            valid_topics.append(ti)"""
-
-    valid_topics = count_prob_valid_topics
-    return valid_topics
+    return list(filter(
+        lambda i: topic_avg_prob[i] > min_avg_prob,
+        range(0, n_topics)
+    ))
 
 
 def format_relevant_posts(df, source):
@@ -316,7 +281,10 @@ def format_relevant_posts(df, source):
 
 
 def trend_type(points):
-    x = np.arange(0, len(points))
+    n = len(points)
+    if n < 3:
+        return 5
+    x = np.arange(0, n)
     y = np.array(points)
     # Fit line
     slope, intercept = np.polyfit(x, y, 1)
@@ -330,21 +298,18 @@ def trend_type(points):
         return 4
 
 
-def send_chat_gpt_message(message, temperature=0.8):  # TODO: check the temperature is correct
-    while True:
-        try:
-            return (
-                openai.ChatCompletion.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": message}],
-                    temperature=temperature,
-                )
-                .choices[0]
-                .message.content
-            )
-        except:
-            time.sleep(60)
-            continue
+@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
+def send_chat_gpt_message(message, temperature=0.8):
+    # TODO: check the temperature is correct
+    return (
+        openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": message}],
+            temperature=temperature,
+        )
+        .choices[0]
+        .message.content
+    )
 
 
 def rewrite_tweets_in_brand_voices(tweet_list):
@@ -487,4 +452,3 @@ def generate_advice_tweets_for_topic(topic):
 def rewrite_post_in_brand_voice(brand_voice, tweet):
     message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
-

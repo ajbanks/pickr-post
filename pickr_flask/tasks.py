@@ -98,12 +98,12 @@ def run_niche_topic_model(niche_id):
     # what data do we want to use here?
     posts = RedditPost.query.filter(
         and_(
-            RedditPost.created_at > datetime.now() - timedelta(days=21),
+            RedditPost.created_at > datetime.now() - timedelta(days=18),
             RedditPost.subreddit_id.in_(sub_ids),
         )
     ).all()
 
-    if len(posts) < 2:
+    if len(posts) < 10:
         logging.error(
             f"Not enough posts for topic model: niche={niche.title}")
         return
@@ -128,14 +128,14 @@ def run_niche_topic_model(niche_id):
     if len(topic_overviews) == 0:
         logging.info(f"No topics generated: niche={niche.title}")
         return
-    
+
     # update ids in both topic overviews and reddit posts
     for t in topic_overviews:
         t["niche_id"] = niche_id
     for p, mt_id in zip(posts, reddit_post_modeled_topic_ids):
         if isinstance(mt_id, uuid.UUID):
             p.modeled_topic_id = mt_id
-    
+
     write_reddit_modeled_overview(topic_overviews)
     write_generated_posts(generated_tweets)
     update_reddit_posts(posts)

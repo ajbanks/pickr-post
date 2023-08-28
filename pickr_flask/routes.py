@@ -17,7 +17,6 @@ from flask import (
     request,
     abort,
     render_template,
-    render_template_string,
     jsonify,
 )
 from flask import current_app as app
