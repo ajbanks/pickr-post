@@ -138,7 +138,7 @@ def run_niche_topic_model(niche_id):
     
     write_reddit_modeled_overview(topic_overviews)
     write_generated_posts(generated_tweets)
-    update_reddit_posts(posts)
+    #update_reddit_posts(posts)
 
 
 @shared_task
