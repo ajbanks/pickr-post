@@ -97,7 +97,6 @@ def build_subtopic_model(
             (vt, num_posts, num_likes, num_retweets, trend, topic_df_grp)
         )
 
-
     # sort topics first by trend and then by number of posts in the topic
     s_topics_list = sorted(topics_list, key=lambda x: (x[4], -x[1]))
 

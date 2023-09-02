@@ -21,6 +21,9 @@ from .reddit import (
     write_generated_posts,
 )
 
+from .models import (
+    db,
+)
 
 @shared_task
 def all_niches_reddit_update():
@@ -138,7 +141,7 @@ def run_niche_topic_model(niche_id):
     for p, mt_id in zip(posts, reddit_post_modeled_topic_ids):
         if isinstance(mt_id, uuid.UUID):
             p.modeled_topic_id = mt_id
-    #update_reddit_posts(posts)
+    db.session.commit()
 
 
 @shared_task

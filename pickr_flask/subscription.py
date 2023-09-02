@@ -21,22 +21,22 @@ def is_user_account_valid(pickr_user):
     "check if a user is allowed to use pickr features"
     valid = True
 
-    if is_user_older_than_14days(pickr_user) \
+    if is_users_trial_valid(pickr_user) \
        and not is_user_stripe_subscription_active(pickr_user):
         valid = False
 
     return valid
 
 
-def is_user_older_than_14days(pickr_user):
-    """Check if a users account is older than 14 days"""
-    plus_14_days_old = False
+def is_users_trial_valid(pickr_user, n_trial_days=14):
+    """Check if a users account is older than trial period"""
+    trial_over = False
     delta = datetime.today() - pickr_user.created_at
 
-    if delta.days >= 14:
-        plus_14_days_old = True
+    if delta.days >= n_trial_days:
+        trial_over = True
 
-    return plus_14_days_old
+    return trial_over
 
 
 def get_stripe_subscription_status(user_id):
