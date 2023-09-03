@@ -74,43 +74,4 @@ def generate_activity_data(from_date=(date.today() - timedelta(days=30)).isoform
 
     activity_df.to_csv('activity_log_' + str(from_date) + "_to_" + str(to_date) + ".csv")
 
-
-
-
-def create_viral_tweets_table(worksheet, header_background_color, topic):
-    # Generated Tweets
-    worksheet.update("A9", "Potentially Viral Tweet 1:")
-    worksheet.format("A9:A10", {"textFormat": {"bold": True, "fontSize": 14}})
-    worksheet.format("A9", header_background_color)
-    worksheet.format("A9:A10", {"verticalAlignment": "middle"})
-    worksheet.format("A9:A10", {"wrapStrategy": "WRAP"})
-    worksheet.update("B9", topic.generated_tweets[0])
-    worksheet.format("B9:B10", {"wrapStrategy": "WRAP"})
-
-    worksheet.update("A10", "Potentially Viral Tweet 2:")
-    worksheet.format("A10", header_background_color)
-    worksheet.update("B10", topic.generated_tweets[1])
-
-    # set_column_width(worksheet, 'H', 266)
-    # set_column_width(worksheet, 'I', 380)
-    time.sleep(14)
-
-
-def update_acivity_sheet():
-
-    cols = ["Username", "Total Topic Clicks", "Total Actions"]
-
-    # grey blue
-    header_background_color = {
-        "backgroundColor": {"red": 0.85, "green": 0.93, "blue": 0.9}
-    }
-    gc = gspread.service_account(filename="service_account.json")
-    date_str = datetime.now().strftime("%Y-%m-%d")
-    sh = gc.create("activity_log" + date_str)
-    sh.share("", perm_type="anyone", role="reader")
-
-
-    return "https://docs.google.com/spreadsheets/d/%s" % sh.id
-
-
 generate_activity_data()
