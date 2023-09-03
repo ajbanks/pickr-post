@@ -53,9 +53,12 @@ def get_topic_clicks(df):
 
 def get_users_activity(username, df):
     user_df = df[df['username'] == username]
+    user_df = user_df.sort_values(by='time', ascending=False)
     num_topic_clicks = len(get_topic_clicks(user_df))
     num_events = len(user_df)
-    return {'username':username, 'num_topic_clicks': num_topic_clicks, 'num_events':num_events}
+    time_grouped_df = user_df.groupby(user_df['time'].dt.normalize())
+    days_distinct_usage = len(time_grouped_df['time'].unique())
+    return {'username':username, 'num_topic_clicks': num_topic_clicks, 'num_events':num_events, 'last_sign_in':user_df['time'].values[0], 'days_distinct_usage':days_distinct_usage}
 
 
 def generate_activity_data(from_date=(date.today() - timedelta(days=30)).isoformat(), to_date=date.today()):
