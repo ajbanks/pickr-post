@@ -1,4 +1,3 @@
-import json
 import random
 from time import time
 from typing import List
@@ -34,7 +33,8 @@ from .subscription import (
 )
 from .models import (
     db, Niche, PickrUser,
-    ModeledTopic, RedditPost
+    ModeledTopic, RedditPost,
+    reddit_modeled_topic_assoc
 )
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
@@ -460,14 +460,19 @@ def topic(topic_id):
         return abort(404)
 
     generated_posts = topic.generated_posts
-    posts = RedditPost.query.filter(
-        and_(
-            RedditPost.modeled_topic_id == uuid,
-            func.length(RedditPost.body) > 10
+
+    posts = (
+        RedditPost.query.join(reddit_modeled_topic_assoc)
+        .join(ModeledTopic)
+        .filter(
+            and_(
+                RedditPost.id == reddit_modeled_topic_assoc.c.reddit_id,
+                ModeledTopic.id == topic_id
+            )
         )
-    ).order_by(
-        RedditPost.score
-    ).limit(30).all()
+        .order_by(RedditPost.score)
+        .limit(30).all()
+    )
 
     return render_template(
         "topic.html",
