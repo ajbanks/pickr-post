@@ -61,14 +61,13 @@ def all_niches_run_model():
             args=(niche.id,)).get()
 
         modeled_topic_ids = generate_niche_topic_overviews(
-            niche.id, topic_dicts, max_modeled_topics_per_niche=20
+            niche.id, topic_dicts, max_modeled_topics=5
         )
 
         for mt_id in modeled_topic_ids:
             generate_modeled_topic_tweets.apply_async(
                 args=(mt_id,)
             )
-
 
 
 @shared_task
@@ -104,7 +103,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     '''
     Read recent posts for the niche and run the topic model.
     '''
-    niche = Niche.query.filter(Niche.id == niche_id).one()
+    niche = Niche.query.get(niche_id)
     sub_ids = [sub.id for sub in niche.subreddits]
 
     # what data do we want to use here?
@@ -140,15 +139,18 @@ def run_niche_topic_model(niche_id) -> List[dict]:
 def generate_niche_topic_overviews(
         niche_id: uuid.UUID,
         topic_dicts: List[dict],
-        max_modeled_topics_per_niche=20,
+        max_modeled_topics=20,
 ) -> List[uuid.UUID]:
     '''
-    Given the output of run_niche_topic_model,
-    generate topic overviews and store the modeled topics to the database.
+    Given the output of run_niche_topic_model, generate modeled topics
+    and store them to the database.
+    Returns list of modeled topic IDs that were created.
     '''
+    niche = Niche.query.get(niche_id)
+    modeled_topic_ids = []
     count = 0
     for topic_dict in topic_dicts:
-        if count > max_modeled_topics_per_niche:
+        if count > max_modeled_topics:
             break
         # query the text of the representative posts for this topic
         post_ids = topic_dict["post_ids"]
@@ -159,7 +161,9 @@ def generate_niche_topic_overviews(
         )
         texts = [t for (t,) in posts_query.all()]
 
-        topic_label, topic_desc = topic.generate_topic_overview(texts)
+        topic_label, topic_desc = topic.generate_topic_overview(
+            texts, niche.title
+        )
         if topic_label == "" or topic_desc == "":
             continue  # discard this topic
 
@@ -167,25 +171,28 @@ def generate_niche_topic_overviews(
             "id": uuid.uuid4(),
             "niche_id": niche_id,
             "name": topic_label,
-            "desciption": topic_desc,
-            "date": datetime.now().date(),
+            "description": topic_desc,
+            "date": datetime.now(),
             "size": topic_dict["rank"],
         }
         write_modeled_topic_with_reddit_posts(
             modeled_topic, post_ids
         )
+        modeled_topic_ids.append(modeled_topic["id"])
         count += 1
 
     logging.info(f"{count} modeled topics created: niche={niche_id}")
+    return modeled_topic_ids
 
 
+@shared_task
 def generate_modeled_topic_tweets(modeled_topic_id):
     '''
     Generate tweets for a modeled topic
     '''
     modeled_topic = ModeledTopic.query.get(modeled_topic_id)
     _, generated_tweets = topic.generate_tweets_for_topic(
-        2, modeled_topic.title
+        2, modeled_topic.name
     )
 
     for tweet in generated_tweets:

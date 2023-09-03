@@ -136,8 +136,8 @@ def generate_topic_overview(
         "Message:    " + d[:1000]
         for d in docs
     ])
-    if not is_valid_topic_gpt(body):
-        return "", ""
+    # if not is_valid_topic_gpt(body):
+    #     return "", ""
 
     topic_label, topic_desc = get_label_and_description(body)
     if not is_topic_relevant_gpt(niche_title, topic_label):
