@@ -1,12 +1,11 @@
 """
 Module to compute topic info
 """
-import time
 import string
 import os
 import math
 import uuid
-from typing import List
+from typing import List, Tuple
 from datetime import datetime, timedelta
 import re
 
@@ -58,27 +57,32 @@ def build_subtopic_model(texts: List[str]):
     )
 
     embeddings = sentence_model.encode(texts, show_progress_bar=False)
-    topics, probs = topic_model.fit_transform(texts, embeddings)
+    topic_model.fit_transform(texts, embeddings)
     return topic_model
 
 
 def analyze_topics(
-        topic_model,
+        topics: List[int],
+        probs: List[float],
         posts: List[dict],
         source: str,
         min_date=None,
         trend_prev_days=14,
 ):
     '''
-    Analyze the trend and size of each topic given
-    a trained BERTopic model and the posts it was trained on.
+    Analyze the trend and rank of each topic given a trained BERTopic model and
+    the posts it was trained on.
+    Trends are ranked from 0-5, with 0 the highest.
+
+    @topics: topics[i] is the BERTopic ID of the posts[i].
+    @probs: probs[i] is the probability of posts[i] belonging to topics[i].
+    @param source: "reddit" or "twitter"
     '''
-    topics = topic_model.topics_
-    probs = topic_model.probabilities_
     valid_topics = filter_topics(topics, probs)
 
     posts_df = pd.DataFrame(posts)
     posts_df["date"] = posts_df["created_at"].apply(lambda x: x.date())
+    posts_df["probs"] = probs
 
     topics_list = []
     for topic_id in valid_topics:
@@ -87,6 +91,7 @@ def analyze_topics(
             i for i, t in enumerate(topics) if t == topic_id
         ]
         topic_df = posts_df.iloc[topic_posts_idx]
+        topic_df.sort_values(["probs"], ascending=False, inplace=True)
         num_posts = len(topic_df)
 
         # Get daily stats and trend type of the topic
@@ -95,77 +100,66 @@ def analyze_topics(
         recent_posts = topic_df_grp[topic_df_grp["date"] >= date_thres.date()]
 
         if len(recent_posts) == 0:
-            trend = 5
+            rank = 5
         elif source == "twitter":
-            trend = trend_type(recent_posts["likes"].values)
+            rank = trend_type(recent_posts["likes"].values)
         elif source == "reddit":
-            trend = trend_type(recent_posts["score"].values)
+            rank = trend_type(recent_posts["score"].values)
         else:
-            trend = 5
+            rank = 5
 
+        post_ids = topic_df["id"].apply(str).tolist()
         topics_list.append({
             "topic_id": topic_id,
             "size": num_posts,
             "likes": num_likes,
-            "trend_size": trend,
+            "rank": rank,
+            "post_ids": post_ids,
         })
 
-    # sort topics first by trend then by number of posts in the topic
+    # sort topics by trend rank then by number of likes
     return sorted(
         topics_list,
-        key=lambda t: (t["trend_size"], -t["size"])
+        key=lambda t: (t["rank"], -t["likes"])
     )
 
 
-def generate_topic_overviews(
-        topic_model,
-        topics: List[dict],
+def generate_topic_overview(
+        docs: List[str],
         niche_title: str,
-        max_relevant_topics=20,
-        num_gen_tweets=2,
-        num_topics_from_topic_label=5,
-):
-    generated_tweets = []
-    count = 0
+) -> Tuple[str, str]:
+    '''
+    Generate topic labels and description with GPT.
+    Return empty strings if GPT determines the topic is not good.
+    '''
 
-    for topic in topics:
-        tid = topic["topic_id"]
-        body = "\n\n".join([
-            "Message:    " + d[:1000]
-            for d in topic_model.representative_docs_[tid]
-        ])
-        if not is_valid_topic_gpt(body):
-            continue
+    # TODO(meiji163) change this to count tokens.
+    # the limit is 4097 tokens for body + response
+    body = "\n\n".join([
+        "Message:    " + d[:1000]
+        for d in docs
+    ])
+    if not is_valid_topic_gpt(body):
+        return "", ""
 
-        topic_label, topic_desc = get_label_and_description(body)
-        if not is_topic_relevant_gpt(niche_title, topic_label):
-            continue
+    topic_label, topic_desc = get_label_and_description(body)
+    if not is_topic_relevant_gpt(niche_title, topic_label):
+        return "", ""
 
-        topic["name"] = topic_label
-        topic["description"] = topic_desc
-
-        # generate tweets based on topic label
-        # (meiji163) Use the BERTopic keywords for generation too
-        _, topic_gen_tweets = generate_tweets_for_topic(
-            num_gen_tweets, topic_label, num_topics_from_topic_label
-        )
-        generated_tweets.extend(topic_gen_tweets)
-        count += 1
-
-    return topics, generated_tweets
+    return topic_label, topic_desc
 
 
 def get_topic_stats(df, source):
     if source == "twitter":
         return (
-            df["likes"].sum(),
+            int(df["likes"].sum()),
             df.groupby("date", as_index=False).agg(
                 {"likes": "sum", "url": "count"}
             ),
         )
     elif source == "reddit":
         return (
-            df["score"].sum(),
+            int(df["score"].sum()),
             df.groupby("date", as_index=False).agg(
                 {"score": "sum", "url": "count"}
             ),
@@ -190,7 +184,7 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
 
 @backoff.on_exception(backoff.expo, openai.error.RateLimitError)
 def get_label_and_description(body):
-    """use gpt to get topic label and description"""
+
     topic_label = (
         openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -221,7 +215,6 @@ def get_label_and_description(body):
 def filter_topics(
         topics: List[int],
         probs: List[float],
-        min_count=3,
         min_avg_prob=0.5
 ) -> List[int]:
     '''
@@ -234,7 +227,7 @@ def filter_topics(
 
     for topic_id, pr in zip(topics, probs):
         if topic_id == -1:
-            # in BERTopic -1 is the "catchall topic"
+            # in BERTopic -1 is the "catchall topic" which we filter out
             continue
         topic_count[topic_id] += 1
         topic_avg_prob[topic_id] += pr
@@ -323,6 +316,7 @@ def rewrite_tweets_in_brand_voices(tweet_list):
     return tweet_list + new_tweets
 
 
+# TODO(meiji163) Use the BERTopic keywords for generation too
 def generate_tweets_for_topic(
         num_tweets,
         topic_label,
@@ -341,7 +335,8 @@ def generate_tweets_for_topic(
     )
 
     # get topics related to topic label
-    # TODO: potentially remove the generate_related_topics as it might not be necessary
+    # TODO: potentially remove the generate_related_topics
+    # as it might not be necessary
     related_topics = generate_related_topics(
         num_topics_from_topic_label, topic_label
     )[:num_topics_from_topic_label]
@@ -354,7 +349,7 @@ def generate_tweets_for_topic(
         # and the split function doesnt accurately split tweets
 
         for i in range(num_tweets_per_tweet_type):
-            tweet = generate_controversial_tweets_for_topic(topic)           
+            tweet = generate_controversial_tweets_for_topic(topic)
             generated_tweets.append({
                 "topic_label": topic_label + "; " + topic,
                 "information_type": "controversial",

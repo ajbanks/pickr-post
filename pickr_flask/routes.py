@@ -36,7 +36,7 @@ from .models import (
     db, Niche, PickrUser,
     ModeledTopic, RedditPost
 )
-from .tasks import generate_niche_topics
+from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
 
 @app.errorhandler(exc.SQLAlchemyError)
@@ -535,9 +535,9 @@ def picker():
                 custom_niches.append(custom_niche)
                 db.session.commit()
 
-                #generate_niche_topics.apply_async(
-                #    args=(custom_niche.id,)
-                #)
+                generate_niche_gpt_topics.apply_async(
+                    args=(custom_niche.id,)
+                )
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
 

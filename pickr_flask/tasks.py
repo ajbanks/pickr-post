@@ -1,31 +1,33 @@
 import logging
 import uuid
 from datetime import datetime, timedelta
+from typing import List
 from celery import shared_task
-
-import pandas as pd
 
 from sqlalchemy import and_
 from topic_model import topic
 from .models import (
-    RedditPost, Niche,
+    db,
+    RedditPost, Niche, ModeledTopic,
+    reddit_modeled_topic_assoc,
     _to_dict,
 )
 
 from .reddit import (
     process_post,
     fetch_subreddit_posts,
-    update_reddit_posts,
     write_reddit_modeled_overview,
+    write_modeled_topic_with_reddit_posts,
     write_reddit_posts,
     write_generated_posts,
 )
 
+TOPIC_MODEL_MIN_DOCS = 20
 
 @shared_task
 def all_niches_reddit_update():
     '''
-    For each active niche, fetch recent posts.
+    For each active niche, fetch recent posts and save to database.
     '''
     niches = Niche.query.filter(
         and_(Niche.is_active, Niche.subreddits.any())
@@ -50,13 +52,24 @@ def all_niches_run_model():
         Niche.title
     ).all()
 
-    # model runs are serial for now since we only have
-    # one worker machine
     for niche in niches:
         logging.info(
             f"Running topic model for niche: {niche.title}"
         )
-        run_niche_topic_model(niche.id)
+        # model runs are serial for now since we only have
+        # one worker machine
+        topic_dicts = run_niche_topic_model.apply_async(
+            args=(niche.id,)).get()
+
+        modeled_topic_ids = generate_niche_topic_overviews(
+            niche.id, topic_dicts, max_modeled_topics_per_niche=20
+        )
+
+        for mt_id in modeled_topic_ids:
+            generate_modeled_topic_tweets.apply_async(
+                args=(mt_id,)
+            )
+
 
 
 @shared_task
@@ -88,7 +101,7 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
 
 
 @shared_task
-def run_niche_topic_model(niche_id):
+def run_niche_topic_model(niche_id) -> List[dict]:
     '''
     Read recent posts for the niche and run the topic model.
     '''
@@ -103,48 +116,90 @@ def run_niche_topic_model(niche_id):
         )
     ).all()
 
-    if len(posts) < 10:
+    if len(posts) < TOPIC_MODEL_MIN_DOCS:
         logging.error(
             f"Not enough posts for topic model: niche={niche.title}")
         return
 
-    posts_df = pd.DataFrame([_to_dict(p) for p in posts])
-    posts_df["text"] = posts_df["title"] + posts_df["body"]
+    post_dicts = [_to_dict(p) for p in posts]
+    texts = [p["clean_text"] for p in post_dicts]
 
     logging.info(f"Building topic model: niche={niche.title}")
-    (
-        topic_overviews,
-        generated_tweets,
-        reddit_post_modeled_topic_ids
-    ) = topic.build_subtopic_model(
-        posts_df,
+    topic_model = topic.build_subtopic_model(texts)
+    topics, probs = topic_model.topics_, topic_model.probabilities_
+    topic_dicts = topic.analyze_topics(
+        topics,
+        probs,
+        post_dicts,
         "reddit",
-        niche.title,
         trend_prev_days=14,
-        max_relevant_topics=20,
-        num_gen_tweets=2,
-        num_topics_from_topic_label=5,
     )
-    if len(topic_overviews) == 0:
-        logging.info(f"No topics generated: niche={niche.title}")
-        return
-
-    # update ids in both topic overviews and reddit posts
-    for t in topic_overviews:
-        t["niche_id"] = niche_id
-
-    write_reddit_modeled_overview(topic_overviews)
-    write_generated_posts(generated_tweets)
-    for p, mt_id in zip(posts, reddit_post_modeled_topic_ids):
-        if isinstance(mt_id, uuid.UUID):
-            p.modeled_topic_id = mt_id
-    #update_reddit_posts(posts)
+    return topic_dicts
 
 
 @shared_task
-def generate_niche_topics(niche_id):
+def generate_niche_topic_overviews(
+        niche_id: uuid.UUID,
+        topic_dicts: List[dict],
+        max_modeled_topics_per_niche=20,
+) -> List[uuid.UUID]:
     '''
-    Generate modeled topics and posts for a niche.
+    Given the output of run_niche_topic_model,
+    generate topic overviews and store the modeled topics to the database.
+    '''
+    count = 0
+    for topic_dict in topic_dicts:
+        if count > max_modeled_topics_per_niche:
+            break
+        # query the text of the representative posts for this topic
+        post_ids = topic_dict["post_ids"]
+        posts_query = db.session.query(
+            RedditPost.clean_text
+        ).filter(
+            RedditPost.id.in_(post_ids[:4])
+        )
+        texts = [t for (t,) in posts_query.all()]
+
+        topic_label, topic_desc = topic.generate_topic_overview(texts)
+        if topic_label == "" or topic_desc == "":
+            continue  # discard this topic
+
+        modeled_topic = {
+            "id": uuid.uuid4(),
+            "niche_id": niche_id,
+            "name": topic_label,
+            "desciption": topic_desc,
+            "date": datetime.now().date(),
+            "size": topic_dict["rank"],
+        }
+        write_modeled_topic_with_reddit_posts(
+            modeled_topic, post_ids
+        )
+        count += 1
+
+    logging.info(f"{count} modeled topics created: niche={niche_id}")
+
+
+def generate_modeled_topic_tweets(modeled_topic_id):
+    '''
+    Generate tweets for a modeled topic
+    '''
+    modeled_topic = ModeledTopic.query.get(modeled_topic_id)
+    _, generated_tweets = topic.generate_tweets_for_topic(
+        2, modeled_topic.title
+    )
+
+    for tweet in generated_tweets:
+        tweet["modeled_topic_id"] = modeled_topic_id
+
+    write_generated_posts(generated_tweets)
+
+
+@shared_task
+def generate_niche_gpt_topics(niche_id):
+    '''
+    Generate modeled topics and posts for a niche with GPT.
+    This does not use BERTopic or reddit/twitter data.
     '''
     niche = Niche.query.get(niche_id)
 
@@ -162,7 +217,7 @@ def generate_niche_topics(niche_id):
             "id": uuid.uuid4(),
             "name": related_topic,
             "niche_id": niche_id,
-            "date": datetime.now(),
+            "date": datetime.now().date(),
         }
         for post in generated_tweets:
             if post["topic_label"] == related_topic:

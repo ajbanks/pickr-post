@@ -9,7 +9,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    LargeBinary,
 )
 from sqlalchemy.dialects.postgresql import UUID, ENUM
 from sqlalchemy.orm import relationship
@@ -289,12 +288,3 @@ class Tweet(db.Model):
 
     def __repr__(self):
         return f"<Tweet id={self.id}>"
-
-
-class TextEmbedding(db.Model):
-    __tablename__: str = "text_embedding"
-    __table_args__: str = {"schema": DEFAULT_SCHEMA}
-    id = Column(UUID(as_uuid=True), primary_key=True)
-    text_type = Column(String(64))
-    embedding_type = Column(String(64))
-    embedding = Column(LargeBinary)
