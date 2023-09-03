@@ -1,4 +1,3 @@
-import json
 import random
 from time import time
 from typing import List
@@ -17,7 +16,6 @@ from flask import (
     request,
     abort,
     render_template,
-    render_template_string,
     jsonify,
 )
 from flask import current_app as app
@@ -35,9 +33,10 @@ from .subscription import (
 )
 from .models import (
     db, Niche, PickrUser,
-    ModeledTopic, RedditPost
+    ModeledTopic, RedditPost,
+    reddit_modeled_topic_assoc
 )
-from .tasks import generate_niche_topics
+from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
 
 @app.errorhandler(exc.SQLAlchemyError)
@@ -461,14 +460,19 @@ def topic(topic_id):
         return abort(404)
 
     generated_posts = topic.generated_posts
-    posts = RedditPost.query.filter(
-        and_(
-            RedditPost.modeled_topic_id == uuid,
-            func.length(RedditPost.body) > 10
+
+    posts = (
+        RedditPost.query.join(reddit_modeled_topic_assoc)
+        .join(ModeledTopic)
+        .filter(
+            and_(
+                RedditPost.id == reddit_modeled_topic_assoc.c.reddit_id,
+                ModeledTopic.id == topic_id
+            )
         )
-    ).order_by(
-        RedditPost.score
-    ).limit(30).all()
+        .order_by(RedditPost.score)
+        .limit(30).all()
+    )
 
     return render_template(
         "topic.html",
@@ -524,9 +528,9 @@ def picker():
                 custom_niches.append(custom_niche)
                 db.session.commit()
 
-                #generate_niche_topics.apply_async(
-                #    args=(custom_niche.id,)
-                #)
+                generate_niche_gpt_topics.apply_async(
+                    args=(custom_niche.id,)
+                )
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
 

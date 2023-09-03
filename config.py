@@ -43,7 +43,7 @@ class Config:
     CELERY = dict(
         broker_url=environ.get("CELERY_BROKER_URL"),
         result_backend=environ.get("CELERY_RESULT_BACKEND"),
-        task_ignore_result=True,
+        task_ignore_result=False,
         beat_schedule={
             "task_update_reddit_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_reddit_update",

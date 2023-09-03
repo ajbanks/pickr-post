@@ -5,15 +5,15 @@ import logging
 
 import pandas as pd
 import praw
-import uuid
-from sqlalchemy import exc
+from sqlalchemy import exc, insert
 
 from topic_model.util import normalise_tweet, parse_html
 
 from .models import (
     db,
     Niche, ModeledTopic, GeneratedPost,
-    Subreddit, RedditPost
+    Subreddit, RedditPost,
+    reddit_modeled_topic_assoc
 )
 
 
@@ -139,6 +139,38 @@ def write_generated_posts(generated_posts: List[dict]) -> None:
             db.session.commit()
 
 
+def write_modeled_topic_with_reddit_posts(
+        topic: dict,
+        post_ids: List[int]
+) -> None:
+    '''
+    Save a modeled topic to the database and associate reddit IDs
+    with the topic.
+    '''
+    modeled_topic = ModeledTopic(**topic)
+    try:
+        db.session.add(modeled_topic)
+    except exc.SQLAlchemyError as e:
+        db.session.rollback()
+        logging.error(f"Database error occured: {e}")
+    else:
+        db.session.commit()
+
+    try:
+        db.session.execute(
+            insert(reddit_modeled_topic_assoc),
+            [
+                {"reddit_id": pid, "modeled_topic_id": modeled_topic.id}
+                for pid in post_ids
+            ],
+        )
+    except exc.SQLAlchemyError as e:
+        db.session.rollback()
+        logging.error(f"Database error occured: {e}")
+    else:
+        db.session.commit()
+
+
 def write_reddit_modeled_overview(topic_overviews: List[dict]) -> None:
     """
     """
@@ -151,46 +183,6 @@ def write_reddit_modeled_overview(topic_overviews: List[dict]) -> None:
         else:
             db.session.commit()
     logging.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
-
-
-def write_reddit_niche(niche_list: List[str]):
-    """
-    Adding reddit posts
-    """
-    topic_id_dict = {}
-
-    for topic in niche_list:
-        # store the niche uuids
-        niche_id_uuid = uuid.uuid4()
-        topic_id_dict[topic] = niche_id_uuid
-        # store subreddit ids with the niche ids
-        # update Niche input - if we have a duplicated niche
-        topic_dict = {}
-        topic_dict[
-            "id"
-        ] = niche_id_uuid  # topic_id_dict[row["topic"]]  # we have a unique id for each niche
-        topic_dict["title"] = topic
-        topic_dict["category"] = None
-        topic_dict["is_active"] = True
-        topic_dict["is_custom"] = False
-        # find whether we have an entry for the record
-        record = (
-            db.session.query(Niche)
-            .filter(Niche.title == topic)
-            .first()
-        )
-
-        if record is None:  # if we cannot detect a record, we update
-            niche_record = Niche(**topic_dict)
-            try:
-                db.session.add(niche_record)
-            except exc.SQLAlchemyError as e:
-                db.session.rollback()
-                logging.error(f"Database error occurred: {e}")
-            else:
-                db.session.commit()
-
-    logging.info(f"wrote {len(niche_list)} niches")
 
 
 def retrieve_reddit_niche() -> Union[pd.DataFrame, str]:
@@ -248,60 +240,3 @@ def retrieve_subreddit() -> Union[pd.DataFrame, str]:
     )  # get the pandas table for the Niche
     # return just the niche id and its associated title
     return df[["id", "niche_id", "title"]]
-
-
-def write_subreddit(
-    file_path: str,
-) -> None:
-    """
-    Reshape the subreddit data and store the subreddit
-    in relational database with the niche id
-    """
-    # empty entries in subreddit
-    # try:
-    #    db.session.query(Subreddit).delete()
-    #    db.session.commit()
-    #    logging.info(f"Resetting the subreddit table")
-    # except Exception as e:
-    #    logging.error(f"error in deleting the subreddit table")
-    #    db.session.rollback()
-    # finally:
-    #    db.session.close()
-    niches = retrieve_reddit_niche()
-    niches = niches.rename(columns={"title": "niche"})
-    # Read subreddit data
-    subreddit_data = pd.read_csv(file_path)
-    # Remove rows with NaNs
-    subreddit_data = subreddit_data.dropna()
-    # Ensure that the format of the niche we read with the subreddit file
-    # is consistent with the niche identified with the reddits posts niche
-    subreddit_data["niche"] = (
-        subreddit_data["niche"].str.replace("_", " ").str.lower()
-    )
-    # isolate only the niche and subreddits associated with that niche
-    subreddit_data = subreddit_data.merge(niches, how="outer")
-    subreddit_data = subreddit_data.rename(columns={"id": "niche_id"})
-
-    for index, row in subreddit_data.iterrows():
-        subreddit_dict = {}
-        subreddit_id_uuid = uuid.uuid4()  # generate key uuid for topic
-        subreddit_dict["id"] = subreddit_id_uuid
-        subreddit_dict["title"] = row["subreddits"]
-        subreddit_dict["niche_id"] = row["niche_id"]
-        # ensure that we are not adding a repeated topic here
-        record = (
-            db.session.query(Subreddit)
-            .filter(
-                Subreddit.title == row["subreddits"],
-            )
-            .first()
-        )
-        if record is None:
-            record = Subreddit(**subreddit_dict)
-            try:
-                db.session.add(record)
-            except exc.SQLAlchemyError as e:
-                db.session.rollback()
-                logging.error(e)
-            else:
-                db.session.commit()
