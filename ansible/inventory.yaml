@@ -1,5 +1,5 @@
 [database]
-pickr-prod-1 ansible_host=34.31.241.234
+pickr-prod-1 ansible_host=35.192.137.64
 
 [web]
-pickr-prod-1 ansible_host=34.31.241.234
+pickr-prod-1 ansible_host=35.192.137.64

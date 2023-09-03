@@ -9,7 +9,6 @@ from topic_model import topic
 from .models import (
     db,
     RedditPost, Niche, ModeledTopic,
-    reddit_modeled_topic_assoc,
     _to_dict,
 )
 

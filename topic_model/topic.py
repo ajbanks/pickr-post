@@ -99,6 +99,7 @@ def analyze_topics(
         date_thres = datetime.now() - timedelta(days=trend_prev_days)
         recent_posts = topic_df_grp[topic_df_grp["date"] >= date_thres.date()]
 
+<<<<<<< HEAD
         if len(recent_posts) == 0:
             rank = 5
         elif source == "twitter":
@@ -115,6 +116,69 @@ def analyze_topics(
             "likes": num_likes,
             "rank": rank,
             "post_ids": post_ids,
+=======
+    # sort topics first by trend and then by number of posts in the topic
+    s_topics_list = sorted(topics_list, key=lambda x: (x[4], -x[1]))
+
+    # update topic size
+    topics_list = []
+    topic_rank = len(s_topics_list)
+    for t in s_topics_list:
+        topics_list.append((t[0], topic_rank, t[2], t[3], t[4], t[5]))
+        topic_rank -= 1
+
+    topic_overviews = []
+    generated_tweets = []
+    count = 0
+    for vt, size, num_likes, num_retweets, trend, topic_df_grp in topics_list:
+        # get tweets from topic,
+        # ordered by probability of belonging to the topic
+        tweet_idx_prob = [(idx, probs[idx]) for idx, t in enumerate(topics) if t == vt]
+        tweet_idx_prob = sorted(tweet_idx_prob, key=lambda tup: tup[1], reverse=True)
+        tweet_idx = [idx_prob[0] for idx_prob in tweet_idx_prob]
+        topic_df = tweet_df.iloc[tweet_idx]
+
+        body = ""
+        for twt in topic_df["clean_text"].tolist()[:5]:
+            body += "\n\nMessage: " + twt
+        body = body[:4097]
+        if count >= max_relevant_topics:
+            break
+
+        # (meiji163) is this a good strategy, seems overkill?
+        # TODO: check if topic is part of the niche via gpt
+        valid_topic = send_chat_gpt_message(valid_topic_test(body), temperature=0.2)
+        if valid_topic[:3] != "Yes":
+            continue
+        
+        # Get topic label, description, generated tweets and final topic filter
+        (
+            topic_label,
+            topic_desc,
+        ) = get_label_and_description(body)
+        valid_topic = send_chat_gpt_message(is_topic_related_to_niche(niche_title, topic_label), temperature=0.2)
+        if valid_topic[:3] != "Yes":
+            continue
+
+        topic_id = uuid.uuid4()
+        # TODO(nathan): add probabilities so that tweets can be sorted by
+        # probabilities in the UI
+        tweet_df.loc[tweet_idx, 'modeled_topic_id'] = topic_id
+        # generate tweets based on topic label
+        _, topic_gen_tweets = generate_tweets_for_topic(
+            num_gen_tweets, topic_label, num_topics_from_topic_label
+        )
+        for t in topic_gen_tweets:
+            t["modeled_topic_id"] = topic_id
+        generated_tweets.extend(topic_gen_tweets)
+        topic_overviews.append({
+            "id": topic_id,
+            "name": topic_label,
+            "description": topic_desc,
+            "size": size,
+            "trend_type": trend,
+            "date": datetime.now(),
+>>>>>>> b6d093c2b08cb5e0fda86153014e56d08fb16627
         })
 
     # sort topics by trend rank then by number of likes
