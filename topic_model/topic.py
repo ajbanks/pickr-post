@@ -346,24 +346,24 @@ def generate_tweets_for_topic(
         # and the split function doesnt accurately split tweets
 
         for i in range(num_tweets_per_tweet_type):
-            tweet = generate_controversial_tweets_for_topic(topic)
+            tweet = generate_informative_tweet_for_topic(topic)
             generated_tweets.append({
                 "topic_label": topic_label + "; " + topic,
-                "information_type": "controversial",
+                "information_type": "informative",
                 "text": tweet,
             })
 
-            tweet = generate_hyperbole_tweets_for_topic(topic)
+            tweet = generate_funny_tweet_for_topic(topic)
             generated_tweets.append({
                 "topic_label": topic_label + "; " + topic,
-                "information_type": "hyperbole",
+                "information_type": "funny",
                 "text": tweet,
             })
 
-            tweet = generate_advice_tweets_for_topic(topic)
+            tweet = generate_future_focused_tweet_for_topic(topic)
             generated_tweets.append({
                 "topic_label": topic_label + "; " + topic,
-                "information_type": "advice",
+                "information_type": "future_focused",
                 "text": tweet,
             })
 
@@ -411,13 +411,17 @@ def generate_related_topics(
 #     return f"You are a social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create 10 tweets related to {topic} written in a {brand_voice} brand voice. Don't add any numbering to the tweets and separate each tweet with a new line character."
 
 
-def generate_informative_tweets_for_topic(num_tweets, topic):
-    message = f"You are a educational social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create {num_tweets} tweets that explain {num_tweets} different aspects of {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. Don't add any numbering to the tweets and separate each tweet with a new line character. Each tweet should be on a new line with no gaps in between them."
+def generate_informative_tweet_for_topic(topic):
+    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet that explains {topic}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
+    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+
+def generate_funny_tweet_for_topic(topic):
+    message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
 
 
-def generate_future_focused_tweets_for_topic(num_tweets, topic):
-    message = f"You are a futurist social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create {num_tweets} tweets that talks about the future of {topic} and how it will change over time from {num_tweets} different perspectives. Don't mention any specific twitter users or tools. Don't include any emoji's. Don't add any numbering to the tweets and separate each tweet with a new line character. Each tweet should be on a new line with no gaps in between them."
+def generate_future_focused_tweet_for_topic(topic):
+    message = f"You are a futurist social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create a brief tweet that talks about the future of {topic} and how it will change over time. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old"
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
 
 
@@ -432,7 +436,7 @@ def generate_controversial_tweets_for_topic(topic):
 
 
 def generate_hyperbole_tweets_for_topic(topic):
-    message = f"You are a Twitter content creator that creates viral tweets with lots of likes and retweets. You use emotive and hyperbolic language. Create a tweet about '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users or tools and use a maximum of two emojis."
+    message = f"You are a Twitter content creator that creates viral tweets with lots of likes and retweets. You use emotive and hyperbolic language. Create a tweet about '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old"
     return send_chat_gpt_message(message)
 
 
