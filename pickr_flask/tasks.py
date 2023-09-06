@@ -44,33 +44,6 @@ def all_niches_reddit_update():
 
 
 @shared_task
-def all_niches_run_model():
-    niches = Niche.query.filter(
-        and_(Niche.is_active, Niche.subreddits.any())
-    ).order_by(
-        Niche.title
-    ).all()
-
-    for niche in niches:
-        logging.info(
-            f"Running topic model for niche: {niche.title}"
-        )
-        # model runs are serial for now since we only have
-        # one worker machine
-        topic_dicts = run_niche_topic_model.apply_async(
-            args=(niche.id,)).get()
-
-        modeled_topic_ids = generate_niche_topic_overviews(
-            niche.id, topic_dicts, max_modeled_topics=5
-        )
-
-        for mt_id in modeled_topic_ids:
-            generate_modeled_topic_tweets.apply_async(
-                args=(mt_id,)
-            )
-
-
-@shared_task
 def update_niche_subreddits(niche_id, posts_per_subreddit=200):
     '''
     Fetch new posts for each subreddit related to this niche.
@@ -96,6 +69,34 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
         )
 
     return niche_id
+
+
+@shared_task
+def all_niches_run_model():
+    niches = Niche.query.filter(
+        and_(Niche.is_active, Niche.subreddits.any())
+    ).order_by(
+        Niche.title
+    ).all()
+
+    for niche in niches:
+        logging.info(
+            f"Running topic model for niche: {niche.title}"
+        )
+        # model runs are serial for now since we only have
+        # one worker machine
+        topic_dicts = run_niche_topic_model.apply_async(
+            args=(niche.id,)).get()
+
+        modeled_topic_ids = generate_niche_topic_overviews(
+            niche.id, topic_dicts, max_modeled_topics=5
+        )
+
+        for mt_id in modeled_topic_ids:
+            generate_modeled_topic_tweets.apply_async(
+                args=(mt_id,)
+            )
+
 
 
 @shared_task
@@ -125,9 +126,13 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     logging.info(f"Building topic model: niche={niche.title}")
     topic_model = topic.build_subtopic_model(texts)
     topics, probs = topic_model.topics_, topic_model.probabilities_
+    topic_keywords = topic_model.get_topic_info()["Representation"].tolist()
+    topic_rep_docs = topic_model.get_topic_info()["Representative_Docs"].tolist()
     topic_dicts = topic.analyze_topics(
         topics,
         probs,
+        topic_keywords,
+        topic_rep_docs,
         post_dicts,
         "reddit",
         trend_prev_days=14,
@@ -162,7 +167,7 @@ def generate_niche_topic_overviews(
         texts = [t for (t,) in posts_query.all()]
 
         topic_label, topic_desc = topic.generate_topic_overview(
-            texts, niche.title
+            texts, topic_dict["topic_keywords"], topic_dict["topic_rep_docs"], niche.title
         )
         if topic_label == "" or topic_desc == "":
             continue  # discard this topic

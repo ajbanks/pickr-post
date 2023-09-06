@@ -64,6 +64,8 @@ def build_subtopic_model(texts: List[str]):
 def analyze_topics(
         topics: List[int],
         probs: List[float],
+        topic_keywords: List[List[str]],
+        topic_rep_docs: List[List[str]],
         posts: List[dict],
         source: str,
         min_date=None,
@@ -111,6 +113,8 @@ def analyze_topics(
         post_ids = topic_df["id"].apply(str).tolist()
         topics_list.append({
             "topic_id": topic_id,
+            "topic_keywords": topic_keywords[topic_id+1],  # +1 offset is used because first topic is the noise topic
+            "topic_rep_docs": topic_rep_docs[topic_id+1],
             "size": num_posts,
             "likes": num_likes,
             "rank": rank,
@@ -123,6 +127,8 @@ def analyze_topics(
 
 def generate_topic_overview(
         docs: List[str],
+        topic_keywords: List[str],
+        topic_rep_docs: List[str],
         niche_title: str,
 ) -> Tuple[str, str]:
     '''
@@ -132,14 +138,13 @@ def generate_topic_overview(
 
     # TODO(meiji163) change this to count tokens.
     # the limit is 4097 tokens for body + response
-    body = "\n\n".join([
+    topic_documents = "\n\n".join([
         "Message:    " + d[:1000]
-        for d in docs
+        for d in topic_rep_docs[:4]
     ])
     # if not is_valid_topic_gpt(body):
     #     return "", ""
-
-    topic_label, topic_desc = get_label_and_description(body)
+    topic_label, topic_desc = get_label_and_description(topic_documents, topic_keywords)
     if not is_topic_relevant_gpt(niche_title, topic_label):
         return "", ""
 
@@ -180,32 +185,35 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
 
 
 @backoff.on_exception(backoff.expo, openai.error.RateLimitError)
-def get_label_and_description(body):
+def get_label_and_description(topic_documents, topic_keywords):
 
     topic_label = (
         openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": create_label(body)}],
+            messages=[{"role": "user", "content": create_label_prompt(topic_documents, topic_keywords)}],
             temperature=0.2,
         )
         .choices[0]
         .message.content
     )
-
-    # fix formatting of topic label
-    if topic_label.startswith("Label:"):
-        topic_label = topic_label.split("Label: ", 1)[1]
-
+    try:
+        topic_label = topic_label.split('topic:')[1].strip()
+    except Exception:
+        pass
     topic_desc = (
         openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": create_description(body)}],
+            messages=[{"role": "user", "content": create_summary_prompt(topic_documents, topic_keywords)}],
             temperature=0.2,
         )
         .choices[0]
         .message.content
     )
-
+    try:
+        topic_desc = topic_desc.split('topic:')[1].strip()
+    except Exception:
+        pass
+    
     return topic_label, topic_desc
 
 
@@ -384,13 +392,25 @@ def is_topic_related_to_niche(topic_label, niche_label):
     return test_string
 
 
-def create_description(text):
-    return f"Create a one sentence summary that describes the key topics in the tweets below. Start the description  'The posts in this topic are about'. Each tweet starts with the word Message. {text}"
+def create_summary_prompt(documents, keywords):
+    return f"""
+        I have a topic that is described by the following keywords: {keywords}
+        In this topic, the following documents are a small but representative subset of all documents in the topic:
+        {documents}
+        
+        Based on the information above, please give a description of this topic in the following format:
+        topic: <description>
+        """
 
-
-def create_label(text):
-    return f"You are a highly skilled social media assistant that follows my instructions to the best of your ability. Provide a short label that captures the key words in all the social media posts below. The label you create must be a maximum of five words long. The label you create must be clear and concise and focus one one topic. {text}"
-
+def create_label_prompt(documents, keywords):
+    return f"""
+        I have a topic that contains the following documents: 
+        {documents}
+        The topic is described by the following keywords: {keywords}
+        
+        Based on the information above, extract a short topic label in the following format:
+        topic: <topic label>
+        """
 
 def convert_chat_gpt_response_to_list(str_response):
     return [s.strip("'-" + '"') for s in re.split("\n", str_response)]
