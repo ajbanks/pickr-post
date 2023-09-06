@@ -61,7 +61,7 @@ def all_niches_run_model():
             args=(niche.id,)).get()
 
         modeled_topic_ids = generate_niche_topic_overviews(
-            niche.id, topic_dicts, max_modeled_topics=5
+            niche.id, topic_dicts, max_modeled_topics=20
         )
 
         for mt_id in modeled_topic_ids:
@@ -192,7 +192,7 @@ def generate_modeled_topic_tweets(modeled_topic_id):
     '''
     modeled_topic = ModeledTopic.query.get(modeled_topic_id)
     _, generated_tweets = topic.generate_tweets_for_topic(
-        2, modeled_topic.name
+        7, modeled_topic.name, 3
     )
 
     for tweet in generated_tweets:

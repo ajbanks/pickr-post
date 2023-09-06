@@ -325,7 +325,7 @@ def generate_tweets_for_topic(
     Returns (related_topics, generated_tweets)
     """
     num_tweets_per_tweet_type = math.ceil(
-        num_tweets / num_topics_from_topic_label
+        (num_tweets / num_topics_from_topic_label) / 2
     )
     num_tweets_per_tweet_type = (
         1 if num_tweets_per_tweet_type <= 0 else num_tweets_per_tweet_type
@@ -339,7 +339,7 @@ def generate_tweets_for_topic(
     )[:num_topics_from_topic_label]
     related_topics = [r for r in related_topics if r.strip() != ""]
     generated_tweets = []
-    for topic in related_topics:
+    for topic in [topic_label]+related_topics:
         # TODO: generate_informative_tweets_for_topic and
         # generate_future_focused_tweets_for_topic dont reliably create
         # the correct number of tweets (maybe due to temp value)
@@ -348,29 +348,21 @@ def generate_tweets_for_topic(
         for i in range(num_tweets_per_tweet_type):
             tweet = generate_informative_tweet_for_topic(topic)
             generated_tweets.append({
-                "topic_label": topic_label + "; " + topic,
+                "topic_label": topic,
                 "information_type": "informative",
                 "text": tweet,
             })
 
             tweet = generate_funny_tweet_for_topic(topic)
             generated_tweets.append({
-                "topic_label": topic_label + "; " + topic,
+                "topic_label": topic,
                 "information_type": "funny",
                 "text": tweet,
             })
-
-            tweet = generate_future_focused_tweet_for_topic(topic)
-            generated_tweets.append({
-                "topic_label": topic_label + "; " + topic,
-                "information_type": "future_focused",
-                "text": tweet,
-            })
-
-    generated_tweets = list(filter(
-        lambda t: len(t["text"]) >= 30,
-        generated_tweets
-    ))
+    #generated_tweets = list(filter(
+    #    lambda t: len(t["text"]) >= 30,
+    #    generated_tweets
+    #))
 
     return related_topics, generated_tweets
 
@@ -413,11 +405,11 @@ def generate_related_topics(
 
 def generate_informative_tweet_for_topic(topic):
     message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet that explains {topic}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
-    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+    return send_chat_gpt_message(message)
 
 def generate_funny_tweet_for_topic(topic):
     message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
-    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+    return send_chat_gpt_message(message)
 
 
 def generate_future_focused_tweet_for_topic(topic):
