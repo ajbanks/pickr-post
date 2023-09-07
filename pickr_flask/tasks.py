@@ -87,24 +87,22 @@ def all_niches_run_model():
         # one worker machine
         run_niche_topics.apply_async(args=(niche.id,))
 
+
 @shared_task
 def run_niche_topics(niche_id):
     # model runs are serial for now since we only have
     # one worker machine
     niche = Niche.query.get(niche_id)
-    topic_dicts = run_niche_topic_model.apply_async(
-        args=(niche.id,)).get()
+    topic_dicts = run_niche_topic_model(niche.id)
 
     modeled_topic_ids = generate_niche_topic_overviews(
         niche.id, topic_dicts, max_modeled_topics=5
     )
 
     for mt_id in modeled_topic_ids:
-        generate_modeled_topic_tweets.apply_async(
-            args=(mt_id,)
-        )
+        generate_modeled_topic_tweets(mt_id)
 
-@shared_task
+
 def run_niche_topic_model(niche_id) -> List[dict]:
     '''
     Read recent posts for the niche and run the topic model.
@@ -145,7 +143,6 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     return topic_dicts
 
 
-@shared_task
 def generate_niche_topic_overviews(
         niche_id: uuid.UUID,
         topic_dicts: List[dict],
@@ -195,7 +192,6 @@ def generate_niche_topic_overviews(
     return modeled_topic_ids
 
 
-@shared_task
 def generate_modeled_topic_tweets(modeled_topic_id):
     '''
     Generate tweets for a modeled topic
