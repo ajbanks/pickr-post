@@ -85,19 +85,24 @@ def all_niches_run_model():
         )
         # model runs are serial for now since we only have
         # one worker machine
-        topic_dicts = run_niche_topic_model.apply_async(
-            args=(niche.id,)).get()
+        run_niche_topics.apply_async(args=(niche.id,))
 
-        modeled_topic_ids = generate_niche_topic_overviews(
-            niche.id, topic_dicts, max_modeled_topics=5
+@shared_task
+def run_niche_topics(niche_id):
+    # model runs are serial for now since we only have
+    # one worker machine
+    niche = Niche.query.get(niche_id)
+    topic_dicts = run_niche_topic_model.apply_async(
+        args=(niche.id,)).get()
+
+    modeled_topic_ids = generate_niche_topic_overviews(
+        niche.id, topic_dicts, max_modeled_topics=5
+    )
+
+    for mt_id in modeled_topic_ids:
+        generate_modeled_topic_tweets.apply_async(
+            args=(mt_id,)
         )
-
-        for mt_id in modeled_topic_ids:
-            generate_modeled_topic_tweets.apply_async(
-                args=(mt_id,)
-            )
-
-
 
 @shared_task
 def run_niche_topic_model(niche_id) -> List[dict]:
