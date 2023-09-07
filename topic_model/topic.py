@@ -184,7 +184,7 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     return resp.lower().strip(string.punctuation) == "yes"
 
 
-@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
+@backoff.on_exception(backoff.expo, Exception)
 def get_label_and_description(topic_documents, topic_keywords):
 
     topic_label = (
@@ -296,7 +296,7 @@ def trend_type(points):
         return 4
 
 
-@backoff.on_exception(backoff.expo, openai.error.RateLimitError)
+@backoff.on_exception(backoff.expo, Exception)
 def send_chat_gpt_message(message, temperature=0.8):
     # TODO: check the temperature is correct
     return (
