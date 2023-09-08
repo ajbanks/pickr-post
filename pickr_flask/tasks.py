@@ -73,6 +73,7 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
 
 @shared_task
 def all_niches_run_model():
+
     niches = Niche.query.filter(
         and_(Niche.is_active, Niche.subreddits.any())
     ).order_by(
@@ -94,7 +95,8 @@ def run_niche_topics(niche_id):
     # one worker machine
     niche = Niche.query.get(niche_id)
     topic_dicts = run_niche_topic_model(niche.id)
-
+    if len(topic_dicts) == 0 :
+        return
     modeled_topic_ids = generate_niche_topic_overviews(
         niche.id, topic_dicts, max_modeled_topics=5
     )
