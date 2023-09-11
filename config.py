@@ -43,14 +43,22 @@ class Config:
     CELERY = dict(
         broker_url=environ.get("CELERY_BROKER_URL"),
         result_backend=environ.get("CELERY_RESULT_BACKEND"),
+        broker_connection_retry_on_startup=True,
         task_ignore_result=False,
+        task_create_missing_queues=True,
+        task_default_queue="default",
+        task_routes={
+            "pickr_flask.tasks.run_niche_topic_model": {
+                "queue": "model_runner"
+            }
+        },
         beat_schedule={
             "task_update_reddit_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_reddit_update",
                 "schedule": crontab(hour=4, minute=30),  # morning schedule
             },
             "task_run_topic_model_every_morning": {
-                "task": "pickr_flask.tasks.all_niches_run_model",
+                "task": "pickr_flask.tasks.all_niches_run_pipeline",
                 "schedule": crontab(hour=5, minute=0),
             }
         }
