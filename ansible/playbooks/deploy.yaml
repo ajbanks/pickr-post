@@ -1,11 +1,13 @@
 ---
-- hosts: all
+## This playbook deploys the topic-tweet repo to a target host
+## Usage: ansible-playbook ./playbooks/deploy.yaml -i inventory.yaml \
+##              --extra-vars "target=<target> deploy_user=<username>"
+- hosts: "{{ target }}"
   vars:
     GIT_REPO: "git@github.com:pickrsocial/topic-tweet.git"
     GIT_BRANCH: main
-    web_user: web
-    dotenv: "/home/web/.env"
-    dest: "/home/web/topic-tweet"
+    dotenv: "/home/{{ deploy_user }}/.env"
+    dest: "/home/{{ deploy_user }}/topic-tweet"
   tasks:
     - name: Clear tmp
       file:
@@ -18,7 +20,6 @@
         version: "{{ GIT_BRANCH }}"
         dest: "/tmp/topic-tweet"
         accept_hostkey: yes
-        single_branch: yes
         depth: 1
       become: no
     - name: Delete existing repo
@@ -33,25 +34,36 @@
       become: yes
     - name: Install required modules
       command:
-        cmd: "/home/{{ web_user }}/venv/bin/pip install -r {{dest}}/requirements.txt"
+        cmd: "/home/{{ deploy_user }}/venv/bin/pip install -r {{ dest }}/requirements.txt"
       become: yes
     - name: chown directory
       file:
         path: "{{ dest }}"
-        owner: "{{ web_user }}"
-        group: "{{ web_user }}"
+        owner: "{{ deploy_user }}"
+        group: "{{ deploy_user }}"
         recurse: yes
       become: yes
     - name: copy dotenv
       command:
         "cp {{ dotenv }} {{ dest }}"
       become: yes
-    - name: Restart app services
+
+- hosts: worker
+  tasks:
+    - name: Restart celery
+      systemd:
+        name: celery.service
+        state: restarted
+      become: yes
+
+- hosts: web
+  tasks:
+    - name: Restart services
       systemd:
         name: "{{ item }}"
         state: restarted
+      become: yes
       with_items:
         - gunicorn.service
-        - celerybeat.service
         - celery.service
-      become: yes
+        - celerybeat.service

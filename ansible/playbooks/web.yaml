@@ -1,3 +1,6 @@
+## This playbook configures the web server.
+## It sets up a python venv, configures nginx, gunicorn flask server, and celery worker.
+##
 - hosts: web
   become: yes
   vars:
@@ -16,6 +19,8 @@
     GUNICORN_OPTS: "--worker-class gevent --workers 5 --timeout 1000"
 
     # celery
+    celery_user: "web"
+    celery_password: "web"
     CELERY_BIN: "/home/web/venv/bin/celery"
     CELERY_APP: "pickr_flask.run_celery"
     CELERYD_NODES: "w1" # single worker node, multiple would be e.g. "w1 w2 w3"

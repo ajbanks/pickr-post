@@ -4,10 +4,8 @@ After=network.target
 
 [Service]
 Type=forking
-User={{ web_user }}
-Group={{ web_user }}
-Environment="CELERYBEAT_PID_FILE=/var/run/celery/beat.pid"
-Environment="CELERYBEAT_LOG_FILE=/var/log/celery/beat.log"
+User={{ celery_user }}
+Group={{ celery_user }}
 WorkingDirectory={{ app_root }}
 ExecStart=/bin/sh -c '{{ CELERY_BIN }} -A {{ CELERY_APP }} multi start {{ CELERYD_NODES }} \
     --pidfile="{{ CELERYD_PID_FILE }}" --logfile="{{ CELERYD_LOG_FILE }}" \

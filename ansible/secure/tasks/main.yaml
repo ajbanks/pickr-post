@@ -1,7 +1,17 @@
 ---
-- name: Set hostnames
-  hostname:
-    name: "{{ inventory_hostname }}"
+# - name: Set hostnames
+#   hostname:
+#     name: "{{ inventory_hostname }}"
+
+- name: Update APT package cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+
+- name: Install apt packages
+  apt:
+    pkg: '{{ packages }}'
+    state: present
 
 - name: Update SSH configuration to be more secure.
   lineinfile:
@@ -16,11 +26,6 @@
     - { regexp: "^#?AllowTcpForwarding", line: "AllowTcpForwarding yes" }
     - { regexp: "^#?Port", line: "Port {{ security_ssh_port }}" }
   notify: restart ssh
-
-- name: Update APT package cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
 
 - name: Install fail2ban
   apt:
@@ -56,14 +61,4 @@
     state: enabled
     policy: deny
     direction: incoming
-  when: not ansible_check_mode
-
-- name: "Firewall: Allow web traffic"
-  ufw:
-    rule: allow
-    port: "{{ item }}"
-    proto: tcp
-  with_items:
-    - "80"
-    - "443"
   when: not ansible_check_mode

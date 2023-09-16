@@ -46,6 +46,16 @@
 #     state: link
 #   notify: restart nginx
 
+- name: "Firewall: Allow web traffic"
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  with_items:
+    - "80"
+    - "443"
+  when: not ansible_check_mode
+
 - name: Create gunicorn socket
   template:
     src: gunicorn.socket

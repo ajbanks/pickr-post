@@ -1,0 +1,48 @@
+---
+- name: Create celery user
+  user:
+    name: "{{ celery_user }}"
+    password: "{{ celery_password | password_hash('sha512') }}"
+    shell: /usr/bin/bash
+    groups: "sudo"
+
+- name: Create python venv
+  command:
+    cmd: "python3 -m venv /home/{{ celery_user }}/venv"
+    creates: "/home/{{ celery_user }}/venv"
+  become: yes
+
+- name: chown python venv
+  file:
+    path: "/home/{{ celery_user }}/venv"
+    owner: "{{ celery_user }}"
+    group: "{{ celery_user }}"
+    recurse: yes
+  become: yes
+
+- name: Install python packages
+  command:
+    cmd: "/home/{{ celery_user }}/venv/bin/pip install {{ item }}"
+  with_items:
+    - celery
+    - pip
+
+- name: Create systemd service
+  template:
+    src: "celery.service.j2"
+    dest: "/etc/systemd/system/celery.service"
+
+- name: Create celery log dir
+  file:
+    path: /var/log/celery
+    state: directory
+    owner: "{{ celery_user }}"
+    group: "{{ celery_user }}"
+    mode: 0775
+
+- name: Enable celery service
+  systemd:
+    name: "celery.service"
+    enabled: true
+    masked: no
+    daemon_reload: yes
