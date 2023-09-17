@@ -64,7 +64,7 @@
   position: relative;
   width: 20%;
   max-width: 200px;
-  background: #F9F9F9;
+  background: #FaFaFa;
   border-right: 1px solid #CCC;
   flex-shrink: 0;
   padding: 5px 5px;
@@ -152,33 +152,78 @@
   border-left: 4px solid var(--main-color-lite);
 }
 
-
-
 .topic {
   border-bottom: 1px solid #DDD;
   font-size: 1rem;
   margin: 0px 0px;
-  padding: 8px 30px;
+  padding: 0px 0px;
   text-align: left;
   word-wrap: break-word;
-  background-color: #f1f1f1;
+  background-color: #fff;
 }
 
-.topic h2 {
+.topic > h2 {
+  align: center;
   font-weight: 350;
   font-size: 1.4rem;
-  color: #555;
+  color: var(--main-color);
 }
 
 .topic h3 {
 }
 
-.topic p {
-  font-size: 1.1rem;
+.topic > p {
 }
 
-.topic.clickable:hover {
-  background: #F9F9F9;
+.accordion {
+  transition: 0.2s;
+  padding: 10px 20px;
+  margin: 0px;
+}
+
+.accordion > p {
+  font-size: 1.1rem;
+  max-width: 85%;
+  margin-left: 3rem;
+}
+
+.accordion:hover{
+  background-color: #F9F9F9;
+}
+
+.accordion-content {
+  padding: 0px 0px;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.2s ease-out;
+}
+
+.accordion-content h2 {
+  text-align: center;
+}
+
+.accordion-content .more {
+  font-size: 1.2rem;
+  text-align: center;
+  padding: 15px;
+}
+
+.accordion-content .more a:hover {
+  color: var(--main-color);
+}
+
+.accordion:before{
+  padding: 0px 0px;
+  float: right;
+  content: '+';
+  font-size: 20px;
+  color: var(--main-color);
+}
+
+.active:before {
+  content: "–";
+  font-size: 20px;
+  color: var(--main-color);
 }
 
 .user-account {
@@ -199,7 +244,8 @@
   justify-content: center;
   display: flex;
   flex-wrap: wrap;
-  padding: 16px;
+  padding-bottom: 15px;
+  padding-top: 0px;
 }
 
 .card {
@@ -225,6 +271,21 @@
   box-shadow: 1px 1px 1px var(--main-color);
 }
 
+.card>.twitter-button {
+  background: var(--twitter-color);
+  height: 20px;
+  width: 20px;
+  padding: 6px;
+  position: absolute;
+  border-radius: 20px;
+  bottom: 15px;
+  right: 15px;
+}
+
+.twitter-button > img {
+  margin-top: 2px;
+}
+
 .suggested-post {
   padding-bottom: 30px;
   spellcheck: false;
@@ -232,12 +293,6 @@
 
 .suggested-post p:focus {
   border: 1px solid black;
-}
-
-.card>.button {
-  position: absolute;
-  bottom: 5px;
-  right: 5px;
 }
 
 .no_topics {
@@ -260,12 +315,9 @@
   #user {
     display: none;
   }
-<<<<<<< HEAD
+
   #navigation .option {
     padding-left: 0px;
     margin-left: 0px;
   }
 }
-=======
-}
->>>>>>> develop
