@@ -134,6 +134,9 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     topic_model = topic.build_subtopic_model(texts)
     topics, probs = topic_model.topics_, topic_model.probabilities_
     topic_keywords = topic_model.get_topic_info()["Representation"].tolist()
+
+    # TODO topic_rep_docs shouldn't be sent to the celery broker,
+    # it makes payload too large
     topic_rep_docs = topic_model.get_topic_info()["Representative_Docs"].tolist()
     topic_dicts = topic.analyze_topics(
         topics,
@@ -176,7 +179,10 @@ def generate_niche_topic_overviews(
         texts = [t for (t,) in posts_query.all()]
 
         topic_label, topic_desc = topic.generate_topic_overview(
-            texts, topic_dict["topic_keywords"], topic_dict["topic_rep_docs"], niche.title
+            texts,
+            topic_dict["topic_keywords"],
+            topic_dict["topic_rep_docs"],
+            niche.title
         )
         if topic_label == "" or topic_desc == "":
             continue  # discard this topic
@@ -208,13 +214,17 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
         _, generated_tweets = topic.generate_tweets_for_topic(
-            7, modeled_topic.name, 3
+            5, modeled_topic.name, 3
         )
 
-    for tweet in generated_tweets:
-        tweet["modeled_topic_id"] = mt_id
+        for tweet in generated_tweets:
+            tweet["modeled_topic_id"] = mt_id
 
-    write_generated_posts(generated_tweets)
+        num_tweets = len(generated_tweets)
+        logging.info(
+            f"generated {num_tweets} tweets for modeled topic: {modeled_topic.name}"
+        )
+        write_generated_posts(generated_tweets)
 
 
 @shared_task
