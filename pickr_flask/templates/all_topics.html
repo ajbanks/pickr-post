@@ -12,15 +12,16 @@
     </div>
     <div class="content content_large">
         <div class="container">
-            <h1>Your Trending Topics</h1>
+            <h1>All Trending Topics</h1>
             <h2>{{date}}</h2>
             <p>All trending topics in the last 14 days... Click on a topic to view your generated tweets</p>
             {% for topic in topics %}
+
             <div class="topic clickable" onclick="location.href='topic/{{topic.id}}'">
-                <h3>Trending Topic {{ loop.index }}  🔥: {{topic.name}}</h3>
-                <p>Click to view curated tweets and related posts</p>
-                <hr/>
-                <p>{{topic.description if topic.description}}</p>
+                <div class="accordion clickable">
+                    <h3>Topic {{ loop.index }} 🔥: {{topic.name}}</h3>
+                    <p>{{topic.description if topic.description}}</p>
+                </div>
             </div>
             {% endfor %}
         </div>

@@ -394,9 +394,6 @@ def home():
         ModeledTopic.size.desc()
     ).limit(3).all()
 
-    for t in topics:
-        random.shuffle(t.generated_posts)
-
     # TODO: Should split these between niches and also max date may
     # be different for each niche
     return render_template(

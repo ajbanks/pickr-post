@@ -15,24 +15,17 @@
             <h1>{{topic.name}}</h1>
             <p>{{topic.description if topic.description}}</p>
 
-            <h2>Generated posts for you to Tweet</h2>
+            <h2>Generated Tweets</h2>
             <div class="container cards">
                 {% for post in generated_posts %}
                 <div class="card">
                     <div class="author">@{{ current_user.username }}</div>
                     <div class="suggested-post">
-                        <p spellcheck="false">
-                            {{post.text}}
-                        </p>
+                        <p>{{post.text}}</p>
                     </div>
-
-                    <div class="button">
-                        <a class="twitter-share-button" href="https://twitter.com/intent/tweet?url=%00"
-                            data-size="large" data-text="{{ post.text }}">
-                            Tweet
-                        </a>
+                    <div class="twitter-button clickable">
+                        <img src='{{ url_for("static", filename="img/twitter.svg") }}'>
                     </div>
-
                 </div>
                 {% endfor %}
             </div>
@@ -52,20 +45,4 @@
 
     {% block js %}
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    <script>window.twttr = (function (d, s, id) {
-            var js, fjs = d.getElementsByTagName(s)[0],
-                t = window.twttr || {};
-            if (d.getElementById(id)) return t;
-            js = d.createElement(s);
-            js.id = id;
-            js.src = "https://platform.twitter.com/widgets.js";
-            fjs.parentNode.insertBefore(js, fjs);
-
-            t._e = [];
-            t.ready = function (f) {
-                t._e.push(f);
-            };
-
-            return t;
-        }(document, "script", "twitter-wjs"));</script>
     {% endblock %}
