@@ -15,16 +15,26 @@ function toggleSidebar() {
 ////
 // accordion collapse/expand
 const accordions = document.getElementsByClassName("accordion");
+
+function toggleAccordion(a) {
+  a.classList.toggle("active");
+  let content = a.nextElementSibling;
+  if (content.style.maxHeight) {
+    content.style.maxHeight = null;
+  } else {
+    content.style.maxHeight = content.scrollHeight + "px";
+  }
+}
+
 for (let i = 0; i < accordions.length; i++) {
   accordions[i].addEventListener("click", (e) => {
-    accordions[i].classList.toggle("active");
-    let content = accordions[i].nextElementSibling;
-    if (content.style.maxHeight) {
-      content.style.maxHeight = null;
-    } else {
-      content.style.maxHeight = content.scrollHeight + "px";
-    }
+    toggleAccordion(accordions[i]);
   })
+}
+
+// toggle the first one
+if (accordions.length > 0) {
+  toggleAccordion(accordions[0])
 }
 
 
@@ -68,17 +78,19 @@ for (let i = 0; i < twitterBtns.length; i++) {
 let stripeAPI;
 const upgradeBtn = document.querySelector("#upgradebtn")
 
-fetch("/stripe-pub-key")
-  .then((resp) => { return resp.json(); })
-  .then((data) => {
-    stripeAPI = Stripe(data.publicKey);
-    upgradeBtn.addEventListener("click", () => {
-      fetch("/checkout-session")
-        .then((resp) => { return resp.json(); })
-        .then((data) => {
-          console.log(data.sessionId);
-          return stripeAPI.redirectToCheckout({sessionId: data.sessionId});
-        })
-        .then((res) =>  { console.log(res); })
-    })
-  });
+if (upgradeBtn != null){
+   fetch("/stripe-pub-key")
+    .then((resp) => { return resp.json(); })
+    .then((data) => {
+      stripeAPI = Stripe(data.publicKey);
+      upgradeBtn.addEventListener("click", () => {
+        fetch("/checkout-session")
+          .then((resp) => { return resp.json(); })
+          .then((data) => {
+            console.log(data.sessionId);
+            return stripeAPI.redirectToCheckout({sessionId: data.sessionId});
+          })
+          .then((res) =>  { console.log(res); })
+      })
+    });
+}

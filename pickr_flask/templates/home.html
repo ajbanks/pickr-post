@@ -32,7 +32,13 @@
                 <p>{{topic.description if topic.description}}</p>
             </div>
             <div class="accordion-content">
-                <h2>Tweets for you to post</h2>
+                <h2>Tweets for you</h2>
+                <div class="tooltip">
+                    <p>
+                        Use these AI-generated tweets to post about your topic.
+                        Press the tweet button to edit a tweet, post it, or schedule it.
+                    </p>
+                </div>
                 <div class="container cards">
                     {% for post in topic.generated_posts[:3] %}
                     <div class="card">

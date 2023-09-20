@@ -155,8 +155,6 @@
 .topic {
   border-bottom: 1px solid #DDD;
   font-size: 1rem;
-  margin: 0px 0px;
-  padding: 0px 0px;
   text-align: left;
   word-wrap: break-word;
   background-color: #fff;
@@ -166,7 +164,6 @@
   align: center;
   font-weight: 350;
   font-size: 1.4rem;
-  color: var(--main-color);
 }
 
 .topic h3 {
@@ -193,12 +190,14 @@
 
 .accordion-content {
   padding: 0px 0px;
+  padding-left: 20px;
   overflow: hidden;
   max-height: 0;
   transition: max-height 0.2s ease-out;
 }
 
 .accordion-content h2 {
+  display: inline-block;
   text-align: center;
 }
 
@@ -224,6 +223,47 @@
   content: "–";
   font-size: 20px;
   color: var(--main-color);
+}
+
+.tooltip {
+  display: inline-block;
+  position: relative;
+  left: 10px;
+  cursor: help;
+}
+
+.tooltip:before {
+  content: '?';
+  font-weight: bold;
+  font-size: 1.1rem;
+  color: var(--main-color-lite);
+}
+
+.tooltip p{
+  display: none;
+  text-align: left;
+  font-size: 0.9rem;
+  color: white;
+  background-color: rgba(0,0,0,0.6);
+  padding: 7px 7px;
+  border-radius: 4px;
+  position: absolute;
+  width: 160px;
+  top: -20px;
+  margin-left: 10px;
+  left: 105%;
+  z-index: 1;
+}
+
+.tooltip:hover p{
+  display: block;
+  transform-origin: 100% 0%;
+}
+
+.tooltip p:after {
+  width: 100px;
+  height: 40px;
+  content: '';
 }
 
 .user-account {
