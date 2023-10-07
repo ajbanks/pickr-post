@@ -28,7 +28,7 @@ BRAND_VOICES = [
 ]
 
 
-def build_subtopic_model(texts: List[str]):
+def build_subtopic_model(texts: List[str], reduce_topics=False):
     '''
     Take a list of document text and returns trained BERTopic model.
     '''
@@ -58,6 +58,8 @@ def build_subtopic_model(texts: List[str]):
 
     embeddings = sentence_model.encode(texts, show_progress_bar=False)
     topic_model.fit_transform(texts, embeddings)
+    if reduce_topics:
+        topic_model.reduce_topics(texts, nr_topics='auto')
     return topic_model
 
 
@@ -145,9 +147,8 @@ def generate_topic_overview(
     # if not is_valid_topic_gpt(body):
     #     return "", ""
     topic_label, topic_desc = get_label_and_description(topic_documents, topic_keywords)
-    if not is_topic_relevant_gpt(niche_title, topic_label):
+    if not is_topic_relevant_gpt(niche_title, topic_desc):
         return "", ""
-
     return topic_label, topic_desc
 
 
@@ -178,7 +179,7 @@ def is_valid_topic_gpt(body: str) -> bool:
 
 def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     resp = send_chat_gpt_message(
-        is_topic_related_to_niche(niche, topic),
+        is_topic_related_to_niche(topic, niche),
         temperature=0.2
     )
     return resp.lower().strip(string.punctuation) == "yes"
@@ -380,8 +381,8 @@ def valid_topic_test(text):
 
 
 def is_topic_related_to_niche(topic_label, niche_label):
-    test_string = f"You will answer my questions to the best of your ability and truthfully. Is the topic label '{topic_label}' related to {niche_label}? Answer Yes or No."
-    return test_string
+    prompt_string = f"You will answer my questions to the best of your ability and truthfully. Is the topic descroption below related to {niche_label}? Answer Yes or No. \n\n '{topic_label}'"
+    return prompt_string
 
 
 def create_summary_prompt(documents, keywords):
