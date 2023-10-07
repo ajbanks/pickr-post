@@ -434,13 +434,13 @@ def generate_funny_tweet_for_topic(topic):
     return send_chat_gpt_message(message)
 
 
-def generate_informative_tweet_for_topic_desc(topic):
-    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet for the topic with the following description: {topic}. \n\nDon't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
+def generate_informative_tweet_for_topic_desc(topic_label, topic_desc):
+    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet for the topic '{topic_label}' with the following description: {topic_desc}. \n\nDon't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
     return send_chat_gpt_message(message)
 
 
-def generate_funny_tweet_for_topic_desc(topic):
-    message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about the topic with the following description: {topic}. \n\nDon't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
+def generate_funny_tweet_for_topic_desc(topic_label, topic_desc):
+    message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about the topic '{topic_label}' with the following description: {topic_desc}. \n\nDon't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
     return send_chat_gpt_message(message)
 
 
@@ -455,7 +455,7 @@ def generate_past_focused_tweets_for_topic(num_tweets, topic):
 
 
 def generate_controversial_tweets_for_topic(topic):
-    message = f"You are a controversial Twitter content creator that creates viral tweets with lots of likes and retweets. Create a tweet about '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users or tools and use a maximum of two emojis."
+    message = f"You are a controversial Twitter content creator that creates viral tweets with lots of likes and retweets. Create a tweet the topic '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users or tools and use a maximum of two emojis."
     return send_chat_gpt_message(message)
 
 
