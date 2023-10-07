@@ -167,7 +167,7 @@ def generate_niche_topic_overviews(
     modeled_topic_ids = []
     count = 0
     for topic_dict in topic_dicts:
-        if count > max_modeled_topics:
+        if count >= max_modeled_topics:
             break
         # query the text of the representative posts for this topic
         post_ids = topic_dict["post_ids"]
