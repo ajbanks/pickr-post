@@ -428,8 +428,19 @@ def generate_informative_tweet_for_topic(topic):
     message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet that explains {topic}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
     return send_chat_gpt_message(message)
 
+
 def generate_funny_tweet_for_topic(topic):
     message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
+    return send_chat_gpt_message(message)
+
+
+def generate_informative_tweet_for_topic_desc(topic):
+    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet for the topic with the following description: {topic}. \n\nDon't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
+    return send_chat_gpt_message(message)
+
+
+def generate_funny_tweet_for_topic_desc(topic):
+    message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about the topic with the following description: {topic}. \n\nDon't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
     return send_chat_gpt_message(message)
 
 
