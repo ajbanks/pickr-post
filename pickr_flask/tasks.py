@@ -1,16 +1,21 @@
 import logging
+import math
+import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List
 from celery import shared_task, chain
 
-from sqlalchemy import and_
+from sqlalchemy import Date, cast, and_, exc
+
 from topic_model import topic
 from .models import (
     db,
-    RedditPost, Niche, ModeledTopic,
+    RedditPost, Niche, ModeledTopic, PickrUser,
+    user_niche_assoc
     _to_dict,
 )
+from .post_schedule import create_schedule_text, create_schedule_text_no_trends, write_schedule
 
 from .reddit import (
     process_post,
@@ -22,6 +27,92 @@ from .reddit import (
 )
 
 TOPIC_MODEL_MIN_DOCS = 20
+
+
+@shared_task
+def run_schedule():
+    '''
+    Scheduled weeky task to create post schedule for every user
+    '''
+    users = PickrUser.query.all()
+
+    for user in users:
+        logging.info(
+            f"Creating schedule for user: {user.username}"
+        )
+        create_schedule(user.id).apply_async(
+            args=(user.id,)
+        )
+        
+
+@shared_task
+def create_schedule(user_id, num_topics_per_niche = 3):
+    '''
+    Generate post schedule
+    '''
+    total_posts = 21 # 3 posts per day is 21
+    num_posts_per_topic = math.ceil(total_posts / num_topics_per_niche) 
+    niche_ids = user_niche_assoc.query.filter(
+        and_(
+            user_niche_assoc.user_id.in_(user_id),
+        )
+    ).all()
+
+    niches = Niche.query.filter(
+        and_(
+            Niche.id.in_(niche_ids),
+        )
+    ).all()
+
+    for niche in niches:
+        logging.info(
+            f"Creating niche {niche.title} schedule for user: {user_id}"
+        )
+
+        # get modeled topics
+        max_date = ModeledTopic.query.filter(
+            ModeledTopic.niche_id.in_(niche.id),
+            ).order_by(
+                ModeledTopic.date.desc()
+        ).first().date.date()
+        topics = ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id.in_([n]),
+                cast(ModeledTopic.date, Date) == max_date
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).all()
+
+        # choose num_topics_per_niche random modeled topics
+        random.shuffle(topics)
+        topics = topics[:num_topics_per_niche]
+
+        # choose total_posts random generated posts form each modeled topic
+        generated_posts = []
+        for t in topics:
+            random.shuffle(t.generated_posts)
+            generated_posts += t.generated_posts[:num_posts_per_topic]
+        random.shuffle(generated_posts)
+
+        # create schedule text
+        schedule_text = create_schedule_text_no_trends(topics)
+
+        # create and commit generated post
+        post_vals = [
+            'day_1_a_post', 'day_1_b_post', 'day_1_c_post', 'day_2_a_post', 'day_2_b_post', 'day_2_c_post', 'day_3_a_post', 
+            'day_3_b_post', 'day_3_c_post', 'day_4_a_post','day_4_b_post', 'day_4_c_post', 'day_5_a_post', 'day_5_b_post',
+            'day_5_c_post', 'day_6_a_post', 'day_6_b_post', 'day_6_c_post', 'day_7_a_post', 'day_7_b_post', 'day_7_c_post'
+        ]
+        assert len(generated_posts) == len(post_vals)
+        schedule = {
+            "user_id": user_id,
+            "niche_id": niche.id,
+            "schedule_text": schedule_text
+        }
+        for i, v in enumerate(post_vals):
+            schedule[v] = generated_posts[i]
+        write_schedule(schedule)
 
 
 @shared_task

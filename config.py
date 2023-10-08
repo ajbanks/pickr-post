@@ -60,6 +60,10 @@ class Config:
             "task_run_topic_model_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_run_pipeline",
                 "schedule": crontab(hour=5, minute=0),
+            },
+            "task_run_schedule_every_week": {
+                "task": "pickr_flask.tasks.run_schedule",
+                "schedule": crontab(hour=7, minute=0, day_of_week=1),
             }
         }
     )
