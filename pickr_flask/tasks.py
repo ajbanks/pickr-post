@@ -51,7 +51,7 @@ def create_schedule(user_id, num_topics_per_niche = 3):
     Generate post schedule
     '''
     total_posts = 21 # 3 posts per day is 21
-    num_posts_per_topic = math.ceil(total_posts / num_topics_per_niche) 
+    
     niche_ids = user_niche_assoc.query.filter(
         and_(
             user_niche_assoc.user_id.in_(user_id),
@@ -63,7 +63,11 @@ def create_schedule(user_id, num_topics_per_niche = 3):
             Niche.id.in_(niche_ids),
         )
     ).all()
+    num_posts_per_niche = total_posts / len(niches)
+    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche) 
 
+    topics = []
+    generated_posts = []
     for niche in niches:
         logging.info(
             f"Creating niche {niche.title} schedule for user: {user_id}"
@@ -86,33 +90,34 @@ def create_schedule(user_id, num_topics_per_niche = 3):
 
         # choose num_topics_per_niche random modeled topics
         random.shuffle(topics)
-        topics = topics[:num_topics_per_niche]
+        topics += topics[:num_topics_per_niche]
 
         # choose total_posts random generated posts form each modeled topic
-        generated_posts = []
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
         random.shuffle(generated_posts)
 
-        # create schedule text
-        schedule_text = create_schedule_text_no_trends(topics)
+    # create schedule text
+    generated_posts = generated_posts[:total_posts]
+    schedule_text = create_schedule_text_no_trends(topics)
+    assert len(generated_posts) == len(total_posts)
+    schedule = {
+        "id": uuid.uuid4(),
+        "user_id": user_id,
+        "schedule_text": schedule_text
+    }
 
-        # create and commit generated post
-        post_vals = [
-            'day_1_a_post', 'day_1_b_post', 'day_1_c_post', 'day_2_a_post', 'day_2_b_post', 'day_2_c_post', 'day_3_a_post', 
-            'day_3_b_post', 'day_3_c_post', 'day_4_a_post','day_4_b_post', 'day_4_c_post', 'day_5_a_post', 'day_5_b_post',
-            'day_5_c_post', 'day_6_a_post', 'day_6_b_post', 'day_6_c_post', 'day_7_a_post', 'day_7_b_post', 'day_7_c_post'
-        ]
-        assert len(generated_posts) == len(post_vals)
-        schedule = {
-            "user_id": user_id,
-            "niche_id": niche.id,
-            "schedule_text": schedule_text
+    schedule_posts = []
+    for p in generated_posts:
+        post = {
+            "schedule_id": schedule["id"],
+            "post_id": p.id
         }
-        for i, v in enumerate(post_vals):
-            schedule[v] = generated_posts[i]
-        write_schedule(schedule)
+        schedule_posts.append(post)
+
+    write_schedule(schedule)
+    write_schedule_posts(schedule_posts)
 
 
 @shared_task

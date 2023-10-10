@@ -112,39 +112,34 @@ class PickrUser(UserMixin, db.Model):
         return f"<PickrUser id={self.id} username={self.username}>"
 
 
-class PostSchedule(db.Model):
+class Schedule(db.Model):
+    """Schedule represents a users schedule."""
+    __tablename__ = "schedule"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     schedule_text = Column(String(10000), nullable=False)
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
     )
-    niche_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey(f"{DEFAULT_SCHEMA}.niche.id")
-    )
     schedule_creation_date = Column(DateTime, nullable=False, default=func.now())
-    day_1_a_post = Column(String(1000), nullable=False)
-    day_1_b_post = Column(String(1000), nullable=False)
-    day_1_c_post = Column(String(1000), nullable=False)
-    day_2_a_post = Column(String(1000), nullable=False)
-    day_2_b_post = Column(String(1000), nullable=False)
-    day_2_c_post = Column(String(1000), nullable=False)
-    day_3_a_post = Column(String(1000), nullable=False)
-    day_3_b_post = Column(String(1000), nullable=False)
-    day_3_c_post = Column(String(1000), nullable=False)
-    day_4_a_post = Column(String(1000), nullable=False)
-    day_4_b_post = Column(String(1000), nullable=False)
-    day_4_c_post = Column(String(1000), nullable=False)
-    day_5_a_post = Column(String(1000), nullable=False)
-    day_5_b_post = Column(String(1000), nullable=False)
-    day_5_c_post = Column(String(1000), nullable=False)
-    day_6_a_post = Column(String(1000), nullable=False)
-    day_6_b_post = Column(String(1000), nullable=False)
-    day_6_c_post = Column(String(1000), nullable=False)
-    day_7_a_post = Column(String(1000), nullable=False)
-    day_7_b_post = Column(String(1000), nullable=False)
-    day_7_c_post = Column(String(1000), nullable=False)
+
+
+class SchedulePost(db.Model):
+    """ScheSchedulePostdule represents a post for a Schedule."""
+    __tablename__ = "schedulepost"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    schedule_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),
+        index=True
+    )
+    post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
+        index=True
+    )
 
 
 class StripeSubscriptionStatus(enum.Enum):
