@@ -191,6 +191,24 @@ class GeneratedPost(db.Model):
     )
 
 
+class PostEdit(db.Model):
+    '''Post edit represents an edit the user makes to a generated post'''
+    __tablename__ = "post_edit"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    text = Column(String, nullable=False)
+    generated_post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
+        index=True
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id"),
+    )
+    created_at = Column(DateTime, nullable=True)
+
+
 class Subreddit(db.Model):
     """
     Table associating ids with the subreddit names
