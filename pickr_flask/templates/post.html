@@ -1,0 +1,12 @@
+<div hx-target="this" hx-swap="outerHTML" class="card tweet">
+    <div class="author">@{{ username }}</div>
+    <div class="suggested-post">
+        <p>{{post.text}}</p>
+    </div>
+    <button hx-get="/post/{{ post.id }}/edit" class="edit-button clickable">
+        <img src='{{ url_for("static", filename="img/edit.svg") }}'>
+    </button>
+    <div class="twitter-button clickable">
+        <img src='{{ url_for("static", filename="img/twitter.svg") }}'>
+    </div>
+</div>

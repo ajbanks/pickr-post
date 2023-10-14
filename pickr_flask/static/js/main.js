@@ -50,6 +50,7 @@ if (closeAlert){
 
 ////
 // twitter share button
+const tweetCards = document.getElementsByClassName("card tweet");
 const twitterBtns = document.getElementsByClassName("twitter-button");
 const twitterURL = "https://twitter.com/intent/tweet/"
 const windowOpts = "menubar=no,status=no,height=400,width=500";
@@ -61,13 +62,12 @@ function openTweetWindow(text){
                .focus();
 }
 
-for (let i = 0; i < twitterBtns.length; i++) {
-  twitterBtns[i].addEventListener("click", (e) => {
-    // get the tweet text and open twitter intent with it
-    let text = e.currentTarget
-                .previousElementSibling
-                .firstElementChild
-                .innerHTML;
+// get the tweet text and open twitter intent with it
+for (let i = 0; i < tweetCards.length; i++) {
+  let suggestedPost = tweetCards[i].getElementsByClassName("suggested-post")[0];
+  let text = suggestedPost.firstElementChild.innerHTML;
+  let tweetBtn = tweetCards[i].getElementsByClassName("twitter-button")[0];
+  tweetBtn.addEventListener("click", (e) => {
     openTweetWindow(text);
   })
 }

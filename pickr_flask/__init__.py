@@ -61,5 +61,5 @@ def init_app() -> Flask:
         from .models import PickrUser  # noqa: disable=F401
         from . import auth, routes, util  # noqa: disable=F401
 
-        db.create_all()
+        # db.create_all()
         return app

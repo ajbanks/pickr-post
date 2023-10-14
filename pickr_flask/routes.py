@@ -1,11 +1,8 @@
 import random
 from time import time
-from typing import List
-from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 from sqlalchemy import Date, cast, and_, exc
-from sqlalchemy.sql.expression import func
 
 import jwt
 import stripe
@@ -34,10 +31,12 @@ from .subscription import (
 from .models import (
     db, Niche, PickrUser,
     ModeledTopic, RedditPost,
+    GeneratedPost,
     reddit_modeled_topic_assoc
 )
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
+
 
 @app.errorhandler(exc.SQLAlchemyError)
 def handle_db_exception(e):
@@ -176,7 +175,6 @@ def reset():
 
         flash("Account not found with this email.")
 
-        
     return render_template(
         "reset.html",
         title="Pickr - Reset Password",
@@ -371,13 +369,6 @@ def upgrade():
         return render_template("upgrade.html")
 
 
-@dataclass
-class UITopic:
-    name: str
-    description: str
-    generated_posts: List[str]
-
-
 @app.route("/home")
 @login_required
 def home():
@@ -386,13 +377,20 @@ def home():
     log_user_activity(current_user, "home")
     niche_ids = [n.id for n in current_user.niches]
     topics = ModeledTopic.query.filter(
-        and_(
-            ModeledTopic.niche_id.in_(niche_ids)
-        )
+        ModeledTopic.niche_id.in_(niche_ids)
     ).order_by(
         ModeledTopic.date.desc(),
         ModeledTopic.size.desc()
     ).limit(3).all()
+
+    # generated posts HTML is rendered separately to make it reusable
+    posts_html_fragments = [
+        "\n".join([
+            render_template("post.html", post=p, username=current_user.username)
+            for p in topic.generated_posts[:3]
+        ])
+        for topic in topics
+    ]
 
     # TODO: Should split these between niches and also max date may
     # be different for each niche
@@ -401,6 +399,7 @@ def home():
         title="Pickr - Your Daily Topics & Curated Tweets",
         date=datetime.today().strftime("%Y-%m-%d"),
         topics=topics,
+        generated_posts_fragments=posts_html_fragments,
     )
 
 
@@ -537,4 +536,49 @@ def picker():
         form=form,
         no_header=True,
         no_footer=True,
+    )
+
+
+###############################################################################
+# HTMX endpoints
+
+@app.route("/post/<post_id>/edit", methods=["GET"])
+@login_required
+def edit_post(post_id):
+    try:
+        uuid = UUID(post_id, version=4)
+    except ValueError:
+        return abort(404)
+    post = GeneratedPost.query.get(uuid)
+    if post is None:
+        return abort(404)
+
+    app.logger.info(post.text)
+
+    return render_template(
+        "edit_post.html",
+        post=post,
+        username=current_user.username,
+    )
+
+
+@app.route("/post/<post_id>", methods=["GET", "PUT"])
+@login_required
+def post(post_id):
+    try:
+        uuid = UUID(post_id, version=4)
+    except ValueError:
+        return abort(404)
+    post = GeneratedPost.query.get(uuid)
+    if post is None:
+        return abort(404)
+
+    if request.method == "PUT":
+        # TODO
+        pass
+
+    return render_template(
+        "post.html",
+        post=post,
+        username=current_user.username,
     )

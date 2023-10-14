@@ -14,24 +14,6 @@ from .models import (
 )
 
 
-# testing how to save modeled topic
-def save_model_result(model_result):
-    user = (
-        db.session.query(PickrUser).filter(PickrUser.username == "testuser555").first()
-    )
-    user_top = user.topics[0]
-
-    fields = ["model_title", "title", "description", "size", "trend_type"]
-    modeled_top = ModeledTopic(**{k: model_result[k] for k in fields})
-    user_top.modeled_topics.append(modeled_top)
-
-    modeled_top.tweets.extend(
-        [Tweet(**d) for d in model_result["tweets"]],
-    )
-
-    db.session.commit()
-
-
 def log_user_activity(user: PickrUser, event: str):
     """ log a user activity event in the acitivty database"""
     event_time = datetime.now()

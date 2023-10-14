@@ -295,7 +295,7 @@
   border-radius: 6px;
   padding: 1rem;
   margin: 5px;
-  max-width: 15em;
+  width: 15em;
   display: block;
 }
 
@@ -311,15 +311,42 @@
   box-shadow: 1px 1px 1px var(--main-color);
 }
 
-.card>.twitter-button {
+.card > .twitter-button {
   background: var(--twitter-color);
   height: 20px;
   width: 20px;
-  padding: 6px;
+  padding: 5px;
   position: absolute;
   border-radius: 20px;
   bottom: 15px;
   right: 15px;
+}
+
+.card > .edit-button {
+  border: none;
+  background: transparent;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 5px;
+}
+
+.edit-button img {
+  height: 20px;
+  width: 20px;
+}
+
+.save-button,
+.cancel-button {
+  font-size: 1rem;
+  border: none;
+  background: transparent;
+  float: right;
+}
+
+.save-button:hover,
+.cancel-button:hover {
+  color: var(--main-color);
 }
 
 .twitter-button > img {
@@ -329,6 +356,14 @@
 .suggested-post {
   padding-bottom: 30px;
   spellcheck: false;
+}
+
+.suggested-post textarea {
+  margin-top: 10px;
+  font-family: inherit;
+  font-size: inherit;
+  display: block;
+  resize: none;
 }
 
 .suggested-post p:focus {
@@ -349,7 +384,7 @@
   }
 
   .card {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
 
   #user {
