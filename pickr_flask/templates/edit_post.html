@@ -1,0 +1,8 @@
+<form hx-put="/post/{{ post_id }}" hx-target="this" hx-swap="outerHTML" class="card tweet">
+    <div class="author">@{{ username }}</div>
+    <div class="suggested-post">
+        <textarea name="text" rows="10" cols="29" spellcheck="false"> {{ post_text }} </textarea>
+    </div>
+    <button class="save-button clickable">Save</button>
+    <button class="cancel-button clickable" hx-get="/post/{{ post_id }}">Cancel</button>
+</form>

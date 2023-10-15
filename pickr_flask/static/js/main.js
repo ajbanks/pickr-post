@@ -49,31 +49,6 @@ if (closeAlert){
 }
 
 ////
-// twitter share button
-const twitterBtns = document.getElementsByClassName("twitter-button");
-const twitterURL = "https://twitter.com/intent/tweet/"
-const windowOpts = "menubar=no,status=no,height=400,width=500";
-
-function openTweetWindow(text){
-  let query = `text=${text}`;
-  let linkTarget = "_top"; // "_blank" opens a new window
-  return window.open(`${twitterURL}?${query}&`, linkTarget, windowOpts)
-               .focus();
-}
-
-for (let i = 0; i < twitterBtns.length; i++) {
-  twitterBtns[i].addEventListener("click", (e) => {
-    // get the tweet text and open twitter intent with it
-    let text = e.currentTarget
-                .previousElementSibling
-                .firstElementChild
-                .innerHTML;
-    openTweetWindow(text);
-  })
-}
-
-
-////
 // Stripe Checkout
 let stripeAPI;
 const upgradeBtn = document.querySelector("#upgradebtn")

@@ -3,9 +3,6 @@
     <div class="logo clickable" onclick=location.href='{{url_for('home')}}'>pickr</div>
 </div>
 <div class="right">
-    <div class="clickable" id="all_topic">
-        <a href="{{url_for('all_topics')}}"><b>All Topics</b></a>
-    </div>
     {% if current_user.is_authenticated %}
     <div class="clickable" id="user">
         <a href="{{url_for('user')}}">{{ current_user.username }}</a>

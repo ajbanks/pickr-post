@@ -1,11 +1,8 @@
 import random
 from time import time
-from typing import List
-from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 from sqlalchemy import Date, cast, and_, exc
-from sqlalchemy.sql.expression import func
 
 import jwt
 import stripe
@@ -17,11 +14,14 @@ from flask import (
     abort,
     render_template,
     jsonify,
+    redirect,
 )
 from flask import current_app as app
 from flask_login import current_user, login_required, login_user, logout_user
 from flask_mail import Mail, Message
+from flask_wtf.csrf import CSRFError
 from werkzeug.security import check_password_hash, generate_password_hash
+from urllib.parse import urlencode
 from .forms import LoginForm, SignupForm, TopicForm, ResetForm, SetPasswordForm
 from .http import url_has_allowed_host_and_scheme
 from .subscription import (
@@ -34,10 +34,21 @@ from .subscription import (
 from .models import (
     db, Niche, PickrUser,
     ModeledTopic, RedditPost,
-    reddit_modeled_topic_assoc
+    GeneratedPost, PostEdit,
+    latest_post_edit,
+    reddit_posts_for_topic_query,
 )
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
+
+
+# the maximum length a generated post is allowed to be
+MAX_TWEET_LEN = 500
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    app.logger.error(e)
+    abort(400)
 
 @app.errorhandler(exc.SQLAlchemyError)
 def handle_db_exception(e):
@@ -176,7 +187,6 @@ def reset():
 
         flash("Account not found with this email.")
 
-        
     return render_template(
         "reset.html",
         title="Pickr - Reset Password",
@@ -371,13 +381,6 @@ def upgrade():
         return render_template("upgrade.html")
 
 
-@dataclass
-class UITopic:
-    name: str
-    description: str
-    generated_posts: List[str]
-
-
 @app.route("/home")
 @login_required
 def home():
@@ -385,14 +388,33 @@ def home():
         return redirect(url_for("upgrade"))
     log_user_activity(current_user, "home")
     niche_ids = [n.id for n in current_user.niches]
-    topics = ModeledTopic.query.filter(
-        and_(
-            ModeledTopic.niche_id.in_(niche_ids)
+    topics = (
+        ModeledTopic.query
+        .filter(
+            and_(
+                ModeledTopic.niche_id.in_(niche_ids),
+                ModeledTopic.generated_posts.any(),
+            )
         )
-    ).order_by(
-        ModeledTopic.date.desc(),
-        ModeledTopic.size.desc()
-    ).limit(3).all()
+        .order_by(
+            ModeledTopic.date.desc(),
+            ModeledTopic.size.desc()
+        )
+        .limit(3)
+        .all()
+    )
+
+    # generated posts HTML is rendered separately to make it reusable
+    posts_html_fragments = [
+        "\n".join([
+            render_post_html_fragment(
+                p, current_user,
+                template_name="post.html"
+            )
+            for p in topic.generated_posts[:3]
+        ])
+        for topic in topics
+    ]
 
     # TODO: Should split these between niches and also max date may
     # be different for each niche
@@ -401,6 +423,7 @@ def home():
         title="Pickr - Your Daily Topics & Curated Tweets",
         date=datetime.today().strftime("%Y-%m-%d"),
         topics=topics,
+        generated_posts_fragments=posts_html_fragments,
     )
 
 
@@ -457,18 +480,11 @@ def topic(topic_id):
         return abort(404)
 
     generated_posts = topic.generated_posts
-
     posts = (
-        RedditPost.query.join(reddit_modeled_topic_assoc)
-        .join(ModeledTopic)
-        .filter(
-            and_(
-                RedditPost.id == reddit_modeled_topic_assoc.c.reddit_id,
-                ModeledTopic.id == topic_id
-            )
-        )
+        reddit_posts_for_topic_query(topic.id)
         .order_by(RedditPost.score)
-        .limit(30).all()
+        .limit(30)
+        .all()
     )
 
     return render_template(
@@ -538,3 +554,96 @@ def picker():
         no_header=True,
         no_footer=True,
     )
+
+
+###############################################################################
+# HTMX endpoints
+
+def render_post_html_fragment(
+        generated_post: GeneratedPost,
+        user: PickrUser,
+        template_name="edit_post.html",
+):
+    post = latest_post_edit(generated_post.id, user.id)
+    post_text = generated_post.text if post is None else post.text
+    return render_template(
+        template_name,
+        post_text=post_text,
+        post_id=generated_post.id,
+        username=current_user.username,
+    )
+
+
+@app.route("/post/<post_id>/edit", methods=["GET"])
+@login_required
+def edit_post(post_id):
+    try:
+        uuid = UUID(post_id, version=4)
+    except ValueError:
+        return abort(404)
+    generated_post = GeneratedPost.query.get(uuid)
+    if generated_post is None:
+        return abort(404)
+    return render_post_html_fragment(generated_post, current_user)
+
+
+@app.route("/post/<post_id>", methods=["GET", "PUT"])
+@login_required
+def post(post_id):
+    try:
+        uuid = UUID(post_id, version=4)
+    except ValueError:
+        return abort(404)
+    generated_post = GeneratedPost.query.get(uuid)
+    if generated_post is None:
+        return abort(404)
+
+    if request.method == "GET":
+        return render_post_html_fragment(
+            generated_post,
+            current_user,
+            template_name="post.html",
+        )
+
+    if request.method == "PUT":
+        # save the edit and return
+        # the non-editing mode HTML fragment
+        edit_text = request.form.get("text").strip()
+        if len(edit_text) == 0 or len(edit_text) > MAX_TWEET_LEN \
+           or edit_text == generated_post.text:
+            return render_post_html_fragment(
+                generated_post,
+                current_user,
+                template_name="post.html",
+            )
+
+        new_edit = PostEdit(
+            text=edit_text,
+            created_at=datetime.now(),
+            user_id=current_user.id,
+            generated_post_id=generated_post.id
+        )
+        db.session.add(new_edit)
+        db.session.commit()
+        return render_template(
+            "post.html",
+            post_text=edit_text,
+            post_id=generated_post.id,
+            username=current_user.username,
+        )
+
+@app.route("/post/<post_id>/tweet", methods=["GET"])
+def twitter_intents(post_id):
+    try:
+        uuid = UUID(post_id, version=4)
+    except ValueError:
+        return abort(404)
+    generated_post = GeneratedPost.query.get(uuid)
+    if generated_post is None:
+        return abort(404)
+
+    post = latest_post_edit(generated_post.id, current_user.id)
+    post_text = generated_post.text if post is None else post.text
+
+    params = urlencode({"text": post_text})
+    return redirect(f"https://twitter.com/intent/tweet/?{params}", 302)
