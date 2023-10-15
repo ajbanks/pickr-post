@@ -4,7 +4,6 @@ from datetime import datetime
 from .models import (
     db,
     ModeledTopic,
-    Tweet,
     PickrUser,
     ActivityLog,
     GeneratedPost,

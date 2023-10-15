@@ -11,6 +11,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
+from flask_wtf import CSRFProtect
 
 # load .env from repository root
 basedir = path.abspath(path.join(path.dirname(__file__), pardir))
@@ -19,6 +20,7 @@ load_dotenv(path.join(basedir, ".env"))
 login_manager = LoginManager()
 db = SQLAlchemy()
 migrate = Migrate()
+csrf = CSRFProtect()
 
 # task_queue = Celery(__name__, broker=celery_broker_url)
 
@@ -54,6 +56,7 @@ def init_app() -> Flask:
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
+    csrf.init_app(app)
 
     stripe.api_key = app.config["STRIPE_SECRET_KEY"]
     app.logger.info("App started")

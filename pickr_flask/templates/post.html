@@ -1,12 +1,14 @@
 <div hx-target="this" hx-swap="outerHTML" class="card tweet">
     <div class="author">@{{ username }}</div>
     <div class="suggested-post">
-        <p>{{post.text}}</p>
+        <p>{{post_text}}</p>
     </div>
-    <button hx-get="/post/{{ post.id }}/edit" class="edit-button clickable">
+    <button hx-get="/post/{{ post_id }}/edit" class="edit-button clickable">
         <img src='{{ url_for("static", filename="img/edit.svg") }}'>
     </button>
     <div class="twitter-button clickable">
+        <a href="/post/{{ post_id }}/tweet">
         <img src='{{ url_for("static", filename="img/twitter.svg") }}'>
+        </a>
     </div>
 </div>

@@ -63,13 +63,16 @@ function openTweetWindow(text){
 }
 
 // get the tweet text and open twitter intent with it
-for (let i = 0; i < tweetCards.length; i++) {
-  let suggestedPost = tweetCards[i].getElementsByClassName("suggested-post")[0];
-  let text = suggestedPost.firstElementChild.innerHTML;
-  let tweetBtn = tweetCards[i].getElementsByClassName("twitter-button")[0];
-  tweetBtn.addEventListener("click", (e) => {
-    openTweetWindow(text);
-  })
+function listenOnTwitterBtns(){
+  for (let i = 0; i < tweetCards.length; i++) {
+    let suggestedPost = tweetCards[i].getElementsByClassName("suggested-post")[0];
+    let text = suggestedPost.firstElementChild.innerHTML;
+    let tweetBtn = tweetCards[i].getElementsByClassName("twitter-button")[0];
+    tweetBtn.addEventListener("click", (e) => {
+      console.log(text);
+      openTweetWindow(text);
+    })
+  }
 }
 
 

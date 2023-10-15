@@ -40,7 +40,7 @@
                     </p>
                 </div>
                 <div class="container cards">
-                    {{ generated_posts_fragments[ loop.index ] | safe}}
+                    {{ generated_posts_fragments[ loop.index-1 ] | safe}}
                 </div>
                 <div class="more">
                     <a href="/topic/{{ topic.id }} ">More from this topic↗</a>
