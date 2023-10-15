@@ -1,0 +1,32 @@
+<form hx-post="/post/{{ post_id }}/schedule" hx-target="this" hx-swap="outerHTML" class="card tweet">
+    {% if username %}
+    <div class="author">@{{ username }}</div>
+    {% endif %}
+
+    {% if scheduled_for %}
+    <div class="scheduled">Scheduled for: {{ scheduled_for }}</div>
+    {% endif %}
+
+    <div class="suggested-post">
+        <p>{{post_text}}</p>
+    </div>
+
+    <div class="schedule-form">
+        <div class="datetime-input">
+            <label for="timezone">Schedule this tweet for:</label>
+            <input type="hidden" id="timezone" name="timezone" value="{{ timezone_value }}"/>
+            <input
+                type="datetime-local"
+                id="datetime"
+                name="datetime"
+                value="{{ datetime_value }}"
+                min="{{ datetime_min }}"
+                max="{{ datetime_max }}"
+                required />
+            <span class="validity"></span>
+        </div>
+
+        <input type="submit" value="Schedule" class="submit-button clickable"/>
+        <button class="cancel-button clickable" hx-get="/post/{{ post_id }}">Cancel</button>
+    </div>
+</form>
