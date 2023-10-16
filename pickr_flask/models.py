@@ -140,6 +140,7 @@ class SchedulePost(db.Model):
         ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
         index=True
     )
+    celery_id = Column(UUID(as_uuid=True), nullable=True)
 
 
 class StripeSubscriptionStatus(enum.Enum):

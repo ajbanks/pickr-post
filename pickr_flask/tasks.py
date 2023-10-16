@@ -15,7 +15,7 @@ from .models import (
     user_niche_assoc
     _to_dict,
 )
-from .post_schedule import create_schedule_text, create_schedule_text_no_trends, write_schedule
+from .post_schedule import create_schedule_text, create_schedule_text_no_trends, write_schedule, write_schedule_posts
 
 from .reddit import (
     process_post,
