@@ -394,6 +394,10 @@
   color: #888;
 }
 
+.datetime-input input {
+  width: 12rem;
+}
+
 .datetime-input input:invalid + span::after {
   content: "✖";
   color: red;
@@ -411,6 +415,9 @@
 }
 
 .suggested-post textarea {
+  width: 90%;
+  max-width: 90%;
+  max-height: 90%;
   margin-top: 10px;
   font-family: inherit;
   font-size: inherit;

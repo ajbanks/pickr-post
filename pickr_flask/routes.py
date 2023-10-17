@@ -41,7 +41,7 @@ from .util import log_user_activity
 from .auth import get_reset_token, verify_reset_token, PASSWORD_HASH_METHOD
 
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
-DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%-M%p"
+DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
 
 # max length a generated post is allowed to be
 MAX_TWEET_LEN = 500
@@ -587,8 +587,7 @@ def post(post_id):
 
     if request.method == "GET":
         return render_post_html_fragment(
-            generated_post,
-            template_name="post.html",
+            generated_post, template_name="post.html"
         )
 
     if request.method == "PUT":
@@ -639,15 +638,22 @@ def schedule_post(post_id):
     post_text = generated_post.text if post is None else post.text
 
     if request.method == "POST":
-        # TODO schedule tweet
-
         tz_str = request.form.get("timezone")
-        schedule_dt = request.form.get("schedule")
+        dt_str = request.form.get("datetime")
+        app.logger.info(request.form)
+        try:
+            tz = ZoneInfo(tz_str)
+            schedule_dt = datetime.strptime(dt_str, DATETIME_ISO_FMT)
+        except Exception as e:
+            app.logger.error(f"error processing schedule form: {e}")
+            abort(400)
+
+        # TODO schedule tweet
 
         return render_post_html_fragment(
             generated_post,
             template_name="post.html",
-            scheduled_for=datetime.now().strftime(DATETIME_FRIENDLY_FMT),
+            scheduled_for=schedule_dt.strftime(DATETIME_FRIENDLY_FMT),
         )
 
     tz_str = request.args.get("timezone")
@@ -655,7 +661,6 @@ def schedule_post(post_id):
         tz = ZoneInfo(tz_str)
     except Exception as e:
         app.logger.error(f"invalid timezone: {e}")
-        # fallback to UTC, but this is probably not what we want.
         tz = ZoneInfo("UTC")
 
     min_dt = datetime.now(tz=tz)

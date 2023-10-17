@@ -210,6 +210,51 @@ class PostEdit(db.Model):
     created_at = Column(DateTime, nullable=True)
 
 
+class Schedule(db.Model):
+    """Schedule represents a users schedule."""
+    __tablename__ = "schedule"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    schedule_text = Column(String(10000), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
+    )
+    schedule_creation_date = Column(
+        DateTime,
+        nullable=False,
+        default=func.now()
+    )
+
+    schedule_posts = relationship("SchedulePost")
+
+    def __repr__(self):
+        return f"<Schedule id={id}>"
+
+
+class SchedulePost(db.Model):
+    """SchedulePostdule represents a scheduled twitter post."""
+    __tablename__ = "schedule_post"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    schedule_id = Column(
+        Integer,
+        ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),
+        index=True
+    )
+    generated_post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
+        index=True
+    )
+    tweet_id = Column(BigInteger)
+    posted_at = Column(DateTime, nullable=True)
+    celery_id = Column(UUID(as_uuid=True), nullable=True)
+
+    def __repr__(self):
+        return f"<Schedule id={id}>"
+
+
 class Subreddit(db.Model):
     """
     Table associating ids with the subreddit names
@@ -319,6 +364,18 @@ def latest_post_edit(generated_post_id, user_id):
             )
         )
         .order_by(PostEdit.id.desc())
+        .limit(1)
+        .first()
+    )
+
+
+def latest_user_schedule(user_id):
+    '''Look up most recent schedule for user'''
+    return (
+        Schedule.query
+        .filter(Schedule.user_id == user_id)
+        .order_by(Schedule.schedule_creation_date)
+        .desc()
         .limit(1)
         .first()
     )
