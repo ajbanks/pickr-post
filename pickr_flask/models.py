@@ -237,6 +237,11 @@ class SchedulePost(db.Model):
     __tablename__ = "schedule_post"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
     id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id"),
+        nullable=False
+    )
     schedule_id = Column(
         Integer,
         ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),

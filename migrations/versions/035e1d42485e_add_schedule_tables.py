@@ -1,8 +1,8 @@
 """add schedule tables
 
-Revision ID: 1119192597ee
+Revision ID: 035e1d42485e
 Revises: 319debadff64
-Create Date: 2023-10-16 20:39:45.185295
+Create Date: 2023-10-16 21:15:49.920351
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '1119192597ee'
+revision = '035e1d42485e'
 down_revision = '319debadff64'
 branch_labels = None
 depends_on = None
@@ -29,6 +29,7 @@ def upgrade():
     )
     op.create_table('schedule_post',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('schedule_id', sa.Integer(), nullable=True),
     sa.Column('generated_post_id', sa.UUID(), nullable=True),
     sa.Column('tweet_id', sa.BigInteger(), nullable=True),
@@ -36,6 +37,7 @@ def upgrade():
     sa.Column('celery_id', sa.UUID(), nullable=True),
     sa.ForeignKeyConstraint(['generated_post_id'], ['pickr.generated_post.id'], ),
     sa.ForeignKeyConstraint(['schedule_id'], ['pickr.schedule.id'], ),
+    sa.ForeignKeyConstraint(['user_id'], ['pickr.user.id'], ),
     sa.PrimaryKeyConstraint('id'),
     schema='pickr'
     )
