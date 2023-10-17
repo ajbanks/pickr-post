@@ -9,10 +9,9 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    and_,
 )
 from sqlalchemy.dialects.postgresql import UUID, ENUM
-from sqlalchemy.orm import relationship, Query
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from uuid import uuid4
 from . import db
@@ -226,15 +225,15 @@ class Schedule(db.Model):
         default=func.now()
     )
 
-    schedule_posts = relationship("SchedulePost")
+    scheduled_posts = relationship("ScheduledPost")
 
     def __repr__(self):
         return f"<Schedule id={id}>"
 
 
-class SchedulePost(db.Model):
+class ScheduledPost(db.Model):
     """SchedulePostdule represents a scheduled twitter post."""
-    __tablename__ = "schedule_post"
+    __tablename__ = "scheduled_post"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(
@@ -252,12 +251,14 @@ class SchedulePost(db.Model):
         ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
         index=True
     )
+    # UTC datetime
+    scheduled_for = Column(DateTime, nullable=False)
     tweet_id = Column(BigInteger)
-    posted_at = Column(DateTime, nullable=True)
-    celery_id = Column(UUID(as_uuid=True), nullable=True)
+    posted_at = Column(DateTime)
+    celery_id = Column(UUID(as_uuid=True))
 
     def __repr__(self):
-        return f"<Schedule id={id}>"
+        return f"<ScheduledPost id={id}>"
 
 
 class Subreddit(db.Model):
@@ -352,53 +353,3 @@ class Tweet(db.Model):
 
     def __repr__(self):
         return f"<Tweet id={self.id}>"
-
-
-###############################################################################
-# Query util functions
-
-def latest_post_edit(generated_post_id, user_id):
-    '''Look up the user's most recent edit for a generated post, if any.'''
-    return (
-        PostEdit.query.join(GeneratedPost)
-        .filter(
-            and_(
-                PostEdit.generated_post_id == GeneratedPost.id,
-                GeneratedPost.id == generated_post_id,
-                PostEdit.user_id == user_id,
-            )
-        )
-        .order_by(PostEdit.id.desc())
-        .limit(1)
-        .first()
-    )
-
-
-def latest_user_schedule(user_id):
-    '''Look up most recent schedule for user'''
-    return (
-        Schedule.query
-        .filter(Schedule.user_id == user_id)
-        .order_by(Schedule.schedule_creation_date)
-        .desc()
-        .limit(1)
-        .first()
-    )
-
-
-def reddit_posts_for_topic_query(topic_id) -> Query:
-    '''
-    Return a query object that looks up reddit posts
-    associated to a topic
-    '''
-    return (
-        RedditPost.query
-        .join(reddit_modeled_topic_assoc)
-        .join(ModeledTopic)
-        .filter(
-            and_(
-                RedditPost.id == reddit_modeled_topic_assoc.c.reddit_id,
-                ModeledTopic.id == topic_id
-            )
-        )
-    )

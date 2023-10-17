@@ -1,5 +1,5 @@
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from uuid import UUID
 from sqlalchemy import Date, cast, and_, exc
@@ -20,6 +20,7 @@ from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFError
 from werkzeug.security import check_password_hash, generate_password_hash
 from urllib.parse import urlencode
+
 from .forms import LoginForm, SignupForm, TopicForm, ResetForm, SetPasswordForm
 from .http import url_has_allowed_host_and_scheme
 from .subscription import (
@@ -33,8 +34,13 @@ from .models import (
     db, Niche, PickrUser,
     ModeledTopic, RedditPost,
     GeneratedPost, PostEdit,
+    ScheduledPost,
+)
+from .queries import (
     latest_post_edit,
     reddit_posts_for_topic_query,
+    get_scheduled_post,
+    top_modeled_topic_query
 )
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
@@ -56,6 +62,7 @@ MAX_FUTURE_SCHEDULE_DAYS = 90
 def handle_csrf_error(e):
     app.logger.error(e)
     abort(400)
+
 
 @app.errorhandler(exc.SQLAlchemyError)
 def handle_db_exception(e):
@@ -371,27 +378,13 @@ def home():
         return redirect(url_for("upgrade"))
     log_user_activity(current_user, "home")
     niche_ids = [n.id for n in current_user.niches]
-    topics = (
-        ModeledTopic.query
-        .filter(
-            and_(
-                ModeledTopic.niche_id.in_(niche_ids),
-                ModeledTopic.generated_posts.any(),
-            )
-        )
-        .order_by(
-            ModeledTopic.date.desc(),
-            ModeledTopic.size.desc()
-        )
-        .limit(3)
-        .all()
-    )
+    topics = top_modeled_topic_query(niche_ids).limit(3).all()
 
     # generated posts HTML is rendered separately to make it reusable
     posts_html_fragments = [
         "\n".join([
             render_post_html_fragment(
-                p,
+                current_user.id, p,
                 template_name="post.html"
             )
             for p in topic.generated_posts[:3]
@@ -553,16 +546,26 @@ def get_generated_post_or_abort(post_id):
 
 
 def render_post_html_fragment(
+        user_id: UUID,
         generated_post: GeneratedPost,
         template_name="edit_post.html",
         **kwargs,
 ):
-    post = latest_post_edit(generated_post.id, current_user.id)
+    '''
+    Render the post HTML fragment including any edits
+    and showing if the post is scheduled.
+    '''
+    post = latest_post_edit(generated_post.id, user_id)
     post_text = generated_post.text if post is None else post.text
+    sched_post = get_scheduled_post(generated_post.id, user_id)
+    sched_str = ""
+    if sched_post is not None:
+        sched_str = sched_post.scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
     return render_template(
         template_name,
         post_text=post_text,
         post_id=generated_post.id,
+        scheduled_for=sched_str,
         **kwargs,
     )
 
@@ -573,7 +576,11 @@ def edit_post(post_id):
     generated_post = get_generated_post_or_abort(post_id)
 
     app.logger.info(request.args.to_dict())
-    return render_post_html_fragment(generated_post)
+    return render_post_html_fragment(
+        current_user.id,
+        generated_post,
+        template_name="edit_post.html"
+    )
 
 
 @app.route("/post/<post_id>", methods=["GET", "PUT"])
@@ -587,7 +594,9 @@ def post(post_id):
 
     if request.method == "GET":
         return render_post_html_fragment(
-            generated_post, template_name="post.html"
+            current_user.id,
+            generated_post,
+            template_name="post.html",
         )
 
     if request.method == "PUT":
@@ -595,6 +604,7 @@ def post(post_id):
         if len(edit_text) == 0 or len(edit_text) > MAX_TWEET_LEN \
            or edit_text == generated_post.text:
             return render_post_html_fragment(
+                current_user.id,
                 generated_post,
                 template_name="post.html"
             )
@@ -638,22 +648,30 @@ def schedule_post(post_id):
     post_text = generated_post.text if post is None else post.text
 
     if request.method == "POST":
-        tz_str = request.form.get("timezone")
-        dt_str = request.form.get("datetime")
-        app.logger.info(request.form)
+        timezone_str = request.form.get("timezone")
+        datetime_str = request.form.get("datetime")
         try:
-            tz = ZoneInfo(tz_str)
-            schedule_dt = datetime.strptime(dt_str, DATETIME_ISO_FMT)
+            tz = ZoneInfo(timezone_str)
+            schedule_dt = datetime.strptime(
+                datetime_str, DATETIME_ISO_FMT
+            ).astimezone(tz)
         except Exception as e:
             app.logger.error(f"error processing schedule form: {e}")
             abort(400)
 
-        # TODO schedule tweet
+        # schedule tweet
+        scheduled_post = ScheduledPost(
+            user_id=current_user.id,
+            generated_post_id=generated_post.id,
+            scheduled_for=schedule_dt.astimezone(timezone.utc)
+        )
+        db.session.add(scheduled_post)
+        db.session.commit()
 
         return render_post_html_fragment(
+            current_user.id,
             generated_post,
             template_name="post.html",
-            scheduled_for=schedule_dt.strftime(DATETIME_FRIENDLY_FMT),
         )
 
     tz_str = request.args.get("timezone")
