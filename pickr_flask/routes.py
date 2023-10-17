@@ -1,10 +1,9 @@
 import random
-from time import time
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from uuid import UUID
 from sqlalchemy import Date, cast, and_, exc
 
-import jwt
 import stripe
 from flask import (
     flash,
@@ -14,7 +13,6 @@ from flask import (
     abort,
     render_template,
     jsonify,
-    redirect,
 )
 from flask import current_app as app
 from flask_login import current_user, login_required, login_user, logout_user
@@ -22,6 +20,7 @@ from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFError
 from werkzeug.security import check_password_hash, generate_password_hash
 from urllib.parse import urlencode
+
 from .forms import LoginForm, SignupForm, TopicForm, ResetForm, SetPasswordForm
 from .http import url_has_allowed_host_and_scheme
 from .subscription import (
@@ -35,20 +34,35 @@ from .models import (
     db, Niche, PickrUser,
     ModeledTopic, RedditPost,
     GeneratedPost, PostEdit,
+    ScheduledPost,
+)
+from .queries import (
     latest_post_edit,
     reddit_posts_for_topic_query,
+    get_scheduled_post,
+    top_modeled_topic_query
 )
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
+from .auth import get_reset_token, verify_reset_token, PASSWORD_HASH_METHOD
 
+DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
+DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
 
-# the maximum length a generated post is allowed to be
+# max length a generated post is allowed to be
 MAX_TWEET_LEN = 500
+# max days in the future a tweet can be scheduled
+MAX_FUTURE_SCHEDULE_DAYS = 90
+
+
+###############################################################################
+# Error handlers
 
 @app.errorhandler(CSRFError)
 def handle_csrf_error(e):
     app.logger.error(e)
     abort(400)
+
 
 @app.errorhandler(exc.SQLAlchemyError)
 def handle_db_exception(e):
@@ -116,8 +130,7 @@ def signup():
         ).first()
         if existing_user is None:
             password_hash = generate_password_hash(
-                form.password.data,
-                method="pbkdf2:sha512:1000",
+                form.password.data, method=PASSWORD_HASH_METHOD
             )
             user = PickrUser(
                 username=form.name.data,
@@ -171,7 +184,7 @@ def reset():
             msg.subject = "Pickr Social - Reset Password"
             msg.recipients = [existing_user.email]
             msg.sender = 'account@pickrsocial.com'
-            token = get_reset_token(existing_user.username)
+            token = get_reset_token(existing_user.username, app.config["SECRET_KEY"])
             msg.html = render_template(
                 'reset_email_body.html',
                 user=existing_user.username,
@@ -197,39 +210,16 @@ def reset():
     )
 
 
-def get_reset_token(username, expires=500):
-    return jwt.encode(
-        {'reset_password': username, 'exp': time() + expires},
-        algorithm='HS256',
-        key=app.config['SECRET_KEY']
-    )
-
-
-def verify_reset_token(token):
-    try:
-        username = jwt.decode(
-            token,
-            key=app.config['SECRET_KEY'],
-            algorithms=['HS256']
-        )['reset_password']
-        app.logger.info(f'reset password - username from token {username}')
-    except Exception as e:
-        app.logger.error(f'reset password - caught exception when trying to get token {e}')
-        return
-    return PickrUser.query.filter_by(username=username).first()
-
-
 @app.route("/set_password/<token>", methods=["GET", "POST"])
 def set_password(token):
     form = SetPasswordForm()
-    user = verify_reset_token(token)
+    user = verify_reset_token(token, app.config["SECRET_KEY"])
     password = form.password.data
     app.logger.info(f'reset password - new password  {password}')
     if form.validate_on_submit():
         password = form.password.data
         password_hash = generate_password_hash(
-                password,
-                method="pbkdf2:sha512:1000",
+                password, method=PASSWORD_HASH_METHOD
             )
         user.password = password_hash
         db.session.add(user)
@@ -388,27 +378,13 @@ def home():
         return redirect(url_for("upgrade"))
     log_user_activity(current_user, "home")
     niche_ids = [n.id for n in current_user.niches]
-    topics = (
-        ModeledTopic.query
-        .filter(
-            and_(
-                ModeledTopic.niche_id.in_(niche_ids),
-                ModeledTopic.generated_posts.any(),
-            )
-        )
-        .order_by(
-            ModeledTopic.date.desc(),
-            ModeledTopic.size.desc()
-        )
-        .limit(3)
-        .all()
-    )
+    topics = top_modeled_topic_query(niche_ids).limit(3).all()
 
     # generated posts HTML is rendered separately to make it reusable
     posts_html_fragments = [
         "\n".join([
             render_post_html_fragment(
-                p, current_user,
+                current_user.id, p,
                 template_name="post.html"
             )
             for p in topic.generated_posts[:3]
@@ -522,7 +498,6 @@ def picker():
         try:
             ids = [UUID(tid) for tid in topic_ids if tid != ""]
         except ValueError:
-            app.logger.error()
             return abort(400)
 
         current_user.niches = list(filter(lambda t: t.id in ids, all_topics))
@@ -559,62 +534,79 @@ def picker():
 ###############################################################################
 # HTMX endpoints
 
+def get_generated_post_or_abort(post_id):
+    try:
+        uuid = UUID(post_id, version=4)
+    except ValueError:
+        return abort(400)
+    generated_post = GeneratedPost.query.get(uuid)
+    if generated_post is None:
+        return abort(404)
+    return generated_post
+
+
 def render_post_html_fragment(
+        user_id: UUID,
         generated_post: GeneratedPost,
-        user: PickrUser,
         template_name="edit_post.html",
+        **kwargs,
 ):
-    post = latest_post_edit(generated_post.id, user.id)
+    '''
+    Render the post HTML fragment including any edits
+    and showing if the post is scheduled.
+    '''
+    post = latest_post_edit(generated_post.id, user_id)
     post_text = generated_post.text if post is None else post.text
+    sched_post = get_scheduled_post(generated_post.id, user_id)
+    sched_str = ""
+    if sched_post is not None:
+        sched_str = sched_post.scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
     return render_template(
         template_name,
         post_text=post_text,
         post_id=generated_post.id,
-        username=current_user.username,
+        scheduled_for=sched_str,
+        **kwargs,
     )
 
 
 @app.route("/post/<post_id>/edit", methods=["GET"])
 @login_required
 def edit_post(post_id):
-    try:
-        uuid = UUID(post_id, version=4)
-    except ValueError:
-        return abort(404)
-    generated_post = GeneratedPost.query.get(uuid)
-    if generated_post is None:
-        return abort(404)
-    return render_post_html_fragment(generated_post, current_user)
+    generated_post = get_generated_post_or_abort(post_id)
+
+    app.logger.info(request.args.to_dict())
+    return render_post_html_fragment(
+        current_user.id,
+        generated_post,
+        template_name="edit_post.html"
+    )
 
 
 @app.route("/post/<post_id>", methods=["GET", "PUT"])
 @login_required
 def post(post_id):
-    try:
-        uuid = UUID(post_id, version=4)
-    except ValueError:
-        return abort(404)
-    generated_post = GeneratedPost.query.get(uuid)
-    if generated_post is None:
-        return abort(404)
+    '''
+    GET requests return HTML fragment for given post.
+    PUT requests edit the post's text and return the edited HTML fragment.
+    '''
+    generated_post = get_generated_post_or_abort(post_id)
 
     if request.method == "GET":
         return render_post_html_fragment(
+            current_user.id,
             generated_post,
-            current_user,
             template_name="post.html",
         )
 
     if request.method == "PUT":
-        # save the edit and return
-        # the non-editing mode HTML fragment
         edit_text = request.form.get("text").strip()
         if len(edit_text) == 0 or len(edit_text) > MAX_TWEET_LEN \
            or edit_text == generated_post.text:
             return render_post_html_fragment(
+                current_user.id,
                 generated_post,
-                current_user,
-                template_name="post.html",
+                template_name="post.html"
             )
 
         new_edit = PostEdit(
@@ -629,21 +621,76 @@ def post(post_id):
             "post.html",
             post_text=edit_text,
             post_id=generated_post.id,
-            username=current_user.username,
         )
+
 
 @app.route("/post/<post_id>/tweet", methods=["GET"])
 def twitter_intents(post_id):
-    try:
-        uuid = UUID(post_id, version=4)
-    except ValueError:
-        return abort(404)
-    generated_post = GeneratedPost.query.get(uuid)
-    if generated_post is None:
-        return abort(404)
-
+    '''
+    GET redirects to Twitter intents to tweet the given post
+    '''
+    generated_post = get_generated_post_or_abort(post_id)
     post = latest_post_edit(generated_post.id, current_user.id)
     post_text = generated_post.text if post is None else post.text
 
     params = urlencode({"text": post_text})
     return redirect(f"https://twitter.com/intent/tweet/?{params}", 302)
+
+
+@app.route("/post/<post_id>/schedule", methods=["GET", "POST"])
+def schedule_post(post_id):
+    '''
+    GET returns the schedule form fragment
+    POST schedules the post to be tweeted
+    '''
+    generated_post = get_generated_post_or_abort(post_id)
+    post = latest_post_edit(generated_post.id, current_user.id)
+    post_text = generated_post.text if post is None else post.text
+
+    if request.method == "POST":
+        timezone_str = request.form.get("timezone")
+        datetime_str = request.form.get("datetime")
+        try:
+            tz = ZoneInfo(timezone_str)
+            schedule_dt = datetime.strptime(
+                datetime_str, DATETIME_ISO_FMT
+            ).astimezone(tz)
+        except Exception as e:
+            app.logger.error(f"error processing schedule form: {e}")
+            abort(400)
+
+        # schedule tweet
+        scheduled_post = ScheduledPost(
+            user_id=current_user.id,
+            generated_post_id=generated_post.id,
+            scheduled_for=schedule_dt.astimezone(timezone.utc)
+        )
+        db.session.add(scheduled_post)
+        db.session.commit()
+
+        return render_post_html_fragment(
+            current_user.id,
+            generated_post,
+            template_name="post.html",
+        )
+
+    tz_str = request.args.get("timezone")
+    try:
+        tz = ZoneInfo(tz_str)
+    except Exception as e:
+        app.logger.error(f"invalid timezone: {e}")
+        tz = ZoneInfo("UTC")
+
+    min_dt = datetime.now(tz=tz)
+    max_dt = min_dt + timedelta(days=MAX_FUTURE_SCHEDULE_DAYS)
+    schedule_dt = min_dt + timedelta(days=1)  # TODO: placeholder
+
+    return render_template(
+        "schedule_post.html",
+        post_id=generated_post.id,
+        post_text=post_text,
+        timezone_value=str(tz),
+        datetime_min=min_dt.strftime(DATETIME_ISO_FMT),
+        datetime_max=max_dt.strftime(DATETIME_ISO_FMT),
+        datetime_value=schedule_dt.strftime(DATETIME_ISO_FMT),
+    )

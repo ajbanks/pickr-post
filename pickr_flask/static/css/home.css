@@ -173,7 +173,7 @@
 }
 
 .accordion {
-  transition: 0.2s;
+  transition: 0.1s;
   padding: 10px 20px;
   margin: 0px;
 }
@@ -193,7 +193,7 @@
   padding-left: 20px;
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.2s ease-out;
+  transition: max-height 0.1s ease-out;
 }
 
 .accordion-content h2 {
@@ -307,6 +307,13 @@
   color: #bbb;
 }
 
+.card .scheduled {
+  color: #888;
+  font-size: 0.8rem;
+  background: #f1f1fe;
+  padding: 5px;
+}
+
 .card:hover {
   box-shadow: 1px 1px 1px var(--main-color);
 }
@@ -331,21 +338,43 @@
   padding: 5px;
 }
 
+.card > .schedule-button {
+  border: none;
+  background: transparent;
+  position: absolute;
+  bottom: 10px;
+  left: 40px;
+  padding: 4px;
+}
+
 .edit-button img {
+  height: 17px;
+  width: 17px;
+}
+
+.schedule-button img {
   height: 20px;
   width: 20px;
 }
 
-.save-button,
 .cancel-button {
-  font-size: 1rem;
+  font-size: 0.9rem;
+  border: none;
+  background: transparent;
+  float: left;
+}
+
+.save-button,
+.submit-button {
+  font-size: 0.9rem;
   border: none;
   background: transparent;
   float: right;
 }
 
 .save-button:hover,
-.cancel-button:hover {
+.cancel-button:hover,
+.submit-button:hover {
   color: var(--main-color);
 }
 
@@ -353,11 +382,42 @@
   margin-top: 2px;
 }
 
+.datetime-input {
+  align: center;
+  padding-top: 0px;
+  padding-bottom: 20px;
+}
+
+.datetime-input label {
+  font-size: 0.9rem;
+  font-weight: 200;
+  color: #888;
+}
+
+.datetime-input input {
+  width: 12rem;
+}
+
+.datetime-input input:invalid + span::after {
+  content: "✖";
+  color: red;
+  padding-left: 5px;
+}
+
+.datetime-input input:valid + span::after {
+  content: "✓";
+  color: var(--twitter-color);
+  padding-left: 5px;
+}
+
 .suggested-post {
-  padding-bottom: 30px;
+  padding-bottom: 20px;
 }
 
 .suggested-post textarea {
+  width: 90%;
+  max-width: 90%;
+  max-height: 90%;
   margin-top: 10px;
   font-family: inherit;
   font-size: inherit;

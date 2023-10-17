@@ -49,6 +49,20 @@ if (closeAlert){
 }
 
 ////
+// HTMX
+
+// add timezone info to htmx requests
+document.body.addEventListener("htmx:configRequest", function(e) {
+  if (e.srcElement.classList.contains("schedule-button")) {
+    console.log(e);
+    let dtInfo = Intl.DateTimeFormat().resolvedOptions();
+    e.detail.parameters["timezone"] = dtInfo.timeZone;
+    e.detail.parameters["locale"] = dtInfo.locale;
+  }
+})
+
+
+////
 // Stripe Checkout
 let stripeAPI;
 const upgradeBtn = document.querySelector("#upgradebtn")

@@ -9,10 +9,9 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
-    and_,
 )
 from sqlalchemy.dialects.postgresql import UUID, ENUM
-from sqlalchemy.orm import relationship, Query
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from uuid import uuid4
 from . import db
@@ -210,6 +209,58 @@ class PostEdit(db.Model):
     created_at = Column(DateTime, nullable=True)
 
 
+class Schedule(db.Model):
+    """Schedule represents a users schedule."""
+    __tablename__ = "schedule"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    schedule_text = Column(String(10000), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
+    )
+    schedule_creation_date = Column(
+        DateTime,
+        nullable=False,
+        default=func.now()
+    )
+
+    scheduled_posts = relationship("ScheduledPost")
+
+    def __repr__(self):
+        return f"<Schedule id={id}>"
+
+
+class ScheduledPost(db.Model):
+    """SchedulePostdule represents a scheduled twitter post."""
+    __tablename__ = "scheduled_post"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id"),
+        nullable=False
+    )
+    schedule_id = Column(
+        Integer,
+        ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),
+        index=True
+    )
+    generated_post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
+        index=True
+    )
+    # UTC datetime
+    scheduled_for = Column(DateTime, nullable=False)
+    tweet_id = Column(BigInteger)
+    posted_at = Column(DateTime)
+    celery_id = Column(UUID(as_uuid=True))
+
+    def __repr__(self):
+        return f"<ScheduledPost id={id}>"
+
+
 class Subreddit(db.Model):
     """
     Table associating ids with the subreddit names
@@ -302,41 +353,3 @@ class Tweet(db.Model):
 
     def __repr__(self):
         return f"<Tweet id={self.id}>"
-
-
-###############################################################################
-# Query util functions
-
-def latest_post_edit(generated_post_id, user_id):
-    '''Look up the user's most recent edit for a generated post, if any.'''
-    return (
-        PostEdit.query.join(GeneratedPost)
-        .filter(
-            and_(
-                PostEdit.generated_post_id == GeneratedPost.id,
-                GeneratedPost.id == generated_post_id,
-                PostEdit.user_id == user_id,
-            )
-        )
-        .order_by(PostEdit.id.desc())
-        .limit(1)
-        .first()
-    )
-
-
-def reddit_posts_for_topic_query(topic_id) -> Query:
-    '''
-    Return a query object that looks up reddit posts
-    associated to a topic
-    '''
-    return (
-        RedditPost.query
-        .join(reddit_modeled_topic_assoc)
-        .join(ModeledTopic)
-        .filter(
-            and_(
-                RedditPost.id == reddit_modeled_topic_assoc.c.reddit_id,
-                ModeledTopic.id == topic_id
-            )
-        )
-    )
