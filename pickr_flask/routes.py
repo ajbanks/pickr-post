@@ -1,50 +1,35 @@
 import random
 from datetime import datetime, timedelta, timezone
-from zoneinfo import ZoneInfo
+from urllib.parse import urlencode
 from uuid import UUID
-from sqlalchemy import Date, cast, and_, exc
+from zoneinfo import ZoneInfo
 
 import stripe
-from flask import (
-    flash,
-    redirect,
-    url_for,
-    request,
-    abort,
-    render_template,
-    jsonify,
-)
+import tweepy
+from flask import Markup, abort
 from flask import current_app as app
+from flask import (flash, jsonify, redirect, render_template,
+                   render_template_string, request, url_for)
 from flask_login import current_user, login_required, login_user, logout_user
 from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFError
+from sqlalchemy import Date, and_, cast, exc
 from werkzeug.security import check_password_hash, generate_password_hash
-from urllib.parse import urlencode
 
-from .forms import LoginForm, SignupForm, TopicForm, ResetForm, SetPasswordForm
+from .auth import PASSWORD_HASH_METHOD, get_reset_token, verify_reset_token
+from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm
 from .http import url_has_allowed_host_and_scheme
-from .subscription import (
-    is_user_stripe_subscription_active,
-    is_user_account_valid,
-    handle_subscription_updated,
-    handle_subscription_deleted,
-    handle_checkout_completed,
-)
-from .models import (
-    db, Niche, PickrUser,
-    ModeledTopic, RedditPost,
-    GeneratedPost, PostEdit,
-    ScheduledPost,
-)
-from .queries import (
-    latest_post_edit,
-    reddit_posts_for_topic_query,
-    get_scheduled_post,
-    top_modeled_topic_query
-)
+from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
+                     PickrUser, PostEdit, RedditPost, ScheduledPost, db)
+from .queries import (get_scheduled_post, latest_post_edit,
+                      oauth_session_by_token, oauth_session_by_user,
+                      reddit_posts_for_topic_query, top_modeled_topic_query)
+from .subscription import (handle_checkout_completed,
+                           handle_subscription_deleted,
+                           handle_subscription_updated, is_user_account_valid,
+                           is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity
-from .auth import get_reset_token, verify_reset_token, PASSWORD_HASH_METHOD
 
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
 DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
@@ -73,6 +58,80 @@ def handle_db_exception(e):
 ###############################################################################
 # Authentication endpoints
 
+@app.route("/twitter/auth", methods=["GET"])
+def twitter_auth():
+    oauth_handler = tweepy.OAuth1UserHandler(
+        app.config["TWITTER_API_KEY"],
+        app.config["TWITTER_API_KEY_SECRET"],
+        callback=app.config["TWITTER_CALLBACK_URL"],
+    )
+    oauth_url = oauth_handler.get_authorization_url()
+    oauth_token = oauth_handler.request_token["oauth_token"]
+    oauth_token_secret = oauth_handler.request_token["oauth_token_secret"]
+    oauth_sess = OAuthSession(
+        oauth_token=oauth_token,
+        oauth_token_secret=oauth_token_secret,
+        user_id=current_user.id,
+        created_at=datetime.now(),
+    )
+    db.session.add(oauth_sess)
+    db.session.commit()
+
+    return redirect(oauth_url, 302)
+
+
+@app.route("/twitter/callback", methods=["GET"])
+@login_required
+def twitter_callback():
+    '''
+    GET serves callback endpoint for Twitter 3-legged auth.
+        It obtains access token for the user and saves it.
+    '''
+    denied = request.args.get("denied")
+    if denied is not None:
+        app.logger.info(
+            f"Twitter OAuth denied: username={current_user.username}"
+        )
+        return redirect(url_for("home"))
+
+    oauth_token = request.args.get("oauth_token")
+    oauth_verifier = request.args.get("oauth_verifier")
+    if oauth_token == "" or oauth_verifier == "":
+        app.logger.error("OAuth parameters not found")
+        return redirect(url_for("home"))
+
+    oauth_sess = oauth_session_by_token(oauth_token)
+    if oauth_sess is None:
+        app.logger.error(f"no OAuth session found for token={oauth_token}")
+        return redirect(url_for("home"))
+
+    oauth_handler = tweepy.OAuth1UserHandler(
+        app.config["TWITTER_API_KEY"],
+        app.config["TWITTER_API_KEY_SECRET"],
+        callback=app.config["TWITTER_CALLBACK_URL"],
+    )
+    oauth_handler.request_token = {
+        "oauth_token": oauth_sess.oauth_token,
+        "oauth_token_secret": oauth_sess.oauth_token_secret,
+    }
+
+    try:
+        access_token, access_token_secret = (
+            oauth_handler.get_access_token(oauth_verifier)
+        )
+    except tweepy.errors.TweepyException as e:
+        app.logger.error(
+            f"failed to get access token for {current_user.username}: {e}"
+        )
+        return redirect(url_for("home"))
+
+    oauth_sess.access_token = access_token
+    oauth_sess.access_token_secret = access_token_secret
+    db.session.add(oauth_sess)
+    db.session.commit()
+
+    return redirect(url_for("home"))
+
 
 @app.route("/favicon.ico")
 def favicon():
@@ -81,7 +140,8 @@ def favicon():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    """GET requests serve Log-in page.
+    """
+    GET requests serve Log-in page.
     POST requests validate and redirect user to home.
     """
 
@@ -120,7 +180,8 @@ def login():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-    """GET requests serve sign-up page.
+    """
+    GET requests serve sign-up page.
     POST requests validate form & creates user.
     """
     form = SignupForm()
@@ -266,7 +327,7 @@ def stripe_pub_key():
 @login_required
 def stripe_checkout_session():
     """
-    Creates a stripe checkout session for subscriptions.
+    GET creates a stripe checkout session for subscriptions.
     Client opens checkout using the session generated here, and
     server listens for webhook to confirm payment.
     """
@@ -316,7 +377,8 @@ def stripe_checkout_cancel():
 @app.route("/webhooks", methods=["POST"])
 def webhook():
     """
-    Handles webhook events from stripe, cf https://stripe.com/docs/webhooks
+    POST handles webhook events from stripe
+    cf https://stripe.com/docs/webhooks
     """
 
     payload = request.get_data(as_text=True)
@@ -374,6 +436,15 @@ def upgrade():
 @app.route("/home")
 @login_required
 def home():
+    # prompt user to authenticate with Twitter if not already
+    oauth = oauth_session_by_user(current_user.id)
+    if oauth is None or oauth.access_token is None:
+        msg = render_template_string('''
+        <a href="{{ url_for("twitter_auth") }}">Sign in with Twitter</a>
+        to schedule tweets.
+        ''')
+        flash(Markup(msg))
+
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
     log_user_activity(current_user, "home")
@@ -552,7 +623,7 @@ def render_post_html_fragment(
         **kwargs,
 ):
     '''
-    Render the post HTML fragment including any edits
+    Render the post HTML fragment including any edits,
     and showing if the post is scheduled.
     '''
     post = latest_post_edit(generated_post.id, user_id)
@@ -573,6 +644,9 @@ def render_post_html_fragment(
 @app.route("/post/<post_id>/edit", methods=["GET"])
 @login_required
 def edit_post(post_id):
+    '''
+    GET returns an HTML fragment for editing the post.
+    '''
     generated_post = get_generated_post_or_abort(post_id)
 
     app.logger.info(request.args.to_dict())
@@ -641,13 +715,34 @@ def twitter_intents(post_id):
 def schedule_post(post_id):
     '''
     GET returns the schedule form fragment
-    POST schedules the post to be tweeted
+    @params
+        timezone: the timezone of the client. This is sent as
+        a query parameter so POST schedule endpoint has the correct TZ.
+
+    POST schedules the post to be tweeted and returns the
+    original post HTML fragment
+    @params
+        datetime: the ISO' string of the datetime to schedule at
+        timezone: the timezone of the datetime
     '''
     generated_post = get_generated_post_or_abort(post_id)
     post = latest_post_edit(generated_post.id, current_user.id)
     post_text = generated_post.text if post is None else post.text
+    sched = get_scheduled_post(generated_post.id, current_user.id)
+    scheduled_for = ""
+    if sched is not None:
+        scheduled_for = sched.scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
 
     if request.method == "POST":
+        oauth = oauth_session_by_user(current_user.id)
+        if oauth is None or oauth.access_token is None:
+            # TODO add a message to prompt for Twitter auth
+            return render_post_html_fragment(
+                current_user.id,
+                generated_post,
+                template_name="post.html"
+            )
+
         timezone_str = request.form.get("timezone")
         datetime_str = request.form.get("datetime")
         try:
@@ -668,6 +763,10 @@ def schedule_post(post_id):
         db.session.add(scheduled_post)
         db.session.commit()
 
+        app.logger.info(
+            f"Scheduled tweet for {schedule_dt}"
+        )
+
         return render_post_html_fragment(
             current_user.id,
             generated_post,
@@ -683,7 +782,7 @@ def schedule_post(post_id):
 
     min_dt = datetime.now(tz=tz)
     max_dt = min_dt + timedelta(days=MAX_FUTURE_SCHEDULE_DAYS)
-    schedule_dt = min_dt + timedelta(days=1)  # TODO: placeholder
+    default_dt = min_dt + timedelta(days=1)  # TODO: placeholder
 
     return render_template(
         "schedule_post.html",
@@ -692,5 +791,26 @@ def schedule_post(post_id):
         timezone_value=str(tz),
         datetime_min=min_dt.strftime(DATETIME_ISO_FMT),
         datetime_max=max_dt.strftime(DATETIME_ISO_FMT),
-        datetime_value=schedule_dt.strftime(DATETIME_ISO_FMT),
+        datetime_value=default_dt.strftime(DATETIME_ISO_FMT),
+        scheduled_for=scheduled_for
+    )
+
+
+@app.route("/post/<post_id>/unschedule", methods=["POST"])
+def unschedule_post(post_id):
+    '''
+    POST deletes the scheduled post for this post ID and
+        returns the original post HTML fragment.
+    '''
+    generated_post = get_generated_post_or_abort(post_id)
+    sched_post = get_scheduled_post(generated_post.id, current_user.id)
+    if sched_post is not None:
+        ScheduledPost.query.filter(
+            ScheduledPost.id == sched_post.id
+        ).delete()
+        db.session.commit()
+    return render_post_html_fragment(
+        current_user.id,
+        generated_post,
+        template_name="post.html"
     )

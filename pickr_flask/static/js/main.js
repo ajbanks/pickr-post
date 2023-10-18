@@ -48,16 +48,32 @@ if (closeAlert){
   }, false)
 }
 
+
 ////
-// HTMX
+// HTMX event hooks
 
 // add timezone info to htmx requests
 document.body.addEventListener("htmx:configRequest", function(e) {
   if (e.srcElement.classList.contains("schedule-button")) {
-    console.log(e);
     let dtInfo = Intl.DateTimeFormat().resolvedOptions();
     e.detail.parameters["timezone"] = dtInfo.timeZone;
     e.detail.parameters["locale"] = dtInfo.locale;
+  }
+})
+
+
+// TODO(meiji163): remove this terrible hack
+// it makes the accordian not overflow when HTMX request
+// increases card elements height
+document.body.addEventListener("htmx:afterSwap", function(e) {
+  if (e.srcElement.classList.contains("card")) {
+    for (let i = 0; i < accordions.length; i++) {
+      let content = accordions[i].nextElementSibling;
+      if (content.contains(e.srcElement)) {
+        content.style.maxHeight = content.scrollHeight + "px";
+        break;
+      }
+    }
   }
 })
 

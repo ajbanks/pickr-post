@@ -11,5 +11,7 @@
         <textarea name="text" rows="9" cols="29" spellcheck="false"> {{ post_text }} </textarea>
     </div>
     <button class="save-button clickable">Save</button>
-    <button class="cancel-button clickable" hx-get="/post/{{ post_id }}">Cancel</button>
+    <button title="Cancel" class="back-button clickable" hx-get="/post/{{ post_id }}">
+        <img src='{{ url_for("static", filename="img/back.svg") }}'>
+    </button>
 </form>

@@ -18,8 +18,8 @@ class Config:
     # login sessions #TODO when ready for produciton uncomment cookie settings
     # SESSION_COOKIE_SAMESITE = "strict"
     # SESSION_COOKIE_SECURE = True
-    # REMEMBER_COOKIE_SAMESITE = "strict"
-    # REMEMBER_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SAMESITE = "strict"
+    REMEMBER_COOKIE_SECURE = True
 
     # Database
     SQLALCHEMY_DATABASE_URI = environ.get("SQLALCHEMY_DATABASE_URI")
@@ -37,6 +37,11 @@ class Config:
     STRIPE_WEBHOOK_SECRET = environ.get("STRIPE_WEBHOOK_SECRET")
     STRIPE_ENDPOINT_SECRET = environ.get("STRIPE_ENDPOINT_SECRET")
     STRIPE_WEBHOOK_LOG = "./stripe-webhook.log"
+
+    # Twitter/X
+    TWITTER_API_KEY = environ["TWITTER_API_KEY"]
+    TWITTER_API_KEY_SECRET = environ["TWITTER_API_KEY_SECRET"]
+    TWITTER_CALLBACK_URL = environ["TWITTER_CALLBACK_URL"]
 
     # Celery
     timezone = "Europe/London"  # timezone for cron jobs

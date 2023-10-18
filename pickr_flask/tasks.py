@@ -2,24 +2,16 @@ import logging
 import uuid
 from datetime import datetime, timedelta
 from typing import List
-from celery import shared_task, chain
 
+from celery import chain, shared_task
 from sqlalchemy import and_
 from topic_model import topic
-from .models import (
-    db,
-    RedditPost, Niche, ModeledTopic,
-    _to_dict,
-)
 
-from .reddit import (
-    process_post,
-    fetch_subreddit_posts,
-    write_reddit_modeled_overview,
-    write_modeled_topic_with_reddit_posts,
-    write_reddit_posts,
-    write_generated_posts,
-)
+from .models import ModeledTopic, Niche, RedditPost, _to_dict, db
+from .reddit import (fetch_subreddit_posts, process_post,
+                     write_generated_posts,
+                     write_modeled_topic_with_reddit_posts,
+                     write_reddit_modeled_overview, write_reddit_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
 

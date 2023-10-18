@@ -71,11 +71,11 @@
   transition: 0.1s ease;
 }
 
-.body>.sidebar_small {
+.body > .sidebar_small {
   width: 0%;
 }
 
-.body>.content_large {
+.body > .content_large {
   width: 100%;
 }
 
@@ -93,15 +93,18 @@
 }
 
 .content {
-  width: 80%;
   text-align: center;
   display: flex;
   flex-direction: column;
 }
 
+.message-modal a {
+  color: var(--main-color);
+}
+
 .message-modal {
-  color: #856404;
-  background-color: #fff3cd;
+  background-color: #f1f1fe;
+  color: #666;
   align-items: center;
   justify-content: space-between;
   margin: 0 auto;
@@ -153,6 +156,8 @@
 }
 
 .topic {
+  margin-left: 6%;
+  margin-right: 6%;
   border-bottom: 1px solid #DDD;
   font-size: 1rem;
   text-align: left;
@@ -189,6 +194,7 @@
 }
 
 .accordion-content {
+  text-align: center;
   padding: 0px 0px;
   padding-left: 20px;
   overflow: hidden;
@@ -198,7 +204,6 @@
 
 .accordion-content h2 {
   display: inline-block;
-  text-align: center;
 }
 
 .accordion-content .more {
@@ -228,7 +233,7 @@
 .tooltip {
   display: inline-block;
   position: relative;
-  left: 10px;
+  left: 5px;
   cursor: help;
 }
 
@@ -244,7 +249,7 @@
   text-align: left;
   font-size: 0.9rem;
   color: white;
-  background-color: rgba(0,0,0,0.6);
+  background-color: rgba(0,0,0,0.7);
   padding: 7px 7px;
   border-radius: 4px;
   position: absolute;
@@ -297,6 +302,7 @@
   margin: 5px;
   width: 15em;
   display: block;
+  text-align: left;
 }
 
 .card p {
@@ -357,11 +363,19 @@
   width: 20px;
 }
 
-.cancel-button {
+.back-button {
   font-size: 0.9rem;
   border: none;
   background: transparent;
-  float: left;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 4px;
+}
+
+.back-button img {
+  heigh: 20px;
+  width: 20px;
 }
 
 .save-button,
@@ -372,10 +386,18 @@
   float: right;
 }
 
+.save-button,
+.submit-button {
+  padding: 4px;
+  border: 1px solid #eee;
+  background:  #f1f1fe;
+  border-radius: 4px;
+}
+
 .save-button:hover,
-.cancel-button:hover,
 .submit-button:hover {
   color: var(--main-color);
+  border-color: var(--main-color);
 }
 
 .twitter-button img {
@@ -408,6 +430,17 @@
   content: "✓";
   color: var(--twitter-color);
   padding-left: 5px;
+}
+
+
+.already-scheduled p {
+  font-size: 0.75rem;
+  font-weight: 200;
+  color: #444;
+}
+
+.already-scheduled i {
+  color: black;
 }
 
 .suggested-post {
