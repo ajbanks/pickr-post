@@ -34,6 +34,9 @@ from .util import log_user_activity
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
 DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
 
+TWITTER_STATUS_URL = "https://twitter.com/i/status"
+TWITTER_INTENTS_URL = "https://twitter.com/intent/tweet"
+
 # max length a generated post is allowed to be
 MAX_TWEET_LEN = 500
 # max days in the future a tweet can be scheduled
@@ -601,6 +604,7 @@ def picker():
                 )
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
+    # end POST
 
     return render_template(
         "picker.html",
@@ -633,19 +637,26 @@ def render_post_html_fragment(
 ):
     '''
     Render the post HTML fragment including any edits,
-    and showing if the post is scheduled.
+    and showing if the post is scheduled or already tweeted.
     '''
     post = latest_post_edit(generated_post.id, user_id)
     post_text = generated_post.text if post is None else post.text
+
     sched_post = get_scheduled_post(generated_post.id, user_id)
-    sched_str = ""
+    sched_str, posted_at, tweet_url = None, None, None
     if sched_post is not None:
         sched_str = sched_post.scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
+        if sched_post.posted_at is not None:
+            posted_at = sched_post.posted_at.strftime(DATETIME_FRIENDLY_FMT)
+            tweet_url = f"{TWITTER_STATUS_URL}/{sched_post.tweet_id}"
+
     return render_template(
         template_name,
         post_text=post_text,
         post_id=generated_post.id,
+        posted_at=posted_at,
         scheduled_for=sched_str,
+        tweet_url=tweet_url,
         **kwargs,
     )
 
@@ -717,7 +728,7 @@ def twitter_intents(post_id):
     post_text = generated_post.text if post is None else post.text
 
     params = urlencode({"text": post_text})
-    return redirect(f"https://twitter.com/intent/tweet/?{params}", 302)
+    return redirect(f"{TWITTER_INTENTS_URL}/?{params}", 302)
 
 
 @app.route("/post/<post_id>/schedule", methods=["GET", "POST"])
@@ -735,12 +746,6 @@ def schedule_post(post_id):
         timezone: the timezone of the datetime
     '''
     generated_post = get_generated_post_or_abort(post_id)
-    post = latest_post_edit(generated_post.id, current_user.id)
-    post_text = generated_post.text if post is None else post.text
-    sched = get_scheduled_post(generated_post.id, current_user.id)
-    scheduled_for = ""
-    if sched is not None:
-        scheduled_for = sched.scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
 
     if request.method == "POST":
         oauth = oauth_session_by_user(current_user.id)
@@ -781,28 +786,30 @@ def schedule_post(post_id):
             generated_post,
             template_name="post.html",
         )
+    # end POST
 
-    tz_str = request.args.get("timezone")
-    try:
-        tz = ZoneInfo(tz_str)
-    except Exception as e:
-        app.logger.error(f"invalid timezone: {e}")
-        tz = ZoneInfo("UTC")
+    if request.method == "GET":
+        tz_str = request.args.get("timezone")
+        try:
+            tz = ZoneInfo(tz_str)
+        except Exception as e:
+            app.logger.error(f"invalid timezone: {e}")
+            tz = ZoneInfo("UTC")
 
-    min_dt = datetime.now(tz=tz)
-    max_dt = min_dt + timedelta(days=MAX_FUTURE_SCHEDULE_DAYS)
-    default_dt = min_dt + timedelta(days=1)  # TODO: placeholder
+        min_dt = datetime.now(tz=tz)
+        max_dt = min_dt + timedelta(days=MAX_FUTURE_SCHEDULE_DAYS)
+        default_dt = min_dt + timedelta(days=1)  # TODO: placeholder
 
-    return render_template(
-        "schedule_post.html",
-        post_id=generated_post.id,
-        post_text=post_text,
-        timezone_value=str(tz),
-        datetime_min=min_dt.strftime(DATETIME_ISO_FMT),
-        datetime_max=max_dt.strftime(DATETIME_ISO_FMT),
-        datetime_value=default_dt.strftime(DATETIME_ISO_FMT),
-        scheduled_for=scheduled_for
-    )
+        return render_post_html_fragment(
+            current_user.id,
+            generated_post,
+            template_name="schedule_post.html",
+            timezone_value=str(tz),
+            datetime_min=min_dt.strftime(DATETIME_ISO_FMT),
+            datetime_max=max_dt.strftime(DATETIME_ISO_FMT),
+            datetime_value=default_dt.strftime(DATETIME_ISO_FMT),
+        )
+    # end GET
 
 
 @app.route("/post/<post_id>/unschedule", methods=["POST"])

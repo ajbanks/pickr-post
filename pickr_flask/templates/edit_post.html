@@ -3,8 +3,10 @@
     <div class="author">@{{ username }}</div>
     {% endif %}
 
-    {% if scheduled_for %}
-    <div class="scheduled">Scheduled for: {{ scheduled_for }}</div>
+    {% if posted_at %}
+    <div class="scheduled">Posted at {{ posted_at }}</div>
+    {% elif scheduled_for %}
+    <div class="scheduled">Scheduled for {{ scheduled_for }}</div>
     {% endif %}
 
     <div class="suggested-post">

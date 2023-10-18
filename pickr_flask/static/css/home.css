@@ -379,7 +379,8 @@
 }
 
 .save-button,
-.submit-button {
+.submit-button,
+.view-button {
   font-size: 0.9rem;
   border: none;
   background: transparent;
@@ -387,7 +388,8 @@
 }
 
 .save-button,
-.submit-button {
+.submit-button,
+.view-button {
   padding: 4px;
   border: 1px solid #eee;
   background:  #f1f1fe;
@@ -395,7 +397,8 @@
 }
 
 .save-button:hover,
-.submit-button:hover {
+.submit-button:hover,
+.view-button:hover {
   color: var(--main-color);
   border-color: var(--main-color);
 }

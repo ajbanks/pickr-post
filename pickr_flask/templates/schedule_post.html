@@ -7,8 +7,20 @@
         <p>{{post_text}}</p>
     </div>
 
+    {% if posted_at %}
+    <div class="already-scheduled">
+        <p>This post was tweeted at</p>
+        <div class="scheduled">{{ posted_at }}</div>
+        <p>Click <i>View</i> to view it live on Twitter.</p>
+    </div>
+    <button title="View tweet" class="view-button">
+        <a href="{{ tweet_url }}">View</a>
+    </button>
+    <button title="Go Back" class="back-button clickable" hx-get="/post/{{ post_id }}">
+        <img src='{{ url_for("static", filename="img/back.svg") }}'>
+    </button>
 
-    {% if scheduled_for %}
+    {% elif scheduled_for %}
     <div class="already-scheduled">
         <p>This post is scheduled to be tweeted at</p>
         <div class="scheduled">{{ scheduled_for }}</div>
