@@ -43,13 +43,13 @@
                     {{ generated_posts_fragments[ loop.index-1 ] | safe}}
                 </div>
                 <div class="more">
-                    <a href="/topic/{{ topic.id }} ">More from this topic↗</a>
+                    <a href="/topic/{{ topic.id }}">More from this topic↗</a>
                 </div>
             </div>
         </div>
         {% endfor %}
         {% if topics|length < 1 %} <div class="no_topics">
-            <hr />
+            <hr/>
             <p>Your account is still being set up. Please check again in 24 hours and you will have access to your trending topics and generated posts!</p>
     </div>
     {% endif %}

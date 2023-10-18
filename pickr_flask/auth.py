@@ -1,7 +1,7 @@
 from time import time
 
-from flask import redirect, url_for
 import jwt
+from flask import redirect, url_for
 
 from . import login_manager
 from .models import PickrUser

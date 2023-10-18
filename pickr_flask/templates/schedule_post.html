@@ -3,14 +3,37 @@
     <div class="author">@{{ username }}</div>
     {% endif %}
 
-    {% if scheduled_for %}
-    <div class="scheduled">Scheduled for: {{ scheduled_for }}</div>
-    {% endif %}
-
     <div class="suggested-post">
         <p>{{post_text}}</p>
     </div>
 
+    {% if posted_at %}
+    <div class="already-scheduled">
+        <p>This post was tweeted at</p>
+        <div class="scheduled">{{ posted_at }}</div>
+        <p>Click <i>View</i> to view it live on Twitter.</p>
+    </div>
+    <button title="View tweet" class="view-button">
+        <a href="{{ tweet_url }}">View</a>
+    </button>
+    <button title="Go Back" class="back-button clickable" hx-get="/post/{{ post_id }}">
+        <img src='{{ url_for("static", filename="img/back.svg") }}'>
+    </button>
+
+    {% elif scheduled_for %}
+    <div class="already-scheduled">
+        <p>This post is scheduled to be tweeted at</p>
+        <div class="scheduled">{{ scheduled_for }}</div>
+        <p>Click <i>Unschedule</i> to cancel it.</p>
+    </div>
+    <button title="Unschedule tweet" hx-post="/post/{{ post_id }}/unschedule" class="submit-button clickable">
+        Unschedule
+    </button>
+    <button title="Go Back" class="back-button clickable" hx-get="/post/{{ post_id }}">
+        <img src='{{ url_for("static", filename="img/back.svg") }}'>
+    </button>
+
+    {% else %}
     <div class="schedule-form">
         <div class="datetime-input">
             <label for="timezone">Schedule this tweet for:</label>
@@ -27,6 +50,9 @@
         </div>
 
         <input type="submit" value="Schedule" class="submit-button clickable"/>
-        <button class="cancel-button clickable" hx-get="/post/{{ post_id }}">Cancel</button>
+        <button title="Go back" class="back-button clickable" hx-get="/post/{{ post_id }}">
+            <img src='{{ url_for("static", filename="img/back.svg") }}'>
+        </button>
     </div>
+    {% endif %}
 </form>

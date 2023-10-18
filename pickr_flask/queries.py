@@ -11,6 +11,7 @@ from .models import (
     PostEdit,
     Schedule,
     ScheduledPost,
+    OAuthSession,
     reddit_modeled_topic_assoc,
 )
 
@@ -18,7 +19,7 @@ from .models import (
 # Query util functions
 
 
-def latest_post_edit(generated_post_id, user_id):
+def latest_post_edit(generated_post_id, user_id) -> PostEdit:
     '''Look up the user's most recent edit for a generated post, if any.'''
     return (
         PostEdit.query.join(GeneratedPost)
@@ -56,6 +57,24 @@ def get_scheduled_post(generated_post_id, user_id):
             )
         )
         .order_by(ScheduledPost.id.desc())
+        .first()
+    )
+
+
+def oauth_session_by_token(oauth_token) -> OAuthSession:
+    return (
+        OAuthSession.query
+        .filter(OAuthSession.oauth_token == oauth_token)
+        .order_by(OAuthSession.id.desc())
+        .first()
+    )
+
+
+def oauth_session_by_user(user_id) -> OAuthSession:
+    return (
+        OAuthSession.query
+        .filter(OAuthSession.user_id == user_id)
+        .order_by(OAuthSession.id.desc())
         .first()
     )
 

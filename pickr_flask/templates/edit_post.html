@@ -3,13 +3,17 @@
     <div class="author">@{{ username }}</div>
     {% endif %}
 
-    {% if scheduled_for %}
-    <div class="scheduled">Scheduled for: {{ scheduled_for }}</div>
+    {% if posted_at %}
+    <div class="scheduled">Posted at {{ posted_at }}</div>
+    {% elif scheduled_for %}
+    <div class="scheduled">Scheduled for {{ scheduled_for }}</div>
     {% endif %}
 
     <div class="suggested-post">
         <textarea name="text" rows="9" cols="29" spellcheck="false"> {{ post_text }} </textarea>
     </div>
     <button class="save-button clickable">Save</button>
-    <button class="cancel-button clickable" hx-get="/post/{{ post_id }}">Cancel</button>
+    <button title="Cancel" class="back-button clickable" hx-get="/post/{{ post_id }}">
+        <img src='{{ url_for("static", filename="img/back.svg") }}'>
+    </button>
 </form>
