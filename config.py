@@ -15,9 +15,10 @@ class Config:
     SECRET_KEY = environ.get("SECRET_KEY")
     TEMPLATES_FOLDER = "templates"
 
-    # login sessions #TODO when ready for produciton uncomment cookie settings
-    # SESSION_COOKIE_SAMESITE = "strict"
-    # SESSION_COOKIE_SECURE = True
+    # login sessions
+    # TODO when ready for produciton uncomment cookie settings
+    SESSION_COOKIE_SAMESITE = "strict"
+    SESSION_COOKIE_SECURE = True
     REMEMBER_COOKIE_SAMESITE = "strict"
     REMEMBER_COOKIE_SECURE = True
 
@@ -51,12 +52,15 @@ class Config:
         broker_connection_retry_on_startup=True,
         task_ignore_result=False,
         task_create_missing_queues=True,
+        # The following determines what queue the tasks are on.
+        # Any compute-heavy tasks should be put on "model_runner" queue.
         task_default_queue="default",
         task_routes={
             "pickr_flask.tasks.run_niche_topic_model": {
                 "queue": "model_runner"
             }
         },
+        # Set schedules for periodic tasks using celery beat
         beat_schedule={
             "task_update_reddit_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_reddit_update",
@@ -65,6 +69,10 @@ class Config:
             "task_run_topic_model_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_run_pipeline",
                 "schedule": crontab(hour=5, minute=0),
+            },
+            "task_post_scheduled_tweets": {
+                "task": "pickr_flask.tasks.post_scheduled_tweets",
+                "schedule": crontab(minute="*/5"),  # every 5 min
             }
         }
     )

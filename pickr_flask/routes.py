@@ -86,6 +86,7 @@ def twitter_callback():
     '''
     GET serves callback endpoint for Twitter 3-legged auth.
         It obtains access token for the user and saves it.
+        cf. https://docs.tweepy.org/en/stable/authentication.html#legged-oauth
     '''
     denied = request.args.get("denied")
     if denied is not None:
@@ -436,6 +437,8 @@ def upgrade():
 @app.route("/home")
 @login_required
 def home():
+    log_user_activity(current_user, "home")
+
     # prompt user to authenticate with Twitter if not already
     oauth = oauth_session_by_user(current_user.id)
     if oauth is None or oauth.access_token is None:
@@ -447,7 +450,6 @@ def home():
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
-    log_user_activity(current_user, "home")
     niche_ids = [n.id for n in current_user.niches]
     topics = top_modeled_topic_query(niche_ids).limit(3).all()
 
@@ -512,7 +514,6 @@ def all_topics():
 @app.route("/topic/<topic_id>")
 @login_required
 def topic(topic_id):
-
     log_user_activity(current_user, f"topic_click:{topic_id} ")
 
     if not is_user_account_valid(current_user):
@@ -534,12 +535,20 @@ def topic(topic_id):
         .all()
     )
 
+    # generated posts HTML is rendered separately
+    posts_html_fragment = "\n".join([
+        render_post_html_fragment(
+            current_user.id, p, template_name="post.html"
+        )
+        for p in generated_posts
+    ])
+
     return render_template(
         "topic.html",
         title="Pickr - Curated Tweets",
         topic=topic,
         posts=posts,
-        generated_posts=generated_posts,
+        generated_posts_fragment=posts_html_fragment
     )
 
 
@@ -722,7 +731,7 @@ def schedule_post(post_id):
     POST schedules the post to be tweeted and returns the
     original post HTML fragment
     @params
-        datetime: the ISO' string of the datetime to schedule at
+        datetime: the ISO string of the datetime to schedule post at
         timezone: the timezone of the datetime
     '''
     generated_post = get_generated_post_or_abort(post_id)

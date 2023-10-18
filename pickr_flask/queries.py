@@ -19,7 +19,7 @@ from .models import (
 # Query util functions
 
 
-def latest_post_edit(generated_post_id, user_id):
+def latest_post_edit(generated_post_id, user_id) -> PostEdit:
     '''Look up the user's most recent edit for a generated post, if any.'''
     return (
         PostEdit.query.join(GeneratedPost)

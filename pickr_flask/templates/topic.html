@@ -17,17 +17,7 @@
 
             <h2>Generated Tweets</h2>
             <div class="container cards">
-                {% for post in generated_posts %}
-                <div class="card">
-                    <div class="author">@{{ current_user.username }}</div>
-                    <div class="suggested-post">
-                        <p>{{post.text}}</p>
-                    </div>
-                    <div class="twitter-button clickable">
-                        <img src='{{ url_for("static", filename="img/twitter.svg") }}'>
-                    </div>
-                </div>
-                {% endfor %}
+                {{ generated_posts_fragment | safe}}
             </div>
 
             <h2>Posts from this topic</h2>
@@ -41,8 +31,10 @@
             </div>
         </div>
     </div>
-    {% endblock %}
+</div>
+{% endblock %}
 
-    {% block js %}
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
-    {% endblock %}
+{% block js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
+{% endblock %}
