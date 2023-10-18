@@ -262,13 +262,11 @@ def post_scheduled_tweets():
     Retrieve any scheduled tweets that need to be posted from the DB
     and post them to twitter.
     '''
-    # cutoff with some slack in case some were missed
-    schedule_cutoff = datetime.now() - timedelta(hours=6)
     scheduled_posts = (
         ScheduledPost.query.filter(
             and_(
                 ScheduledPost.posted_at.is_(None),
-                ScheduledPost.scheduled_for > schedule_cutoff
+                ScheduledPost.scheduled_for < datetime.now()
             )
         )
         .order_by(
