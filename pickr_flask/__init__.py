@@ -1,7 +1,7 @@
 '''
 Flask application factory
 '''
-from os import path, pardir
+from os import path, pardir, environ
 import json
 from dotenv import load_dotenv
 
@@ -48,9 +48,14 @@ def init_app() -> Flask:
     Initialize flask app and extensions.
     This uses the application factory pattern that's conventional for Flask.
     '''
-    global initial_start
     app = Flask(__name__)
-    app.config.from_object("config.Config")
+
+    if environ.get("ENV") == "DEV":
+        app.config.from_object("config.DevConfig")
+        app.logger.info("DEV config loaded")
+    else:
+        app.config.from_object("config.Config")
+        app.logger.info("PROD config loaded")
 
     celery_init_app(app)
     db.init_app(app)
@@ -59,7 +64,6 @@ def init_app() -> Flask:
     csrf.init_app(app)
 
     stripe.api_key = app.config["STRIPE_SECRET_KEY"]
-    app.logger.info("App started")
     with app.app_context():
         from .models import PickrUser  # noqa: disable=F401
         from . import auth, routes, util  # noqa: disable=F401

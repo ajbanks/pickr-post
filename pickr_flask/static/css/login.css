@@ -71,14 +71,20 @@ fieldset {
     border: none;
     padding: 5px;
     margin: 0;
+    width: 90%;
+}
+
+label {
+    display: block;
 }
 
 input {
+    display: block;
     padding: 10px 13px;
     margin-bootom: 15px;
     border-radius: 2px;
     border: 1px solid black;
-    width: -webkit-fill-available;
+    width: 90%;
     font-weight: 200;
     color: #777;
     font-size: .9rem;

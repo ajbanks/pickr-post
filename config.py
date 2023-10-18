@@ -5,8 +5,6 @@ from celery.schedules import crontab
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
 
-# TODO: split into dev/prod configs
-
 
 class Config:
     # Flask
@@ -37,9 +35,9 @@ class Config:
     STRIPE_WEBHOOK_LOG = "./stripe-webhook.log"
 
     # Twitter/X
-    TWITTER_API_KEY = environ["TWITTER_API_KEY"]
-    TWITTER_API_KEY_SECRET = environ["TWITTER_API_KEY_SECRET"]
-    TWITTER_CALLBACK_URL = environ["TWITTER_CALLBACK_URL"]
+    TWITTER_API_KEY = environ.get("TWITTER_API_KEY")
+    TWITTER_API_KEY_SECRET = environ.get("TWITTER_API_KEY_SECRET")
+    TWITTER_CALLBACK_URL = environ.get("TWITTER_CALLBACK_URL")
 
     # Celery
     timezone = "Europe/London"  # timezone for cron jobs
@@ -80,3 +78,10 @@ class Config:
     MAIL_USE_SSL = True
     MAIL_USERNAME = environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = environ.get("MAIL_PASSWORD")
+
+
+class DevConfig(Config):
+    TESTING = True
+    DEBUG = True
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False

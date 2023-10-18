@@ -249,14 +249,14 @@
   text-align: left;
   font-size: 0.9rem;
   color: white;
-  background-color: rgba(0,0,0,0.7);
+  background-color: rgba(0,0,0,0.8);
   padding: 7px 7px;
   border-radius: 4px;
   position: absolute;
+  margin-left: -100px;
   width: 160px;
-  top: -20px;
-  margin-left: 10px;
-  left: 105%;
+  left: 20%;
+  top: 100%;
   z-index: 1;
 }
 
