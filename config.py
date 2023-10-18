@@ -16,10 +16,7 @@ class Config:
     TEMPLATES_FOLDER = "templates"
 
     # login sessions
-    # TODO when ready for produciton uncomment cookie settings
-    SESSION_COOKIE_SAMESITE = "strict"
     SESSION_COOKIE_SECURE = True
-    REMEMBER_COOKIE_SAMESITE = "strict"
     REMEMBER_COOKIE_SECURE = True
 
     # Database

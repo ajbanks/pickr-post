@@ -318,6 +318,7 @@ def post_scheduled_tweets():
                 logging.error(
                     f"error posting tweet for user_id={user_id}: {e}"
                 )
+                break
 
             p.tweet_id = resp.data["id"]
             p.posted_at = datetime.now()
