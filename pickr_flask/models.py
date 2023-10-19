@@ -141,6 +141,7 @@ class SchedulePost(db.Model):
         index=True
     )
     celery_id = Column(UUID(as_uuid=True), nullable=True)
+    schedule_time
 
 
 class StripeSubscriptionStatus(enum.Enum):
