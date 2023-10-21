@@ -48,9 +48,7 @@ class Config:
         task_create_missing_queues=True,
         task_default_queue="default",
         task_routes={
-            "pickr_flask.tasks.run_niche_topic_model": {
-                "queue": "model_runner"
-            }
+            "pickr_flask.tasks.run_niche_topic_model": {"queue": "model_runner"}
         },
         beat_schedule={
             "task_update_reddit_every_morning": {
@@ -60,8 +58,8 @@ class Config:
             "task_run_topic_model_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_run_pipeline",
                 "schedule": crontab(hour=5, minute=0),
-            }
-        }
+            },
+        },
     )
 
     # SMTP settings
@@ -70,3 +68,11 @@ class Config:
     MAIL_USE_SSL = True
     MAIL_USERNAME = environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = environ.get("MAIL_PASSWORD")
+
+    # Twitter
+    X_ACCESS_TOKEN = environ.get("X_ACCESS_TOKEN")
+    X_ACCESS_TOKEN_SECRET = environ.get("X_ACCESS_TOKEN_SECRET")
+    X_CALLBACK_URI = environ.get("X_CALLBACK_URI")
+
+    # News API
+    NEWS_API_KEY = environ.get("NEWS_API_KEY")
