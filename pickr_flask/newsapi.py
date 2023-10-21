@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from os import environ
 from typing import List
 
+from flask import current_app as app
 from newsapi import NewsApiClient
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -14,7 +15,7 @@ from sqlalchemy import exc, insert
 from .models import db, NewsArticle, ModeledTopic, news_modeled_topic_assoc
 from topic_model.topic import get_label
 
-newsapi = NewsApiClient(api_key=environ["NEWS_API_KEY"])
+newsapi = NewsApiClient(api_key=app.config["NEWS_API_KEY"])
 
 
 def get_trends(term, page_size=10, num_pages=10):

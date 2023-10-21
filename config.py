@@ -69,10 +69,5 @@ class Config:
     MAIL_USERNAME = environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = environ.get("MAIL_PASSWORD")
 
-    # Twitter
-    X_ACCESS_TOKEN = environ.get("X_ACCESS_TOKEN")
-    X_ACCESS_TOKEN_SECRET = environ.get("X_ACCESS_TOKEN_SECRET")
-    X_CALLBACK_URI = environ.get("X_CALLBACK_URI")
-
     # News API
     NEWS_API_KEY = environ.get("NEWS_API_KEY")
