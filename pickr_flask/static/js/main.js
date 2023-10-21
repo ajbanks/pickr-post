@@ -48,29 +48,34 @@ if (closeAlert){
   }, false)
 }
 
+
 ////
-// twitter share button
-const twitterBtns = document.getElementsByClassName("twitter-button");
-const twitterURL = "https://twitter.com/intent/tweet/"
-const windowOpts = "menubar=no,status=no,height=400,width=500";
+// HTMX event hooks
 
-function openTweetWindow(text){
-  let query = `text=${text}`;
-  let linkTarget = "_top"; // "_blank" opens a new window
-  return window.open(`${twitterURL}?${query}&`, linkTarget, windowOpts)
-               .focus();
-}
+// add timezone info to htmx requests
+document.body.addEventListener("htmx:configRequest", function(e) {
+  if (e.srcElement.classList.contains("schedule-button")) {
+    let dtInfo = Intl.DateTimeFormat().resolvedOptions();
+    e.detail.parameters["timezone"] = dtInfo.timeZone;
+    e.detail.parameters["locale"] = dtInfo.locale;
+  }
+})
 
-for (let i = 0; i < twitterBtns.length; i++) {
-  twitterBtns[i].addEventListener("click", (e) => {
-    // get the tweet text and open twitter intent with it
-    let text = e.currentTarget
-                .previousElementSibling
-                .firstElementChild
-                .innerHTML;
-    openTweetWindow(text);
-  })
-}
+
+// TODO(meiji163): remove this terrible hack
+// it makes the accordian not overflow when HTMX request
+// increases card elements height
+document.body.addEventListener("htmx:afterSwap", function(e) {
+  if (e.srcElement.classList.contains("card")) {
+    for (let i = 0; i < accordions.length; i++) {
+      let content = accordions[i].nextElementSibling;
+      if (content.contains(e.srcElement)) {
+        content.style.maxHeight = content.scrollHeight + "px";
+        break;
+      }
+    }
+  }
+})
 
 
 ////
