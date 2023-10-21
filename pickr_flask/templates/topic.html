@@ -23,9 +23,13 @@
             <h2>Posts from this topic</h2>
             <div class="container cards">
                 {% for post in posts %}
-                <div class="card">
+                <div class="card post">
                     <p>{{post.title }}</p>
                     <p>{{ post.body | truncate(300)}}</p>
+
+                    <div class="read">
+                        <a href="{{ post.url }}">Read ↗</a>
+                    </div>
                 </div>
                 {% endfor %}
             </div>

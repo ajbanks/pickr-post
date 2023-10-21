@@ -534,7 +534,7 @@ def topic(topic_id):
     posts = (
         reddit_posts_for_topic_query(topic.id)
         .order_by(RedditPost.score)
-        .limit(30)
+        .limit(20)
         .all()
     )
 

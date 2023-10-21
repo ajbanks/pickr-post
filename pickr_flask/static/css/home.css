@@ -353,6 +353,17 @@
   padding: 4px;
 }
 
+.post .read {
+  position: absolute;
+  bottom: 10px;
+  right: 15px;
+  padding: 4px;
+}
+
+.read a:hover {
+  color: var(--main-color);
+}
+
 .edit-button img {
   height: 17px;
   width: 17px;

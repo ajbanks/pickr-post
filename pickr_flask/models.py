@@ -319,8 +319,10 @@ class RedditPost(db.Model):
     title = Column(String)
     body = Column(String)
     score = Column(Integer)
+    num_comments = Column(Integer)
     created_at = Column(DateTime, nullable=True)
     url = Column(String)
+    permalink = Column(String(128))
     clean_text = Column(String)  # processed title + body
     subreddit_id = Column(
         UUID(as_uuid=True),
