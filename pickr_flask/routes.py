@@ -621,30 +621,43 @@ def schedule():
     '''
     GET serves a page that shows user's scheduled and posted tweets.
     '''
-    posts = (
+    scheduled_posts = (
         GeneratedPost.query.join(ScheduledPost)
         .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
         .filter(
-            and_(
-                ScheduledPost.user_id == current_user.id,
-                ~ScheduledPost.scheduled_for.is_(None))
+            and_(ScheduledPost.user_id == current_user.id,
+                 ~ScheduledPost.scheduled_for.is_(None))
         )
         .order_by(ScheduledPost.scheduled_for.desc())
         .all()
     )
 
+    tweeted_posts = (
+        GeneratedPost.query.join(ScheduledPost)
+        .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
+        .filter(
+            and_(ScheduledPost.user_id == current_user.id,
+                 ~ScheduledPost.posted_at.is_(None))
+        )
+        .order_by(ScheduledPost.posted_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    # TODO: load more posted tweets history
+
     scheduled_html_fragment = "\n".join([
         render_post_html_fragment(
             current_user.id, gp.id, gp.text, template_name="post.html",
         )
-        for gp in posts
+        for gp in scheduled_posts
     ])
 
     tweeted_html_fragment = "\n".join([
         render_post_html_fragment(
             current_user.id, gp.id, gp.text, template_name="post.html"
         )
-        for gp in posts
+        for gp in tweeted_posts
     ])
 
     return render_template(
