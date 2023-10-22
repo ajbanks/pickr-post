@@ -626,7 +626,8 @@ def schedule():
         .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
         .filter(
             and_(ScheduledPost.user_id == current_user.id,
-                 ~ScheduledPost.scheduled_for.is_(None))
+                 ~ScheduledPost.scheduled_for.is_(None),
+                 ScheduledPost.posted_at.is_(None))
         )
         .order_by(ScheduledPost.scheduled_for.desc())
         .all()
