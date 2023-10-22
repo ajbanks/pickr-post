@@ -250,7 +250,7 @@ class Schedule(db.Model):
     scheduled_posts = relationship("ScheduledPost")
 
     def __repr__(self):
-        return f"<Schedule id={id}>"
+        return f"<Schedule id={self.id}>"
 
 
 class ScheduledPost(db.Model):
@@ -280,7 +280,7 @@ class ScheduledPost(db.Model):
     celery_id = Column(UUID(as_uuid=True))
 
     def __repr__(self):
-        return f"<ScheduledPost id={id}>"
+        return f"<ScheduledPost id={self.id}>"
 
 
 class Subreddit(db.Model):
