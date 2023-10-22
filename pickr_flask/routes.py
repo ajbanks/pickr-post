@@ -88,7 +88,7 @@ def twitter_auth():
 def twitter_callback():
     '''
     GET serves callback endpoint for Twitter 3-legged auth.
-        It obtains access token for the user and saves it.
+        It obtains access token for the user and saves it in DB.
         cf. https://docs.tweepy.org/en/stable/authentication.html#legged-oauth
     '''
     denied = request.args.get("denied")
@@ -541,7 +541,7 @@ def topic(topic_id):
     # generated posts HTML is rendered separately
     posts_html_fragment = "\n".join([
         render_post_html_fragment(
-            current_user.id, p, template_name="post.html"
+            current_user.id, p.id, p.text, template_name="post.html"
         )
         for p in generated_posts
     ])
@@ -618,6 +618,9 @@ def picker():
 @app.route("/schedule", methods=["GET"])
 @login_required
 def schedule():
+    '''
+    GET serves a page that shows user's scheduled and posted tweets.
+    '''
     posts = (
         GeneratedPost.query.join(ScheduledPost)
         .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
@@ -632,16 +635,14 @@ def schedule():
 
     scheduled_html_fragment = "\n".join([
         render_post_html_fragment(
-            current_user.id, gp.id, gp.text,
-            template_name="post.html",
+            current_user.id, gp.id, gp.text, template_name="post.html",
         )
         for gp in posts
     ])
 
     tweeted_html_fragment = "\n".join([
         render_post_html_fragment(
-            current_user.id, gp.id, gp.text,
-            template_name="post.html"
+            current_user.id, gp.id, gp.text, template_name="post.html"
         )
         for gp in posts
     ])
