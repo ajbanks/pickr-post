@@ -663,7 +663,7 @@ def schedule():
     return render_template(
         "schedule.html",
         scheduled_posts_fragment=scheduled_html_fragment,
-        tweeteed_posts_fragment=tweeted_html_fragment,
+        tweeted_posts_fragment=tweeted_html_fragment,
     )
 
 
