@@ -372,7 +372,11 @@ class NewsArticle(db.Model):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     title = Column(String)
-
+    url = Column(String)
+    published_date = Column(
+        DateTime,
+        nullable=True
+    )
     def __repr__(self):
         return f"<NewsArticle title={self.id} url={self.title}>"
 

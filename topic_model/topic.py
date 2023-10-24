@@ -218,6 +218,39 @@ def get_label_and_description(topic_documents, topic_keywords):
     return topic_label, topic_desc
 
 
+@backoff.on_exception(backoff.expo, Exception)
+def get_label_and_description_no_keywords(topic_documents):
+
+    topic_label = (
+        openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": create_label_prompt_no_keywords(topic_documents)}],
+            temperature=0.2,
+        )
+        .choices[0]
+        .message.content
+    )
+    try:
+        topic_label = topic_label.split('topic:')[1].strip()
+    except Exception:
+        pass
+    topic_desc = (
+        openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": create_summary_prompt_no_keywords(topic_documents)}],
+            temperature=0.2,
+        )
+        .choices[0]
+        .message.content
+    )
+    try:
+        topic_desc = topic_desc.split('topic:')[1].strip()
+    except Exception:
+        pass
+    
+    return topic_label, topic_desc
+
+
 def filter_topics(
         topics: List[int],
         probs: List[float],
@@ -385,15 +418,37 @@ def is_topic_related_to_niche(topic_label, niche_label):
     return prompt_string
 
 
-def create_summary_prompt(documents, keywords):
+def create_summary_prompt_no_keywords(documents):
     return f"""
-        I have a topic that is described by the following keywords: {keywords}
-        In this topic, the following documents are a small but representative subset of all documents in the topic:
+        I have a topic that, and a representative subset of all documents in the topic are below:
         {documents}
         
         Based on the information above, please give a description of this topic in the following format:
         topic: <description>
         """
+
+
+def create_label_prompt_no_keywords(documents):
+    return f"""
+        I have a topic that contains the following documents: 
+        {documents}
+        
+        Based on the information above, extract a short topic label in the following format:
+        topic: <topic label>
+        """
+
+
+def create_summary_prompt(documents, keywords):
+    return f"""
+        I have a topic that contains the following documents: 
+        {documents}
+
+        The topic is described by the following keywords: {keywords}
+        
+        Based on the information above, please give a description of this topic in the following format:
+        topic: <description>
+        """
+
 
 def create_label_prompt(documents, keywords):
     return f"""

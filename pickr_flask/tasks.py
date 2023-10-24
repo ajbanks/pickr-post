@@ -89,9 +89,12 @@ def run_topic_pipeline(niche_id):
     """
 
     # get trending topics from news api
-    modeled_topic_ids = run_niche_trends.apply_async(args=(niche_id,))
-    generate_modeled_topic_tweets.apply_async(args=(modeled_topic_ids,))
-
+    pipeline_news = chain(
+        run_niche_trends.s(),
+        generate_modeled_topic_tweets.s()
+    )
+    pipeline_news.apply_async(args=(niche_id,))
+    
     # get evergreen topics from reddit
     pipeline = chain(
         run_niche_topic_model.s(),
@@ -113,31 +116,32 @@ def run_niche_trends(niche_id) -> List[dict]:
     # get trends
     all_topics = []
     for term in terms:
-        labels, topics = get_trends(term)
+        topic_labels, topic_articles = get_trends(term)
 
-        # write news articles to db
-        news_articles = []
-        for n in topics:
-            news_article = {"id": uuid.uuid4(), "title": n}
-            news_articles.append(news_article)
-        write_news_articles(news_articles)
-
-        # write modeled topics to db
-        trending_topics = []
-        for n in labels:
+        for i, title_desc in enumerate(topic_labels):
+            # create modeled topic
             modeled_topic = {
                 "id": uuid.uuid4(),
                 "niche_id": niche_id,
-                "name": n,
-                "description": "",
+                "name": title_desc[0],
+                "description": title_desc[1],
                 "date": datetime.now(),
                 "size": 0,
                 "trend_class": "trending",
             }
+
+            # create news articles
+            news_articles = []
+            for n in topic_articles[i]:
+                news_article = {"id": uuid.uuid4(), "title": n["title"], "url": n["url"], "published_date": n["published_date"]}
+                news_articles.append(news_article)
+            
+            # write to db
+            write_news_articles(news_articles)
             write_modeled_topic_with_news_article(
                 modeled_topic, [n["id"] for n in news_articles]
             )
-            all_topics += trending_topics
+            all_topics.append(modeled_topic)
 
     return [t["id"] for t in all_topics]
 

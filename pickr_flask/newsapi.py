@@ -4,26 +4,27 @@ from datetime import date, timedelta
 from os import environ
 from typing import List
 
+import nltk
 from flask import current_app as app
 from newsapi import NewsApiClient
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
-from nltk.corpus import stopwords
 from sqlalchemy import exc, insert
 
-
 from .models import db, NewsArticle, ModeledTopic, news_modeled_topic_assoc
-from topic_model.topic import get_label
+from topic_model.topic import get_label_and_description_no_keywords
+from topic_model.util import remove_stop_words
 
 newsapi = NewsApiClient(api_key=app.config["NEWS_API_KEY"])
 
 
-def get_trends(term, page_size=10, num_pages=10):
+def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2):
+    """
+    Get news articles and get topics from them
+    """
     # get articles
-    num_pages = 10
     docs = []
+    docs_dict = []
     today = date.today()
-    start_date = today - timedelta(days=7)
+    start_date = today - timedelta(days=14)
     start_date_str = start_date.strftime("%Y-%m-%d")
     for i in range(num_pages):
         try:
@@ -37,71 +38,49 @@ def get_trends(term, page_size=10, num_pages=10):
                 page=i + 1,
             )
             docs += [a["title"] for a in all_articles["articles"]]
+            docs_dict += [{"title": a["title"], "url": a["url"], "published_date": a["publishedAt"]}  for a in all_articles["articles"]]
         except Exception as e:
-            continue
+            return
+
+    # remove duplicate articles
     docs = list(set(docs))
+    docs_dict_ = []
+    for l in list(set(docs)):
+        for j in docs_dict:
+            if j['title'] == l:
+                docs_dict_.append(j)
+                break
 
     # get articles without stop words
-    lemmatizer = WordNetLemmatizer()
-    docs_non_sw = []
-    for d in docs:
-        non_stop_title = " ".join(
-            [
-                lemmatizer.lemmatize(word).lower()
-                for word in word_tokenize(d)
-                if word not in stop_words and word.strip != "" and len(word) > 1
-            ]
-        )
-        non_stop_title = re.sub("[^a-zA-Z0-9 \n\.]", "", non_stop_title)
-        non_stop_title = set(word_tokenize(non_stop_title))
-        docs_non_sw.append(non_stop_title)
+    docs_non_sw = remove_stop_words(docs)
 
     # get article topics that appear more than once
     added_posts = []
-    topics = []
+    topic_articles = []
     for i, d in enumerate(docs_non_sw):
         if docs[i] in added_posts:
             continue
-        matches = [docs[i]]
+        matches = [docs_dict_[i]]
         for x, d_ in enumerate(docs_non_sw):
-            if i != x and len(d.intersection(d_)) > 3:
+            if i != x and len(d.intersection(d_)) >= min_words:
                 if docs[x] not in added_posts:
-                    matches.append(docs[x])
-        if len(matches) > 1:
-            topics.append(matches)
+                    matches.append(docs_dict_[x])
+        if len(matches) >= min_matches:
+            topic_articles.append(matches)
             for d__ in matches:
-                added_posts.append(d__)
+                added_posts.append(d__['title'])
 
-    labels = []
-    for t in topics:
+    topic_labels = []
+    for t in topic_articles:
         topic_documents = "\n\n".join(["Message:    " + d_[:1000] for d_ in t[:4]])
-        labels.append(get_label(topic_documents))
-    return labels, topics
-
-
-def get_articles(term, page_size=10):
-    today = date.today()
-    yesterday = today - timedelta(days=1)
-    yesterday_str = yesterday.strftime("%Y-%m-%d")
-    try:
-        all_articles = newsapi.get_everything(
-            q=term,
-            from_param=yesterday_str,
-            to=yesterday_str,
-            language="en",
-            sort_by="relevancy",
-            page_size=page_size,
-            page=1,
-        )
-    except Exception:
-        return None
-    return [
-        {"title": v["title"], "date": v["publishedAt"], "url": v["url"]}
-        for v in all_articles["articles"]
-    ]
+        topic_labels.append(get_label_and_description_no_keywords(topic_documents))
+    return topic_labels, topic_articles
 
 
 def write_news_articles(posts: List[dict]) -> int:
+    """
+    Save news articles
+    """
     num_written = 0
     for post in posts:
         record = (
@@ -122,8 +101,7 @@ def write_news_articles(posts: List[dict]) -> int:
 
 def write_modeled_topic_with_news_article(topic: dict, post_ids: List[int]) -> None:
     """
-    Save a modeled topic to the database and associate reddit IDs
-    with the topic.
+    Save a modeled topic to the database and associated news article IDs with the topic.
     """
     modeled_topic = ModeledTopic(**topic)
     try:
