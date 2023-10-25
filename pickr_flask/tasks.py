@@ -1,4 +1,6 @@
 import logging
+import math
+import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List
@@ -6,11 +8,13 @@ from typing import List
 import tweepy
 from celery import chain, shared_task
 from flask import current_app as app
-from sqlalchemy import and_
+from sqlalchemy import Date, and_, cast
 from topic_model import topic
 
-from .models import (GeneratedPost, ModeledTopic, Niche, RedditPost,
-                     ScheduledPost, _to_dict, db)
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
+                     ScheduledPost, _to_dict, db, user_niche_assoc)
+from .post_schedule import (create_schedule_text_no_trends, write_schedule,
+                            write_schedule_posts)
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
@@ -18,6 +22,78 @@ from .reddit import (fetch_subreddit_posts, process_post,
                      write_reddit_modeled_overview, write_reddit_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
+
+
+@shared_task
+def run_schedule():
+    '''
+    Scheduled weeky task to create post schedule for every user
+    '''
+    users = PickrUser.query.all()
+
+    for user in users:
+        logging.info(
+            f"Creating schedule for user: {user.username}"
+        )
+        create_schedule(user.id).apply_async(
+            args=(user.id,)
+        )
+
+@shared_task
+def create_schedule(user_id, num_topics_per_niche=3):
+    '''
+    Generate post schedule
+    '''
+    user = PickrUser.query.get(user_id)
+    niches = user.niches
+
+    total_posts = 21  # 3 posts per day is 21
+    num_posts_per_niche = 3
+    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche)
+
+    topics = []
+    generated_posts = []
+    for niche in niches:
+        logging.info(
+            f"Creating niche {niche.title} schedule for user: {user_id}"
+        )
+        topics = ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).all()
+
+        # choose num_topics_per_niche random modeled topics
+        topics += topics[:num_topics_per_niche]
+
+        # choose total_posts random generated posts from each modeled topic
+        for t in topics:
+            random.shuffle(t.generated_posts)
+            generated_posts += t.generated_posts[:num_posts_per_topic]
+    # endfor
+
+    generated_posts = generated_posts[:total_posts]
+    schedule = {
+        "id": uuid.uuid4(),
+        "user_id": user_id,
+    }
+
+    schedule_posts = []
+    for p in generated_posts:
+        post = {
+            "schedule_id": schedule["id"],
+            "generated_post_id": p.id,
+            "user_id": user.id,
+        }
+        schedule_posts.append(post)
+
+    write_schedule(schedule)
+    write_schedule_posts(schedule_posts)
+
+    return schedule["id"]
 
 
 @shared_task

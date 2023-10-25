@@ -1,7 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 from os import environ
 from typing import Union, List
-import logging
 
 import pandas as pd
 import praw
