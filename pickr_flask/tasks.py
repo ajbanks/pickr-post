@@ -39,26 +39,17 @@ def run_schedule():
             args=(user.id,)
         )
 
-
 @shared_task
-def create_schedule(user_id, num_topics_per_niche = 3):
+def create_schedule(user_id, num_topics_per_niche=3):
     '''
     Generate post schedule
     '''
-    total_posts = 21 # 3 posts per day is 21
-    niche_ids = user_niche_assoc.query.filter(
-        and_(
-            user_niche_assoc.user_id.in_(user_id),
-        )
-    ).all()
+    user = PickrUser.query.get(user_id)
+    niches = user.niches
 
-    niches = Niche.query.filter(
-        and_(
-            Niche.id.in_(niche_ids),
-        )
-    ).all()
-    num_posts_per_niche = total_posts / len(niches)
-    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche) 
+    total_posts = 21  # 3 posts per day is 21
+    num_posts_per_niche = 3
+    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche)
 
     topics = []
     generated_posts = []
@@ -66,52 +57,43 @@ def create_schedule(user_id, num_topics_per_niche = 3):
         logging.info(
             f"Creating niche {niche.title} schedule for user: {user_id}"
         )
-
-        # get modeled topics
-        max_date = ModeledTopic.query.filter(
-            ModeledTopic.niche_id.in_(niche.id),
-            ).order_by(
-                ModeledTopic.date.desc()
-        ).first().date.date()
         topics = ModeledTopic.query.filter(
             and_(
-                ModeledTopic.niche_id.in_([n]),
-                cast(ModeledTopic.date, Date) == max_date
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
             )
         ).order_by(
             ModeledTopic.size.desc()
         ).all()
 
         # choose num_topics_per_niche random modeled topics
-        random.shuffle(topics)
         topics += topics[:num_topics_per_niche]
 
-        # choose total_posts random generated posts form each modeled topic
+        # choose total_posts random generated posts from each modeled topic
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
-        random.shuffle(generated_posts)
+    # endfor
 
-    # create schedule text
     generated_posts = generated_posts[:total_posts]
-    schedule_text = create_schedule_text_no_trends(topics)
-    assert len(generated_posts) == len(total_posts)
     schedule = {
         "id": uuid.uuid4(),
         "user_id": user_id,
-        "schedule_text": schedule_text
     }
 
     schedule_posts = []
     for p in generated_posts:
         post = {
             "schedule_id": schedule["id"],
-            "post_id": p.id
+            "generated_post_id": p.id,
+            "user_id": user.id,
         }
         schedule_posts.append(post)
 
     write_schedule(schedule)
     write_schedule_posts(schedule_posts)
+
+    return schedule["id"]
 
 
 @shared_task
