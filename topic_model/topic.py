@@ -348,14 +348,14 @@ def generate_tweets_for_topic(
     for i in range(num_tweets):
         tweet = generate_informative_tweet_for_topic_awesome_prompt(topic_label)
         generated_tweets.append({
-            "topic_label": topic,
+            "topic_label": topic_label,
             "information_type": "informative",
             "text": tweet,
         })
 
         tweet = generate_informative_tweet_for_topic_awesome_prompt(topic_summary)
         generated_tweets.append({
-            "topic_label": topic,
+            "topic_label": topic_label,
             "information_type": "funny",
             "text": tweet,
         })
@@ -385,6 +385,7 @@ def create_summary_prompt(documents, keywords):
         Based on the information above, please give a description of this topic in the following format:
         topic: <description>
         """
+
 
 def create_label_prompt(documents, keywords):
     return f"""
