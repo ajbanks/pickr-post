@@ -1,0 +1,26 @@
+<div hx-target="this" hx-swap="outerHTML" class="card tweet">
+    {% if username %}
+    <div class="author">@{{ username }}</div>
+    {% endif %}
+
+    {% if posted_at %}
+    <div class="scheduled">Posted at {{ posted_at }}</div>
+    {% elif scheduled_for %}
+    <div class="scheduled">Scheduled for {{ scheduled_for }}</div>
+    {% endif %}
+
+    <div class="suggested-post">
+        <p>{{post_text}}</p>
+    </div>
+    <button title="Edit" hx-get="/post/{{ post_id }}/edit" class="edit-button clickable">
+        <img src='{{ url_for("static", filename="img/edit.svg") }}'>
+    </button>
+    <button title="Schedule tweet" hx-get="/post/{{ post_id }}/schedule" class="schedule-button clickable">
+        <img src='{{ url_for("static", filename="img/schedule.svg") }}'>
+    </button>
+    <div class="twitter-button clickable">
+        <a href="/post/{{ post_id }}/tweet">
+        <img src='{{ url_for("static", filename="img/twitter.svg") }}'>
+        </a>
+    </div>
+</div>

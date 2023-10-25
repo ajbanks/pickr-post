@@ -13,4 +13,4 @@ echo "done"
 # keep backups for one week
 find /backups -delete -mtime +6 -iname 'pickr.*zst'
 
-gcloud storage cp "/backups/$backup_name" $GCLOUD_BUCKET
+gcloud storage cp "/backups/${backup_name}.zst" $GCLOUD_BUCKET

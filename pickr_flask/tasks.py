@@ -4,27 +4,22 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List
-from celery import shared_task, chain
 
-from sqlalchemy import Date, cast, and_, exc
-
+import tweepy
+from celery import chain, shared_task
+from flask import current_app as app
+from sqlalchemy import Date, and_, cast
 from topic_model import topic
-from .models import (
-    db,
-    RedditPost, Niche, ModeledTopic, PickrUser,
-    user_niche_assoc
-    _to_dict,
-)
-from .post_schedule import create_schedule_text, create_schedule_text_no_trends, write_schedule, write_schedule_posts
 
-from .reddit import (
-    process_post,
-    fetch_subreddit_posts,
-    write_reddit_modeled_overview,
-    write_modeled_topic_with_reddit_posts,
-    write_reddit_posts,
-    write_generated_posts,
-)
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
+                     ScheduledPost, _to_dict, db, user_niche_assoc)
+from .post_schedule import (create_schedule_text_no_trends, write_schedule,
+                            write_schedule_posts)
+from .queries import latest_post_edit, oauth_session_by_user
+from .reddit import (fetch_subreddit_posts, process_post,
+                     write_generated_posts,
+                     write_modeled_topic_with_reddit_posts,
+                     write_reddit_modeled_overview, write_reddit_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
 
@@ -43,7 +38,7 @@ def run_schedule():
         create_schedule(user.id).apply_async(
             args=(user.id,)
         )
-        
+
 
 @shared_task
 def create_schedule(user_id, num_topics_per_niche = 3):
@@ -51,7 +46,6 @@ def create_schedule(user_id, num_topics_per_niche = 3):
     Generate post schedule
     '''
     total_posts = 21 # 3 posts per day is 21
-    
     niche_ids = user_niche_assoc.query.filter(
         and_(
             user_niche_assoc.user_id.in_(user_id),
@@ -354,3 +348,80 @@ def generate_niche_gpt_topics(niche_id):
 
     write_reddit_modeled_overview(modeled_topics)
     write_generated_posts(generated_tweets)
+
+
+@shared_task
+def post_scheduled_tweets():
+    '''
+    Retrieve any scheduled tweets that need to be posted from the DB
+    and post them to twitter.
+    '''
+    scheduled_posts = (
+        ScheduledPost.query.filter(
+            and_(
+                ScheduledPost.posted_at.is_(None),
+                ScheduledPost.scheduled_for < datetime.now()
+            )
+        )
+        .order_by(
+            ScheduledPost.user_id, ScheduledPost.scheduled_for
+        )
+        .all()
+    )
+    if not scheduled_posts:
+        logging.info("no tweets to schedule")
+        return
+
+    # post the tweets grouped by user
+    uid_to_posts = {}
+    for p in scheduled_posts:
+        uid = p.user_id
+        if uid not in uid_to_posts.keys():
+            uid_to_posts[uid] = []
+        uid_to_posts[uid].append(p)
+
+    for user_id, posts in uid_to_posts.items():
+        oauth_sess = oauth_session_by_user(user_id)
+        if oauth_sess is None or oauth_sess.access_token is None \
+           or oauth_sess.access_token_secret is None:
+            logging.error(
+                f"no twitter credentials found for user: user_id={user_id}"
+            )
+            continue
+
+        client = tweepy.Client(
+            consumer_key=app.config["TWITTER_API_KEY"],
+            consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
+            access_token=oauth_sess.access_token,
+            access_token_secret=oauth_sess.access_token_secret,
+            wait_on_rate_limit=True,
+        )
+
+        num_posted = 0
+        for p in posts:
+            post_edit = latest_post_edit(p.generated_post_id, user_id)
+            if post_edit is None:
+                gp = GeneratedPost.get(p.generated_post_id)
+                post_text = gp.text
+            else:
+                post_text = post_edit.text
+
+            try:
+                resp = client.create_tweet(text=post_text)
+            except (tweepy.errors.BadRequest, tweepy.errors.Unauthorized) as e:
+                logging.error(
+                    f"error posting tweet for user_id={user_id}: {e}"
+                )
+                break
+
+            p.tweet_id = resp.data["id"]
+            p.posted_at = datetime.now()
+            db.session.add(p)
+            db.session.commit()
+            num_posted += 1
+        # endfor
+
+        logging.info(
+            f"posted {num_posted} tweets for user_id={user_id}"
+        )
+    # endfor

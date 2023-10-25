@@ -13,7 +13,7 @@
     {% if no_header %}{% else %}
     <div class="header">{% include 'header.html' %}</div>
     {% endif %}
-    <body>
+    <body hx-headers='{{ {"X-CSRFToken": csrf_token()} | tojson }}'>
         {% block content %}{% endblock %}
     </body>
 

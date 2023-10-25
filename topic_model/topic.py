@@ -11,6 +11,7 @@ import re
 
 import backoff
 import openai
+from openai.error import OpenAIError
 import pandas as pd
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer
@@ -19,6 +20,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 RANDOM_STATE = 42
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
+STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
     "Playful and Youthful",
     "Professional and Authoritative",
@@ -185,7 +187,7 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     return resp.lower().strip(string.punctuation) == "yes"
 
 
-@backoff.on_exception(backoff.expo, Exception)
+@backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description(topic_documents, topic_keywords):
 
     topic_label = (
@@ -198,7 +200,7 @@ def get_label_and_description(topic_documents, topic_keywords):
         .message.content
     )
     try:
-        topic_label = topic_label.split('topic:')[1].strip()
+        topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
     topic_desc = (
@@ -211,10 +213,9 @@ def get_label_and_description(topic_documents, topic_keywords):
         .message.content
     )
     try:
-        topic_desc = topic_desc.split('topic:')[1].strip()
+        topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
-    
     return topic_label, topic_desc
 
 
@@ -297,7 +298,7 @@ def trend_type(points):
         return 4
 
 
-@backoff.on_exception(backoff.expo, Exception)
+@backoff.on_exception(backoff.expo, OpenAIError)
 def send_chat_gpt_message(message, temperature=0.8):
     # TODO: check the temperature is correct
     return (
@@ -405,8 +406,9 @@ def create_label_prompt(documents, keywords):
         topic: <topic label>
         """
 
+
 def convert_chat_gpt_response_to_list(str_response):
-    return [s.strip("'-" + '"') for s in re.split("\n", str_response)]
+    return [s.strip(STRIP_CHARS) for s in re.split("\n", str_response)]
 
 
 def generate_tweet(text, topic_label):
@@ -426,22 +428,22 @@ def generate_related_topics(
 
 def generate_informative_tweet_for_topic(topic):
     message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet that explains {topic}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
-    return send_chat_gpt_message(message)
+    return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 
 def generate_funny_tweet_for_topic(topic):
     message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
-    return send_chat_gpt_message(message)
+    return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 
 def generate_informative_tweet_for_topic_desc(topic_label, topic_desc):
     message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet for the topic '{topic_label}' with the following description: {topic_desc}. \n\nDon't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
-    return send_chat_gpt_message(message)
+    return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 
 def generate_funny_tweet_for_topic_desc(topic_label, topic_desc):
     message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about the topic '{topic_label}' with the following description: {topic_desc}. \n\nDon't mention any specific twitter users or tools. Don't include any emoji's. write concisely."
-    return send_chat_gpt_message(message)
+    return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 
 def generate_future_focused_tweet_for_topic(topic):

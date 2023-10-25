@@ -71,11 +71,11 @@
   transition: 0.1s ease;
 }
 
-.body>.sidebar_small {
+.body > .sidebar_small {
   width: 0%;
 }
 
-.body>.content_large {
+.body > .content_large {
   width: 100%;
 }
 
@@ -93,15 +93,18 @@
 }
 
 .content {
-  width: 80%;
   text-align: center;
   display: flex;
   flex-direction: column;
 }
 
+.message-modal a {
+  color: var(--main-color);
+}
+
 .message-modal {
-  color: #856404;
-  background-color: #fff3cd;
+  background-color: #f1f1fe;
+  color: #666;
   align-items: center;
   justify-content: space-between;
   margin: 0 auto;
@@ -153,6 +156,8 @@
 }
 
 .topic {
+  margin-left: 6%;
+  margin-right: 6%;
   border-bottom: 1px solid #DDD;
   font-size: 1rem;
   text-align: left;
@@ -173,7 +178,7 @@
 }
 
 .accordion {
-  transition: 0.2s;
+  transition: 0.1s;
   padding: 10px 20px;
   margin: 0px;
 }
@@ -189,16 +194,16 @@
 }
 
 .accordion-content {
+  text-align: center;
   padding: 0px 0px;
   padding-left: 20px;
   overflow: hidden;
   max-height: 0;
-  transition: max-height 0.2s ease-out;
+  transition: max-height 0.1s ease-out;
 }
 
 .accordion-content h2 {
   display: inline-block;
-  text-align: center;
 }
 
 .accordion-content .more {
@@ -228,7 +233,7 @@
 .tooltip {
   display: inline-block;
   position: relative;
-  left: 10px;
+  left: 5px;
   cursor: help;
 }
 
@@ -244,14 +249,14 @@
   text-align: left;
   font-size: 0.9rem;
   color: white;
-  background-color: rgba(0,0,0,0.6);
+  background-color: rgba(0,0,0,0.8);
   padding: 7px 7px;
   border-radius: 4px;
   position: absolute;
+  margin-left: -100px;
   width: 160px;
-  top: -20px;
-  margin-left: 10px;
-  left: 105%;
+  left: 20%;
+  top: 100%;
   z-index: 1;
 }
 
@@ -295,8 +300,9 @@
   border-radius: 6px;
   padding: 1rem;
   margin: 5px;
-  max-width: 15em;
+  width: 15em;
   display: block;
+  text-align: left;
 }
 
 .card p {
@@ -307,28 +313,164 @@
   color: #bbb;
 }
 
+.card .scheduled {
+  color: #888;
+  font-size: 0.8rem;
+  background: #f1f1fe;
+  padding: 5px;
+}
+
 .card:hover {
   box-shadow: 1px 1px 1px var(--main-color);
 }
 
-.card>.twitter-button {
+.card .twitter-button {
   background: var(--twitter-color);
   height: 20px;
   width: 20px;
-  padding: 6px;
+  padding: 5px;
   position: absolute;
   border-radius: 20px;
   bottom: 15px;
   right: 15px;
 }
 
-.twitter-button > img {
+.card > .edit-button {
+  border: none;
+  background: transparent;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 5px;
+}
+
+.card > .schedule-button {
+  border: none;
+  background: transparent;
+  position: absolute;
+  bottom: 10px;
+  left: 40px;
+  padding: 4px;
+}
+
+.post .read {
+  position: absolute;
+  bottom: 10px;
+  right: 15px;
+  padding: 4px;
+}
+
+.read a:hover {
+  color: var(--main-color);
+}
+
+.edit-button img {
+  height: 17px;
+  width: 17px;
+}
+
+.schedule-button img {
+  height: 20px;
+  width: 20px;
+}
+
+.back-button {
+  font-size: 0.9rem;
+  border: none;
+  background: transparent;
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 4px;
+}
+
+.back-button img {
+  heigh: 20px;
+  width: 20px;
+}
+
+.save-button,
+.submit-button,
+.view-button {
+  font-size: 0.9rem;
+  border: none;
+  background: transparent;
+  float: right;
+}
+
+.save-button,
+.submit-button,
+.view-button {
+  padding: 4px;
+  border: 1px solid #eee;
+  background:  #f1f1fe;
+  border-radius: 4px;
+}
+
+.save-button:hover,
+.submit-button:hover,
+.view-button:hover {
+  color: var(--main-color);
+  border-color: var(--main-color);
+}
+
+.twitter-button img {
   margin-top: 2px;
 }
 
+.datetime-input {
+  align: center;
+  padding-top: 0px;
+  padding-bottom: 20px;
+}
+
+.datetime-input label {
+  font-size: 0.9rem;
+  font-weight: 200;
+  color: #888;
+}
+
+.datetime-input input {
+  width: 12rem;
+}
+
+.datetime-input input:invalid + span::after {
+  content: "✖";
+  color: red;
+  padding-left: 5px;
+}
+
+.datetime-input input:valid + span::after {
+  content: "✓";
+  color: var(--twitter-color);
+  padding-left: 5px;
+}
+
+
+.already-scheduled p {
+  font-size: 0.75rem;
+  font-weight: 200;
+  color: #444;
+}
+
+.already-scheduled i {
+  color: black;
+}
+
 .suggested-post {
-  padding-bottom: 30px;
-  spellcheck: false;
+  padding-bottom: 20px;
+}
+
+.suggested-post textarea {
+  width: 90%;
+  max-width: 90%;
+  max-height: 90%;
+  margin-top: 10px;
+  font-family: inherit;
+  font-size: inherit;
+  display: block;
+  resize: none;
+  autocomplete: off;
 }
 
 .suggested-post p:focus {
@@ -349,7 +491,7 @@
   }
 
   .card {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
   }
 
   #user {
