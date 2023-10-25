@@ -8,13 +8,12 @@ from typing import List
 import tweepy
 from celery import chain, shared_task
 from flask import current_app as app
-from sqlalchemy import Date, and_, cast
+from sqlalchemy import and_
 from topic_model import topic
 
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
-from .post_schedule import (create_schedule_text_no_trends, write_schedule,
-                            write_schedule_posts)
+from .post_schedule import write_schedule, write_schedule_posts
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
@@ -40,18 +39,15 @@ def run_schedule():
         )
 
 @shared_task
-def create_schedule(user_id, num_topics_per_niche=3):
+def create_schedule(user_id):
     '''
-    Generate post schedule
+    Generate weekly schedule of 3 posts per day.
     '''
     user = PickrUser.query.get(user_id)
     niches = user.niches
 
-    total_posts = 21  # 3 posts per day is 21
-    num_posts_per_niche = 3
-    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche)
+    num_posts_per_topic = 3
 
-    topics = []
     generated_posts = []
     for niche in niches:
         logging.info(
@@ -64,36 +60,37 @@ def create_schedule(user_id, num_topics_per_niche=3):
             )
         ).order_by(
             ModeledTopic.size.desc()
-        ).all()
+        ).limit(3).all()
 
-        # choose num_topics_per_niche random modeled topics
-        topics += topics[:num_topics_per_niche]
-
-        # choose total_posts random generated posts from each modeled topic
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
     # endfor
 
-    generated_posts = generated_posts[:total_posts]
-    schedule = {
-        "id": uuid.uuid4(),
+    schedule = write_schedule({
         "user_id": user_id,
-    }
+        "week_number": datetime.now().isocalendar().week
+    })
 
-    schedule_posts = []
-    for p in generated_posts:
-        post = {
-            "schedule_id": schedule["id"],
-            "generated_post_id": p.id,
-            "user_id": user.id,
-        }
-        schedule_posts.append(post)
+    #  pick 3 random posts for each day
+    random.shuffle(generated_posts)
+    scheduled_posts = []
+    schedule_hours = [9, 12, 17]
+    for day in range(7):
+        for hour in schedule_hours:
+            if len(generated_posts) == 0:
+                break
+            gp = generated_posts.pop()
+            scheduled_posts.append({
+                "schedule_id": schedule.id,
+                "scheduled_day": day,
+                "scheduled_hour": hour,
+                "user_id": user.id,
+                "generated_post_id": gp.id,
+            })
 
-    write_schedule(schedule)
-    write_schedule_posts(schedule_posts)
-
-    return schedule["id"]
+    write_schedule_posts(scheduled_posts)
+    return schedule.id
 
 
 @shared_task

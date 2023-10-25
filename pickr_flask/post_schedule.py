@@ -3,7 +3,7 @@ from typing import List
 
 from sqlalchemy import exc
 
-from .models import ModeledTopic, Schedule, SchedulePost, db
+from .models import ModeledTopic, Schedule, ScheduledPost, db
 
 TOPIC_TEXT_SUFFIX = """
 The posts in the scehdule are able to be edited, or posted at a different time by clicking on the Edit and Schedule button.
@@ -42,11 +42,13 @@ def write_schedule(schedule: dict):
         logging.error(f"Error writing schedule post: {e}")
     else:
         db.session.commit()
+    return record
 
 
 def write_schedule_posts(schedule_posts: List[dict]):
+    records = []
     for post in schedule_posts:
-        record = SchedulePost(**post)
+        record = ScheduledPost(**post)
         try:
             db.session.add(record)
         except exc.SQLAlchemyError as e:
@@ -54,3 +56,5 @@ def write_schedule_posts(schedule_posts: List[dict]):
             logging.error(f"Error writing schedule post: {e}")
         else:
             db.session.commit()
+            records.append(record)
+    return records
