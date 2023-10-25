@@ -29,7 +29,9 @@ BRAND_VOICES = [
     "Friendly and Supportive",
     "Bold and Innovative",
 ]
-
+with open('tweet_examples.txt', 'r') as read_file:
+    TWEET_EXAMPLES = read_file.read()
+    
 
 def build_subtopic_model(texts: List[str], reduce_topics=False):
     '''
@@ -359,7 +361,7 @@ def generate_tweets_for_topic(
             "information_type": "funny",
             "text": tweet,
         })
-        
+
     return generated_tweets
 
 
