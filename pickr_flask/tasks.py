@@ -1,4 +1,6 @@
 import logging
+import math
+import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List
@@ -9,8 +11,9 @@ from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
 
-from .models import (GeneratedPost, ModeledTopic, Niche, RedditPost,
-                     ScheduledPost, _to_dict, db)
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
+                     ScheduledPost, _to_dict, db, user_niche_assoc)
+from .post_schedule import write_schedule, write_schedule_posts
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
@@ -18,6 +21,76 @@ from .reddit import (fetch_subreddit_posts, process_post,
                      write_reddit_modeled_overview, write_reddit_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
+
+
+@shared_task
+def run_schedule():
+    '''
+    Scheduled weeky task to create post schedule for every user
+    '''
+    users = PickrUser.query.all()
+
+    for user in users:
+        logging.info(
+            f"Creating schedule for user: {user.username}"
+        )
+        create_schedule(user.id).apply_async(
+            args=(user.id,)
+        )
+
+@shared_task
+def create_schedule(user_id):
+    '''
+    Generate weekly schedule of 3 posts per day.
+    '''
+    user = PickrUser.query.get(user_id)
+    niches = user.niches
+
+    num_posts_per_topic = 3
+
+    generated_posts = []
+    for niche in niches:
+        logging.info(
+            f"Creating niche {niche.title} schedule for user: {user_id}"
+        )
+        topics = ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).limit(3).all()
+
+        for t in topics:
+            random.shuffle(t.generated_posts)
+            generated_posts += t.generated_posts[:num_posts_per_topic]
+    # endfor
+
+    schedule = write_schedule({
+        "user_id": user_id,
+        "week_number": datetime.now().isocalendar().week
+    })
+
+    #  pick 3 random posts for each day
+    random.shuffle(generated_posts)
+    scheduled_posts = []
+    schedule_hours = [9, 12, 17]
+    for day in range(7):
+        for hour in schedule_hours:
+            if len(generated_posts) == 0:
+                break
+            gp = generated_posts.pop()
+            scheduled_posts.append({
+                "schedule_id": schedule.id,
+                "scheduled_day": day,
+                "scheduled_hour": hour,
+                "user_id": user.id,
+                "generated_post_id": gp.id,
+            })
+
+    write_schedule_posts(scheduled_posts)
+    return schedule.id
 
 
 @shared_task
@@ -209,8 +282,8 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     '''
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
-        generated_tweets = topic.generate_tweets_for_topic(
-            5, modeled_topic.name, modeled_topic.description, 3
+        _, generated_tweets = topic.generate_tweets_for_topic(
+            5, modeled_topic.name, 3
         )
 
         for tweet in generated_tweets:
@@ -307,7 +380,7 @@ def post_scheduled_tweets():
         for p in posts:
             post_edit = latest_post_edit(p.generated_post_id, user_id)
             if post_edit is None:
-                gp = GeneratedPost.get(p.generated_post_id)
+                gp = GeneratedPost.query.get(p.generated_post_id)
                 post_text = gp.text
             else:
                 post_text = post_edit.text

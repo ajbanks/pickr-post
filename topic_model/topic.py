@@ -359,11 +359,7 @@ def generate_tweets_for_topic(
             "information_type": "funny",
             "text": tweet,
         })
-    #generated_tweets = list(filter(
-    #    lambda t: len(t["text"]) >= 30,
-    #    generated_tweets
-    #))
-
+        
     return generated_tweets
 
 
@@ -402,13 +398,6 @@ def convert_chat_gpt_response_to_list(str_response):
     return [s.strip(STRIP_CHARS) for s in re.split("\n", str_response)]
 
 
-def generate_informative_tweet_for_topic_awesome_prompt(topic_summary):
-    """Implementation: original_gpt4_awesome-chatgpt-prompts_3examples_tweet_generation_results.csv
-    """
-    message = f"I want you to act as a social media manager. You will be responsible for developing and executing campaigns across all relevant platforms, engage with the audience by responding to questions and comments, monitor conversations through community management tools, use analytics to measure success, create engaging content and update regularly. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. I want you to read this topic summary, pick out an interesting topic and write a tweet about it. Use the topic summary to help you. Here is the topic summary: {topic_summary}. think step-by-step. Analyse the topic and identify its relevance to the audience. Then think of a good point that the audience should know. Then create the tweet. Don't mention any personal stories or situations from the past. Don't introduce the topic at the beginning of the tweet with words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources. You aren't selling anything Don't include any emoji's. Here is a good example of a tweet: here are some tweet examples you can use as inspiration (don't directly copy the styles/formats: {TWEET_EXAMPLES}."
-    return message
-
-
 def generate_tweet(text, topic_label):
     return f"You are a social media content creator. You write tweets that are thought provoking and authoritative. People learn alot from your tweets. I am going to show you a few tweets about the topic {topic_label}. I then want you to generate a new viral tweet. Do not mention any events, dates or company names. Here are the tweets: {text}"
 
@@ -422,6 +411,13 @@ def generate_related_topics(
 
 # def generate_10_brand_voice_tweets_for_topic(brand_voice, topic):
 #     return f"You are a social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create 10 tweets related to {topic} written in a {brand_voice} brand voice. Don't add any numbering to the tweets and separate each tweet with a new line character."
+
+
+def generate_informative_tweet_for_topic_awesome_prompt(topic_summary):
+    """Implementation: original_gpt4_awesome-chatgpt-prompts_3examples_tweet_generation_results.csv
+    """
+    message = f"I want you to act as a social media manager. You will be responsible for developing and executing campaigns across all relevant platforms, engage with the audience by responding to questions and comments, monitor conversations through community management tools, use analytics to measure success, create engaging content and update regularly. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. I want you to read this topic summary, pick out an interesting topic and write a tweet about it. Use the topic summary to help you. Here is the topic summary: {topic_summary}. think step-by-step. Analyse the topic and identify its relevance to the audience. Then think of a good point that the audience should know. Then create the tweet. Don't mention any personal stories or situations from the past. Don't introduce the topic at the beginning of the tweet with words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources. You aren't selling anything Don't include any emoji's. Here is a good example of a tweet: here are some tweet examples you can use as inspiration (don't directly copy the styles/formats: {TWEET_EXAMPLES}."
+    return message
 
 
 def generate_informative_tweet_for_topic(topic):
