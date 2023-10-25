@@ -209,8 +209,8 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     '''
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
-        generated_tweets = topic.generate_tweets_for_topic(
-            5, modeled_topic.name, modeled_topic.description, 3
+        _, generated_tweets = topic.generate_tweets_for_topic(
+            5, modeled_topic.name, 3
         )
 
         for tweet in generated_tweets:

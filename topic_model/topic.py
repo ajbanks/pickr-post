@@ -20,7 +20,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 RANDOM_STATE = 42
 
 openai.api_key = os.getenv("OPENAI_API_KEY")
-OPEN_AI_MODEL = "gpt-4"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
     "Playful and Youthful",
@@ -193,7 +192,7 @@ def get_label_and_description(topic_documents, topic_keywords):
 
     topic_label = (
         openai.ChatCompletion.create(
-            model=OPEN_AI_MODEL,
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": create_label_prompt(topic_documents, topic_keywords)}],
             temperature=0.2,
         )
@@ -206,7 +205,7 @@ def get_label_and_description(topic_documents, topic_keywords):
         pass
     topic_desc = (
         openai.ChatCompletion.create(
-            model=OPEN_AI_MODEL,
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": create_summary_prompt(topic_documents, topic_keywords)}],
             temperature=0.2,
         )
@@ -304,7 +303,7 @@ def send_chat_gpt_message(message, temperature=0.8):
     # TODO: check the temperature is correct
     return (
         openai.ChatCompletion.create(
-            model=OPEN_AI_MODEL,
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": message}],
             temperature=temperature,
         )
@@ -328,7 +327,6 @@ def rewrite_tweets_in_brand_voices(tweet_list):
 def generate_tweets_for_topic(
         num_tweets,
         topic_label,
-        topic_summary,
         num_topics_from_topic_label=5
 ):
     """
@@ -343,28 +341,40 @@ def generate_tweets_for_topic(
         1 if num_tweets_per_tweet_type <= 0 else num_tweets_per_tweet_type
     )
 
+    # get topics related to topic label
+    # TODO: potentially remove the generate_related_topics
+    # as it might not be necessary
+    related_topics = generate_related_topics(
+        num_topics_from_topic_label, topic_label
+    )[:num_topics_from_topic_label]
+    related_topics = [r for r in related_topics if r.strip() != ""]
     generated_tweets = []
-    
-    for i in range(num_tweets):
-        tweet = generate_informative_tweet_for_topic_awesome_prompt(topic_label)
-        generated_tweets.append({
-            "topic_label": topic,
-            "information_type": "informative",
-            "text": tweet,
-        })
+    for topic in [topic_label]+related_topics:
+        # TODO: generate_informative_tweets_for_topic and
+        # generate_future_focused_tweets_for_topic dont reliably create
+        # the correct number of tweets (maybe due to temp value)
+        # and the split function doesnt accurately split tweets
 
-        tweet = generate_informative_tweet_for_topic_awesome_prompt(topic_summary)
-        generated_tweets.append({
-            "topic_label": topic,
-            "information_type": "funny",
-            "text": tweet,
-        })
+        for i in range(num_tweets_per_tweet_type):
+            tweet = generate_informative_tweet_for_topic(topic)
+            generated_tweets.append({
+                "topic_label": topic,
+                "information_type": "informative",
+                "text": tweet,
+            })
+
+            tweet = generate_funny_tweet_for_topic(topic)
+            generated_tweets.append({
+                "topic_label": topic,
+                "information_type": "funny",
+                "text": tweet,
+            })
     #generated_tweets = list(filter(
     #    lambda t: len(t["text"]) >= 30,
     #    generated_tweets
     #))
 
-    return generated_tweets
+    return related_topics, generated_tweets
 
 
 def valid_topic_test(text):
@@ -399,13 +409,6 @@ def create_label_prompt(documents, keywords):
 
 def convert_chat_gpt_response_to_list(str_response):
     return [s.strip(STRIP_CHARS) for s in re.split("\n", str_response)]
-
-
-def generate_informative_tweet_for_topic_awesome_prompt(topic_summary):
-    """Implementation: original_gpt4_awesome-chatgpt-prompts_3examples_tweet_generation_results.csv
-    """
-    message = f"I want you to act as a social media manager. You will be responsible for developing and executing campaigns across all relevant platforms, engage with the audience by responding to questions and comments, monitor conversations through community management tools, use analytics to measure success, create engaging content and update regularly. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. I want you to read this topic summary, pick out an interesting topic and write a tweet about it. Use the topic summary to help you. Here is the topic summary: {topic_summary}. think step-by-step. Analyse the topic and identify its relevance to the audience. Then think of a good point that the audience should know. Then create the tweet. Don't mention any personal stories or situations from the past. Don't introduce the topic at the beginning of the tweet with words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources. You aren't selling anything Don't include any emoji's. Here is a good example of a tweet: here are some tweet examples you can use as inspiration (don't directly copy the styles/formats: {TWEET_EXAMPLES}."
-    return message
 
 
 def generate_tweet(text, topic_label):
