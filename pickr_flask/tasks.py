@@ -380,7 +380,7 @@ def post_scheduled_tweets():
         for p in posts:
             post_edit = latest_post_edit(p.generated_post_id, user_id)
             if post_edit is None:
-                gp = GeneratedPost.get(p.generated_post_id)
+                gp = GeneratedPost.query.get(p.generated_post_id)
                 post_text = gp.text
             else:
                 post_text = post_edit.text
