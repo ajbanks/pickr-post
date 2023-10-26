@@ -1,16 +1,113 @@
-import pandas as pd
 from datetime import datetime
+from uuid import UUID
+
+import pandas as pd
+import shortuuid
+from flask import render_template
+
+from .constants import DATETIME_FRIENDLY_FMT
 # from .models import db, Topic, ModeledTopic, Tweet, PickrUser, GeneratedPost, Niche
-from .models import (
-    db,
-    ModeledTopic,
-    PickrUser,
-    ActivityLog,
-    GeneratedPost,
-    Niche,
-    RedditPost,
-    Subreddit,
-)
+from .models import (ActivityLog, GeneratedPost, ModeledTopic, Niche,
+                     PickrUser, RedditPost, Subreddit, db)
+from .queries import get_scheduled_post, latest_post_edit
+
+SHORTCODE_ALPHABET = "abcdefghijklmnopqrstuvwxyz1234567890"
+URLSAFE_ALPHABET = SHORTCODE_ALPHABET + "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+shortcode_uuid = shortuuid.ShortUUID(alphabet=SHORTCODE_ALPHABET)
+urlsafe_uuid = shortuuid.ShortUUID(alphabet=URLSAFE_ALPHABET)
+
+
+def shortcode(uuid: UUID, prefix="post") -> str:
+    short_uuid = shortcode_uuid.encode(uuid)[:8]
+    return f"{prefix}_{short_uuid}"
+
+
+def generated_post_info(generated_post_id: UUID, user_id: UUID):
+    post_edit = latest_post_edit(generated_post_id, user_id)
+    scheduled_post = get_scheduled_post(generated_post_id, user_id)
+
+    if post_edit is None:
+        text = (
+            db.session.query(GeneratedPost.text)
+            .filter_by(id=generated_post_id)
+            .one()
+        )[0]
+    else:
+        text = post_edit.text
+
+    return text, scheduled_post
+
+
+def render_post_html(
+        generated_post_id: UUID,
+        user_id: UUID,
+        text: str,
+        template_name="post.html",
+        **kwargs,
+):
+    '''
+    Render a generated post HTML fragment template including any edits,
+    and showing if the post is scheduled or already tweeted.
+
+    It can render these templates:
+        post.html, post_edit.html, schedule_post.html
+    '''
+    scheduled_for = kwargs.pop("scheduled_for", None)
+    posted_at = kwargs.pop("posted_at", None)
+    tweet_id = kwargs.pop("tweet_id", None)
+
+    scheduled_for_str = None
+    posted_at_str = None
+    tweet_url = None
+    if scheduled_for is not None:
+        scheduled_for_str = scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
+    if posted_at is not None:
+        posted_at_str = posted_at.strftime(DATETIME_FRIENDLY_FMT)
+    if tweet_id is not None:
+        tweet_url = f"https://twitter.com/i/status/{tweet_id}"
+
+    short_id = shortcode(generated_post_id)
+    urlsafe_id = urlsafe_uuid.encode(generated_post_id)
+
+    return render_template(
+        template_name,
+        post_text=text,
+        post_id=urlsafe_id,
+        posted_at=posted_at_str,
+        scheduled_for=scheduled_for_str,
+        tweet_url=tweet_url,
+        short_id=short_id,
+        **kwargs
+    )
+
+
+def render_post_html_from_id(
+        generated_post_id: UUID,
+        user_id: UUID,
+        template_name="post.html",
+        **kwargs
+):
+    '''
+    Convenience function to call render_post_html
+    '''
+    text, scheduled_post = generated_post_info(generated_post_id, user_id)
+    scheduled_for, posted_at, tweet_id = None, None, None
+    if scheduled_post is not None:
+        scheduled_for = scheduled_post.scheduled_for
+        posted_at = scheduled_post.posted_at
+        tweet_id = scheduled_post.tweet_id
+
+    return render_post_html(
+        generated_post_id,
+        user_id,
+        text,
+        template_name=template_name,
+        scheduled_for=scheduled_for,
+        posted_at=posted_at,
+        tweet_id=tweet_id,
+        **kwargs
+    )
 
 
 def log_user_activity(user: PickrUser, event: str):

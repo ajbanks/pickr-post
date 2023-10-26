@@ -32,3 +32,4 @@ python-dotenv
 psycopg2-binary
 psycopg2
 backoff
+shortuuid

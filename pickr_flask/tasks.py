@@ -1,5 +1,4 @@
 import logging
-import math
 import random
 import uuid
 from datetime import datetime, timedelta
@@ -12,7 +11,7 @@ from sqlalchemy import and_
 from topic_model import topic
 
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
-                     ScheduledPost, _to_dict, db, user_niche_assoc)
+                     ScheduledPost, _to_dict, db)
 from .post_schedule import write_schedule, write_schedule_posts
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,

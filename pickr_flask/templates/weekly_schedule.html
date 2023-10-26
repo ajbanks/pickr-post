@@ -1,0 +1,42 @@
+{% extends 'layout.html' %}
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="body">
+    <div class="sidebar sidebar_small">
+        {% include 'navigation.html' %}
+    </div>
+    <div class="content content_large">
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="message-modal">
+                <button type="button" class="close clickable" data-dismiss="alert">&times;</button>
+                {% for message in messages %}
+                <p>{{ message }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+        <div class="container">
+            <div class="container cards">
+                {% if generated_post_fragment %}
+                {{ generated_post_fragment | safe }}
+                {% else %}
+                <p>No schedule generated yet...</p>
+                {% endif %}
+            </div>
+        </div>
+</div>
+
+{% endblock %}
+
+
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="https://unpkg.com/htmx.org@1.9.6" integrity="sha384-FhXw7b6AlE/jyjlZH5iHa/tTe9EpJ1Y55RjcgPbjeWMskSxZt1v9qkxLJWNJaGni" crossorigin="anonymous"></script>
+{% endblock %}
