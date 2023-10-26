@@ -33,9 +33,9 @@ for (let i = 0; i < accordions.length; i++) {
 }
 
 // toggle the first one
-if (accordions.length > 0) {
-  toggleAccordion(accordions[0])
-}
+// if (accordions.length > 0) {
+//   toggleAccordion(accordions[0])
+// }
 
 
 ////
@@ -54,10 +54,13 @@ if (closeAlert){
 
 // add timezone info to htmx requests
 document.body.addEventListener("htmx:configRequest", function(e) {
-  if (e.srcElement.classList.contains("schedule-button")) {
+  let classlist = e.srcElement.classList;
+  if (classlist.contains("schedule-button") ||
+      classlist.contains("back-button") ||
+      classlist.contains("submit-button")) {
     let dtInfo = Intl.DateTimeFormat().resolvedOptions();
-    e.detail.parameters["timezone"] = dtInfo.timeZone;
-    e.detail.parameters["locale"] = dtInfo.locale;
+    e.detail.parameters["timezone"] = encodeURIComponent(dtInfo.timeZone);
+    e.detail.parameters["locale"] = encodeURIComponent(dtInfo.locale);
   }
 })
 

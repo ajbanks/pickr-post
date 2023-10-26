@@ -17,8 +17,8 @@ from sqlalchemy import Date, and_, cast, exc
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .auth import PASSWORD_HASH_METHOD, get_reset_token, verify_reset_token
-from .constants import (DATETIME_ISO_FMT, MAX_FUTURE_SCHEDULE_DAYS,
-                        MAX_TWEET_LEN)
+from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
+                        MAX_FUTURE_SCHEDULE_DAYS, MAX_TWEET_LEN)
 from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
@@ -477,8 +477,8 @@ def weekly_schedule():
     timezone = ZoneInfo("UTC")
 
     # TODO: fix bad query patterns (N+1 select)
-    schedule = Schedule.query.filter(
-        Schedule.user_id == current_user.id,
+    schedule = Schedule.query.filter_by(
+        user_id=current_user.id,
     ).limit(1).one()
     if schedule is None:
         return render_template("weekly_schedule.html")
@@ -505,6 +505,7 @@ def weekly_schedule():
     post_html_fragment = "\n".join(post_html_fragments)
     return render_template(
         "weekly_schedule.html",
+        today=now.strftime(DATETIME_FRIENDLY_FMT),
         generated_post_fragment=post_html_fragment,
     )
 

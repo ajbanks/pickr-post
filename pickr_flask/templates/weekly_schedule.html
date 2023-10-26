@@ -22,6 +22,10 @@
             {% endif %}
         {% endwith %}
         <div class="container">
+            <h1>Tweet Schedule</h1>
+            <h2>{{ today }}</h2>
+        </div>
+        <div class="topic">
             <div class="container cards">
                 {% if generated_post_fragment %}
                 {{ generated_post_fragment | safe }}
