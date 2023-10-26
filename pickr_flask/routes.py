@@ -447,6 +447,7 @@ def home():
 
     niche_ids = [n.id for n in current_user.niches]
     topics = top_modeled_topic_query(niche_ids).limit(3).all()
+    topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
 
     # generated posts HTML is rendered separately to make it reusable
     posts_html_fragments = [
@@ -464,6 +465,7 @@ def home():
         title="Pickr - Your Daily Topics & Curated Tweets",
         date=datetime.today().strftime("%Y-%m-%d"),
         topics=topics,
+        topic_ids=topic_ids,
         generated_posts_fragments=posts_html_fragments,
     )
 
@@ -533,11 +535,13 @@ def all_topics():
     for t in topics:
         random.shuffle(t.generated_posts)
     topics = sorted(topics, key=lambda t: t.size, reverse=True)
+    topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
     return render_template(
         "all_topics.html",
         title="Pickr - Topics & Generated Tweets",
         date=datetime.today().strftime("%Y-%m-%d"),
         topics=topics,
+        topic_ids=topic_ids,
     )
 
 
@@ -546,14 +550,15 @@ def all_topics():
 def topic(topic_id):
     log_user_activity(current_user, f"topic_click:{topic_id} ")
 
+    try:
+        topic_id = urlsafe_uuid.decode(topic_id)
+    except ValueError:
+        abort(404)
+
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
-    try:
-        uuid = UUID(topic_id, version=4)
-    except ValueError:
-        return abort(404)
-    topic = ModeledTopic.query.get(uuid)
+    topic = ModeledTopic.query.get(topic_id)
     if topic is None:
         return abort(404)
 
@@ -695,21 +700,24 @@ def get_generated_post_or_abort(uuid: UUID):
     return generated_post
 
 
-def validate_generated_post_id(post_id: str):
-    '''Validate URL encoded UUID and ensure generated post exists'''
+def validate_generated_post_id(post_id: str) -> UUID:
+    '''
+    Validate URL encoded UUID and return decoded ID.
+    Abort if invalid ID or generated post doesn't exist.
+    '''
     try:
-        uuid = UUID(urlsafe_uuid.decode(post_id), version=4)
+        decoded_id = urlsafe_uuid.decode(post_id)
     except ValueError:
         return abort(400)
     exists = (
         db.session.query(GeneratedPost.id)
-        .filter_by(id=post_id)
+        .filter_by(id=decoded_id)
         .first()
         is not None
     )
     if not exists:
         return abort(400)
-    return uuid
+    return decoded_id
 
 
 ###############################################################################
@@ -797,6 +805,7 @@ def schedule_post(post_id):
         datetime: the ISO string of the datetime to schedule post at.
         timezone: the timezone of the datetime.
     '''
+    app.logger.info(post_id)
     generated_post_id = validate_generated_post_id(post_id)
 
     if request.method == "POST":

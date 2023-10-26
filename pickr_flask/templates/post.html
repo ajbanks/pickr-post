@@ -12,13 +12,19 @@
     <div class="suggested-post">
         <p>{{post_text}}</p>
     </div>
-    {% if default_time %}
-    <input id="{{ short_id }}" class="hide" name="default_time" value="{{ default_time }}">
-    {% endif %}
+    <input
+        id="{{ short_id }}"
+        class="hide"
+        name="default_time"
+        value="{{ default_time }}">
     <button title="Edit" hx-get="/post/{{ post_id }}/edit" class="edit-button clickable">
         <img src='{{ url_for("static", filename="img/edit.svg") }}'>
     </button>
-    <button title="Schedule tweet" hx-get="/post/{{ post_id }}/schedule" hx-include="#{{ short_id }}" class="schedule-button clickable">
+    <button
+        title="Schedule tweet"
+        hx-get="/post/{{ post_id }}/schedule"
+        hx-include="#{{ short_id }}"
+        class="schedule-button clickable">
         <img src='{{ url_for("static", filename="img/schedule.svg") }}'>
     </button>
     <div class="twitter-button clickable">
