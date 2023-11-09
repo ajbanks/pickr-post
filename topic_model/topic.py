@@ -189,33 +189,26 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     )
     return resp.lower().strip(string.punctuation) == "yes"
 
+def is_topic_informational_gpt(text) -> bool:
+    resp = send_chat_gpt_message(
+        is_informational_post(text),
+        temperature=0.2
+    )
+    return resp.lower().strip(string.punctuation) == "yes"
+    
+
 
 @backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description(topic_documents, topic_keywords):
-
-    topic_label = (
-        openai.ChatCompletion.create(
-            model=OPEN_AI_MODEL,
-            messages=[{"role": "user", "content": create_label_prompt(topic_documents, topic_keywords)}],
-            temperature=0.2,
-        )
-        .choices[0]
-        .message.content
-    )
+    topic_label = send_chat_gpt_message(create_label_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
         topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
-    topic_desc = (
-        openai.ChatCompletion.create(
-            model=OPEN_AI_MODEL,
-            messages=[{"role": "user", "content": create_summary_prompt(topic_documents, topic_keywords)}],
-            temperature=0.2,
-        )
-        .choices[0]
-        .message.content
-    )
+    topic_desc = send_chat_gpt_message(create_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
+        topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+        topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
@@ -349,18 +342,20 @@ def generate_tweets_for_topic(
     
     for i in range(num_tweets):
         tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_label))
-        generated_tweets.append({
-            "topic_label": topic_label,
-            "information_type": "informative",
-            "text": tweet,
-        })
+        if is_topic_informational_gpt(tweet):
+            generated_tweets.append({
+                "topic_label": topic_label,
+                "information_type": "informative",
+                "text": tweet,
+            })
 
         tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_summary))
-        generated_tweets.append({
-            "topic_label": topic_label,
-            "information_type": "funny",
-            "text": tweet,
-        })
+        if is_topic_informational_gpt(tweet):
+            generated_tweets.append({
+                "topic_label": topic_label,
+                "information_type": "funny",
+                "text": tweet,
+            })
 
     return generated_tweets
 
@@ -374,19 +369,30 @@ def is_topic_related_to_niche(topic_label, niche_label):
     return prompt_string
 
 
+def create_summarise_topic_summary_prompt(summary):
+    return f"""
+        You are excellent at creating concise and short descriptions that summarise the description of a topic. Your summarisations cover a maximum of two themes and are easy to to understand.
+        I have a topic that has the following description: {summary}
+        
+        Based on the information above, please give a description of this topic that covers a maximum of two themes, in the following format:
+        topic: <description>
+        """
+
 def create_summary_prompt(documents, keywords):
     return f"""
+        You are excellent at creating concise and short descriptions that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
         I have a topic that is described by the following keywords: {keywords}
         In this topic, the following documents are a small but representative subset of all documents in the topic:
         {documents}
         
-        Based on the information above, please give a description of this topic in the following format:
+        Based on the information above, please give a description of this topic that covers a maximum of two themes, in the following format:
         topic: <description>
         """
 
 
 def create_label_prompt(documents, keywords):
     return f"""
+        You are excellent at creating concise and short labels that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
         I have a topic that contains the following documents: 
         {documents}
         The topic is described by the following keywords: {keywords}
@@ -413,6 +419,15 @@ def generate_related_topics(
 
 # def generate_10_brand_voice_tweets_for_topic(brand_voice, topic):
 #     return f"You are a social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create 10 tweets related to {topic} written in a {brand_voice} brand voice. Don't add any numbering to the tweets and separate each tweet with a new line character."
+
+
+def is_informational_post(post_text):
+    return f"""
+    
+    You are excellent at answering questions accurately and determining whether a tweet is informational and sharing knowledge. I will give you a tweets and you will reply 'Yes' if the tweet is informational or 'No' if it is not:
+
+    TWEET: {post_text}
+    """
 
 
 def generate_informative_tweet_for_topic_awesome_prompt(topic_summary):
