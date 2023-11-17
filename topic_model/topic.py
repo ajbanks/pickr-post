@@ -19,7 +19,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 
 RANDOM_STATE = 42
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = openai_key
 OPEN_AI_MODEL = "gpt-4"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
@@ -31,7 +32,7 @@ BRAND_VOICES = [
 ]
 with open('tweet_examples.txt', 'r') as read_file:
     TWEET_EXAMPLES = read_file.read()
-    
+   
 
 def build_subtopic_model(texts: List[str], reduce_topics=False):
     '''
@@ -151,7 +152,10 @@ def generate_topic_overview(
     ])
     # if not is_valid_topic_gpt(body):
     #     return "", ""
+    #print('topic_keywords', topic_keywords, 'topic_documents', topic_documents)
+    print('getting label and desc')
     topic_label, topic_desc = get_label_and_description(topic_documents, topic_keywords)
+    print('checking if top is relevant')
     if not is_topic_relevant_gpt(niche_title, topic_desc):
         return "", ""
     return topic_label, topic_desc
@@ -189,24 +193,27 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     )
     return resp.lower().strip(string.punctuation) == "yes"
 
+
 def is_topic_informational_gpt(text) -> bool:
     resp = send_chat_gpt_message(
         is_informational_post(text),
         temperature=0.2
     )
     return resp.lower().strip(string.punctuation) == "yes"
-    
 
 
 @backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description(topic_documents, topic_keywords):
+    print('getting label')
     topic_label = send_chat_gpt_message(create_label_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
         topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
+    print('getting desc')
     topic_desc = send_chat_gpt_message(create_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
+        print('refining desc)')
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
         topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
@@ -378,6 +385,7 @@ def create_summarise_topic_summary_prompt(summary):
         topic: <description>
         """
 
+
 def create_summary_prompt(documents, keywords):
     return f"""
         You are excellent at creating concise and short descriptions that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
@@ -485,3 +493,4 @@ def generate_advice_tweets_for_topic(topic):
 def rewrite_post_in_brand_voice(brand_voice, tweet):
     message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
     return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
+
