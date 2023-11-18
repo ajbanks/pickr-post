@@ -11,32 +11,38 @@
         {% include 'navigation.html' %}
     </div>
     <div class="content content_large">
-        <div class="topic">
-            <h1>{{topic.name}}</h1>
-            <p>{{topic.description if topic.description}}</p>
-
-            <h2>Generated Tweets</h2>
-            <div class="container cards">
-                {{ generated_posts_fragment | safe}}
-            </div>
-
-            <h2>Posts from this topic</h2>
-            <div class="container cards">
-                {% for post in posts %}
-                <div class="card post">
-                    <p>{{post.title }}</p>
-                    <p>{{ post.body | truncate(300)}}</p>
-
-                    <div class="read">
-                        <a href="{{ post.url }}">Read ↗</a>
-                    </div>
-                </div>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+            <div class="message-modal">
+                <button type="button" class="close clickable" data-dismiss="alert">&times;</button>
+                {% for message in messages %}
+                <p>{{ message }}</p>
                 {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+        <div class="container">
+            <h1>Scheduled Tweets</h1>
+        </div>
+        <div class="container">
+            <div class="container cards">
+                {{ scheduled_posts_fragment | safe }}
+            </div>
+        </div>
+        <div class="container">
+            <h1>Posted Tweets</h1>
+        </div>
+        <div class="container">
+            <div class="container cards">
+                {{ tweeted_posts_fragment | safe }}
             </div>
         </div>
     </div>
 </div>
+
 {% endblock %}
+
+
 
 {% block js %}
 <script src="{{ url_for('static', filename='js/main.js') }}"></script>

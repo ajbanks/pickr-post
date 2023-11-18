@@ -88,7 +88,7 @@ def twitter_auth():
 def twitter_callback():
     '''
     GET serves callback endpoint for Twitter 3-legged auth.
-        It obtains access token for the user and saves it.
+        It obtains access token for the user and saves it in DB.
         cf. https://docs.tweepy.org/en/stable/authentication.html#legged-oauth
     '''
     denied = request.args.get("denied")
@@ -460,10 +460,10 @@ def home():
     posts_html_fragments = [
         "\n".join([
             render_post_html_fragment(
-                current_user.id, p,
+                current_user.id, gp.id, gp.text,
                 template_name="post.html"
             )
-            for p in topic.generated_posts[:3]
+            for gp in topic.generated_posts[:3]
         ])
         for topic in topics
     ]
@@ -534,14 +534,14 @@ def topic(topic_id):
     posts = (
         reddit_posts_for_topic_query(topic.id)
         .order_by(RedditPost.score)
-        .limit(30)
+        .limit(20)
         .all()
     )
 
     # generated posts HTML is rendered separately
     posts_html_fragment = "\n".join([
         render_post_html_fragment(
-            current_user.id, p, template_name="post.html"
+            current_user.id, p.id, p.text, template_name="post.html"
         )
         for p in generated_posts
     ])
@@ -615,6 +615,59 @@ def picker():
     )
 
 
+@app.route("/schedule", methods=["GET"])
+@login_required
+def schedule():
+    '''
+    GET serves a page that shows user's scheduled and posted tweets.
+    '''
+    scheduled_posts = (
+        GeneratedPost.query.join(ScheduledPost)
+        .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
+        .filter(
+            and_(ScheduledPost.user_id == current_user.id,
+                 ~ScheduledPost.scheduled_for.is_(None),
+                 ScheduledPost.posted_at.is_(None))
+        )
+        .order_by(ScheduledPost.scheduled_for.desc())
+        .all()
+    )
+
+    tweeted_posts = (
+        GeneratedPost.query.join(ScheduledPost)
+        .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
+        .filter(
+            and_(ScheduledPost.user_id == current_user.id,
+                 ~ScheduledPost.posted_at.is_(None))
+        )
+        .order_by(ScheduledPost.posted_at.desc())
+        .limit(20)
+        .all()
+    )
+
+    # TODO: load more posted tweets history
+
+    scheduled_html_fragment = "\n".join([
+        render_post_html_fragment(
+            current_user.id, gp.id, gp.text, template_name="post.html",
+        )
+        for gp in scheduled_posts
+    ])
+
+    tweeted_html_fragment = "\n".join([
+        render_post_html_fragment(
+            current_user.id, gp.id, gp.text, template_name="post.html"
+        )
+        for gp in tweeted_posts
+    ])
+
+    return render_template(
+        "schedule.html",
+        scheduled_posts_fragment=scheduled_html_fragment,
+        tweeted_posts_fragment=tweeted_html_fragment,
+    )
+
+
 ###############################################################################
 # HTMX endpoints
 
@@ -631,18 +684,19 @@ def get_generated_post_or_abort(post_id):
 
 def render_post_html_fragment(
         user_id: UUID,
-        generated_post: GeneratedPost,
+        generated_post_id: UUID,
+        generated_post_text: str,
         template_name="edit_post.html",
         **kwargs,
 ):
     '''
-    Render the post HTML fragment including any edits,
+    Render a post HTML fragment template including any edits,
     and showing if the post is scheduled or already tweeted.
     '''
-    post = latest_post_edit(generated_post.id, user_id)
-    post_text = generated_post.text if post is None else post.text
+    post = latest_post_edit(generated_post_id, user_id)
+    post_text = generated_post_text if post is None else post.text
 
-    sched_post = get_scheduled_post(generated_post.id, user_id)
+    sched_post = get_scheduled_post(generated_post_id, user_id)
     sched_str, posted_at, tweet_url = None, None, None
     if sched_post is not None:
         sched_str = sched_post.scheduled_for.strftime(DATETIME_FRIENDLY_FMT)
@@ -653,7 +707,7 @@ def render_post_html_fragment(
     return render_template(
         template_name,
         post_text=post_text,
-        post_id=generated_post.id,
+        post_id=generated_post_id,
         posted_at=posted_at,
         scheduled_for=sched_str,
         tweet_url=tweet_url,
@@ -672,7 +726,8 @@ def edit_post(post_id):
     app.logger.info(request.args.to_dict())
     return render_post_html_fragment(
         current_user.id,
-        generated_post,
+        generated_post.id,
+        generated_post.text,
         template_name="edit_post.html"
     )
 
@@ -689,7 +744,8 @@ def post(post_id):
     if request.method == "GET":
         return render_post_html_fragment(
             current_user.id,
-            generated_post,
+            generated_post.id,
+            generated_post.text,
             template_name="post.html",
         )
 
@@ -699,7 +755,8 @@ def post(post_id):
            or edit_text == generated_post.text:
             return render_post_html_fragment(
                 current_user.id,
-                generated_post,
+                generated_post.id,
+                generated_post.text,
                 template_name="post.html"
             )
 
@@ -753,7 +810,8 @@ def schedule_post(post_id):
             # TODO add a message to prompt for Twitter auth
             return render_post_html_fragment(
                 current_user.id,
-                generated_post,
+                generated_post.id,
+                generated_post.text,
                 template_name="post.html"
             )
 
@@ -783,7 +841,8 @@ def schedule_post(post_id):
 
         return render_post_html_fragment(
             current_user.id,
-            generated_post,
+            generated_post.id,
+            generated_post.text,
             template_name="post.html",
         )
     # end POST
@@ -802,7 +861,8 @@ def schedule_post(post_id):
 
         return render_post_html_fragment(
             current_user.id,
-            generated_post,
+            generated_post.id,
+            generated_post.text,
             template_name="schedule_post.html",
             timezone_value=str(tz),
             datetime_min=min_dt.strftime(DATETIME_ISO_FMT),
@@ -827,6 +887,7 @@ def unschedule_post(post_id):
         db.session.commit()
     return render_post_html_fragment(
         current_user.id,
-        generated_post,
+        generated_post.id,
+        generated_post.text,
         template_name="post.html"
     )

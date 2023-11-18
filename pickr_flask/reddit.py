@@ -1,7 +1,7 @@
+import logging
 from datetime import datetime, timedelta
 from os import environ
 from typing import Union, List
-import logging
 
 import pandas as pd
 import praw
@@ -34,8 +34,10 @@ def _to_dict(post: praw.models.Submission) -> dict:
         "title": post.title,
         "body": post.selftext,
         "score": post.score,
+        "num_comments": post.num_comments,
         "created_at": datetime.utcfromtimestamp(int(post.created)),
         "url": post.url,
+        "permalink": post.permalink,
     }
 
 

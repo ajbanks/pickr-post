@@ -8,6 +8,7 @@ flask-migrate
 flask-wtf
 flask-mail
 flask-jwt-extended
+flask-caching
 wtforms[email]
 stripe
 celery[redis]

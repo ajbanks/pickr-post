@@ -1,5 +1,5 @@
 """Functions to work with stripe subscriptions."""
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import stripe
 from sqlalchemy.orm.exc import NoResultFound
@@ -21,9 +21,9 @@ def is_user_account_valid(pickr_user):
     "check if a user is allowed to use pickr features"
     valid = True
 
-    if is_users_trial_valid(pickr_user) \
-       and not is_user_stripe_subscription_active(pickr_user):
-        valid = False
+    # if is_users_trial_valid(pickr_user) \
+    #    and not is_user_stripe_subscription_active(pickr_user):
+    #     valid = False
 
     return valid
 

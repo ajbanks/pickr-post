@@ -63,6 +63,10 @@ class Config:
                 "task": "pickr_flask.tasks.all_niches_run_pipeline",
                 "schedule": crontab(hour=5, minute=0),
             },
+            "task_run_schedule_every_week": {
+                "task": "pickr_flask.tasks.run_schedule",
+                "schedule": crontab(hour=7, minute=0, day_of_week=1),
+            },
             "task_post_scheduled_tweets": {
                 "task": "pickr_flask.tasks.post_scheduled_tweets",
                 "schedule": crontab(minute="*/5"),  # every 5 min
