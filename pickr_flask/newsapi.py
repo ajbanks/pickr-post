@@ -2,7 +2,7 @@ import logging
 import re
 from datetime import date, timedelta
 from os import environ
-from typing import List
+from typing import List, Optional
 
 import nltk
 from flask import current_app as app
@@ -16,22 +16,24 @@ from topic_model.util import remove_stop_words
 newsapi = NewsApiClient(api_key=app.config["NEWS_API_KEY"])
 
 
-def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2):
+def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2, date_from: Optional[str]=None, date_to: Optional[str]=None):
     """
     Get news articles and get topics from them
     """
     # get articles
     docs = []
     docs_dict = []
-    today = date.today()
-    start_date = today - timedelta(days=14)
-    start_date_str = start_date.strftime("%Y-%m-%d")
+    if date_from is None or date_to is None:
+        date_to = date.today() - timedelta(days=1)
+        date_to = date_to.strftime("%Y-%m-%d")
+        date_from = date_from - timedelta(days=14)
+        date_from = date_from.strftime("%Y-%m-%d")
     for i in range(num_pages):
         try:
             all_articles = newsapi.get_everything(
                 q=term,
-                from_param=start_date_str,
-                to=start_date,
+                from_param=date_from,
+                to=date_to,
                 language="en",
                 sort_by="relevancy",
                 page_size=page_size,
@@ -71,9 +73,12 @@ def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2):
                 added_posts.append(d__['title'])
 
     topic_labels = []
+    print(len(topic_articles))
     for t in topic_articles:
-        topic_documents = "\n\n".join(["Message:    " + d_[:1000] for d_ in t[:4]])
+        print('t',t)
+        topic_documents = "\n\n".join(["Message:    " + d_['title'][:1000] for d_ in t[:4]])
         topic_labels.append(get_label_and_description_no_keywords(topic_documents))
+    print('returning')
     return topic_labels, topic_articles
 
 
