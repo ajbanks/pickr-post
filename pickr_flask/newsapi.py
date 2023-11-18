@@ -73,12 +73,12 @@ def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2, dat
                 added_posts.append(d__['title'])
 
     topic_labels = []
-    print(len(topic_articles))
     for t in topic_articles:
-        print('t',t)
         topic_documents = "\n\n".join(["Message:    " + d_['title'][:1000] for d_ in t[:4]])
         topic_labels.append(get_label_and_description_no_keywords(topic_documents))
-    print('returning')
+
+    # TODO add a check if it is a headline and if it is about at most 2 topics and if it is about the niche
+    # TODO: merge with topic improvements brach so that I can use the latets prompts
     return topic_labels, topic_articles
 
 
