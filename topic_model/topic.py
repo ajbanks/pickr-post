@@ -31,9 +31,30 @@ BRAND_VOICES = [
     "Friendly and Supportive",
     "Bold and Innovative",
 ]
-with open('tweet_examples.txt', 'r') as read_file:
-    TWEET_EXAMPLES = read_file.read()
-   
+
+TWEET_EXAMPLES = '''
+Here is a example of a tweet about websites:
+'A website is no longer a luxury, It's an automated machine for generating leads, scaling marketing, and boosting your business. Time to get online'
+here is an example of a tweet about jupyter notebooks:
+'One thing software developers could learn from data scientists:
+Start using Jupyter Notebooks.
+Your life will never be the same.'
+here is an example of a tweet about python and sql:
+'Python is powerful! :fire:
+You can execute SQL Queries using Python & load the results in a Pandas DataFrame! :panda_face:
+Check this out:point_down:'
+here is an example tweet about entrepreneurship:
+The reality of entrepreneurship
+1. No safety net
+2. It's all on YOU
+3. Everyone think you've "made it" apart from you
+4. Constantly worries about cash and income
+5. Pension? Lol
+6. Monday = Sunday. No difference.
+And yet
+It's still worth it"
+'''
+
 
 def build_subtopic_model(texts: List[str], reduce_topics=False):
     '''
@@ -226,23 +247,21 @@ def get_label_and_description(topic_documents, topic_keywords):
 
 @backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description_no_keywords(topic_documents):
-    print('getting label')
     topic_label = send_chat_gpt_message(create_label_prompt_no_keywords(topic_documents), temperature=0.2)
     try:
         topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
-    print('getting desc')
     topic_desc = send_chat_gpt_message(create_summary_prompt_no_keywords(topic_documents), temperature=0.2)
     try:
-        print('refining desc)')
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
-        topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
-        topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+        #topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
+        #topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
     except Exception as e:
         print(e)
         pass
     return topic_label, topic_desc
+
 
 def filter_topics(
         topics: List[int],

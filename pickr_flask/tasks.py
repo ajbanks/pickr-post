@@ -18,6 +18,8 @@ from .newsapi import (
 )
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
+from .newsapi import (get_trends, write_modeled_topic_with_news_article,
+                      write_news_articles)
 from .post_schedule import write_schedule, write_schedule_posts
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
