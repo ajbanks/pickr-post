@@ -244,29 +244,27 @@ class PostEdit(db.Model):
 
 
 class Schedule(db.Model):
-    """Schedule represents a users schedule."""
+    """Schedule represents a user's weekly schedule."""
     __tablename__ = "schedule"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
     id = Column(Integer, primary_key=True, autoincrement=True)
-    schedule_text = Column(String(10000), nullable=False)
     user_id = Column(
         UUID(as_uuid=True),
         ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
     )
-    schedule_creation_date = Column(
-        DateTime,
-        nullable=False,
-        default=func.now()
-    )
+    created_at = Column(DateTime, default=func.now())
+
+    # The ISO week number that this calendar is for.
+    week_number = Column(Integer)
 
     scheduled_posts = relationship("ScheduledPost")
 
     def __repr__(self):
-        return f"<Schedule id={id}>"
+        return f"<Schedule id={self.id}>"
 
 
 class ScheduledPost(db.Model):
-    """SchedulePostdule represents a scheduled twitter post."""
+    """ScheduledPost represents a scheduled twitter post."""
     __tablename__ = "scheduled_post"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -285,14 +283,23 @@ class ScheduledPost(db.Model):
         ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
         index=True
     )
-    # UTC datetime
-    scheduled_for = Column(DateTime, nullable=False)
     tweet_id = Column(BigInteger)
     posted_at = Column(DateTime)
     celery_id = Column(UUID(as_uuid=True))
 
+    # scheduled_for is the time to post the tweet.
+    # It is not null if and only if the user requested it to be posted.
+    scheduled_for = Column(DateTime)
+
+    # scheduled_day is the suggested day of the week 0-6 for posting.
+    scheduled_day = Column(Integer)
+
+    # scheduled_hour is the suggested hour of the day 0-23 for posting.
+    # This must be translated into the user's timezone.
+    scheduled_hour = Column(Integer)
+
     def __repr__(self):
-        return f"<ScheduledPost id={id}>"
+        return f"<ScheduledPost id={self.id}>"
 
 
 class Subreddit(db.Model):
@@ -348,8 +355,10 @@ class RedditPost(db.Model):
     title = Column(String)
     body = Column(String)
     score = Column(Integer)
+    num_comments = Column(Integer)
     created_at = Column(DateTime, nullable=True)
     url = Column(String)
+    permalink = Column(String(128))
     clean_text = Column(String)  # processed title + body
     subreddit_id = Column(
         UUID(as_uuid=True),

@@ -10,13 +10,13 @@ from newsapi import NewsApiClient
 from sqlalchemy import exc, insert
 
 from .models import db, NewsArticle, ModeledTopic, news_modeled_topic_assoc
-from topic_model.topic import get_label_and_description_no_keywords
+from topic_model.topic import get_label_and_description_no_keywords, is_topic_relevant_gpt
 from topic_model.util import remove_stop_words
 
 newsapi = NewsApiClient(api_key=app.config["NEWS_API_KEY"])
 
 
-def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2, date_from: Optional[str]=None, date_to: Optional[str]=None):
+def get_trends(term: str, niche: str, page_size=100, num_pages=1, min_words=4, min_matches=2, date_from: Optional[str]=None, date_to: Optional[str]=None):
     """
     Get news articles and get topics from them
     """
@@ -28,6 +28,7 @@ def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2, dat
         date_to = date_to.strftime("%Y-%m-%d")
         date_from = date_from - timedelta(days=14)
         date_from = date_from.strftime("%Y-%m-%d")
+    print(date_from, date_to)
     for i in range(num_pages):
         try:
             all_articles = newsapi.get_everything(
@@ -75,10 +76,12 @@ def get_trends(term, page_size=100, num_pages=1, min_words=4, min_matches=2, dat
     topic_labels = []
     for t in topic_articles:
         topic_documents = "\n\n".join(["Message:    " + d_['title'][:1000] for d_ in t[:4]])
-        topic_labels.append(get_label_and_description_no_keywords(topic_documents))
+        label, description = get_label_and_description_no_keywords(topic_documents)
+        if not is_topic_relevant_gpt(niche, description):
+            continue
+        topic_labels.append((label, description))
 
     # TODO add a check if it is a headline and if it is about at most 2 topics and if it is about the niche
-    # TODO: merge with topic improvements brach so that I can use the latets prompts
     return topic_labels, topic_articles
 
 
