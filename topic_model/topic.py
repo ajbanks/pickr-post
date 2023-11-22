@@ -24,13 +24,6 @@ openai_key = app.config["OPENAI_API_KEY"]
 openai.api_key = openai_key
 OPEN_AI_MODEL = "gpt-4"
 STRIP_CHARS = "'" + '"' + " \t\n"
-BRAND_VOICES = [
-    "Playful and Youthful",
-    "Professional and Authoritative",
-    "Inspirational and Empowering",
-    "Friendly and Supportive",
-    "Bold and Innovative",
-]
 
 TWEET_EXAMPLES = '''
 Here is a example of a tweet about websites:
@@ -356,17 +349,6 @@ def send_chat_gpt_message(message, temperature=0.8):
     )
 
 
-def rewrite_tweets_in_brand_voices(tweet_list):
-    """rewrite tweets in different brand voices"""
-    new_tweets = []
-
-    for tweet in tweet_list:
-        for brand_voice in BRAND_VOICES:
-            new_tweets.append(rewrite_post_in_brand_voice(brand_voice, tweet))
-
-    return tweet_list + new_tweets
-
-
 # TODO(meiji163) Use the BERTopic keywords for generation too
 def generate_tweets_for_topic(
         num_tweets,
@@ -552,9 +534,3 @@ def generate_hyperbole_tweets_for_topic(topic):
 def generate_advice_tweets_for_topic(topic):
     message = f"You are a Twitter content creator that creates viral tweets with lots of likes and retweets. You give advice using emotive and hyperbolic language. Create a tweet about '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users or tools and use a maximum of two emojis."
     return send_chat_gpt_message(message)
-
-
-def rewrite_post_in_brand_voice(brand_voice, tweet):
-    message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
-    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
-
