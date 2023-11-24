@@ -241,7 +241,8 @@ class Schedule(db.Model):
         ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
     )
     created_at = Column(DateTime, default=func.now())
-
+    schedule_text = Column(String(10000), nullable=False)
+    
     # The ISO week number that this calendar is for.
     week_number = Column(Integer)
 
