@@ -25,6 +25,8 @@
             <h1>Top Trending Topics</h1>
             <h2>{{date}}</h2>
         </div>
+        <div id="tabs" hx-get="/tab1" hx-trigger="load delay:100ms" hx-target="#tabs" hx-swap="innerHTML"></div>
+        
         {% for topic in topics %}
         <div class="topic">
             <div class="accordion clickable">

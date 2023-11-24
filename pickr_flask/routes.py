@@ -505,8 +505,9 @@ def weekly_schedule():
     post_html_fragment = "\n".join(post_html_fragments)
     return render_template(
         "weekly_schedule.html",
-        today=now.strftime(DATETIME_FRIENDLY_FMT),
+        today='2023-01-01',#now.strftime(DATETIME_FRIENDLY_FMT),
         generated_post_fragment=post_html_fragment,
+        schedule_text='schedule post'
     )
 
 @app.route("/all_topics")

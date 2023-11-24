@@ -1,13 +1,11 @@
 <div hx-target="this" hx-swap="outerHTML" class="card tweet">
-    {% if username %}
-    <div class="author">@{{ username }}</div>
-    {% endif %}
+    <div id="tabs" hx-target="#tab-contents" role="tablist" _="on htmx:afterOnLoad set @aria-selected of <[aria-selected=true]/> to false tell the target take .selected set @aria-selected to true">
+        <button role="tab" aria-controls="tab-content" aria-selected="true" hx-get="/tab1" class="selected">Tab 1</button>
+        <button role="tab" aria-controls="tab-content" aria-selected="false" hx-get="/tab2">Tab 2</button>
+        <button role="tab" aria-controls="tab-content" aria-selected="false" hx-get="/tab3">Tab 3</button>
+    </div>
 
-    {% if posted_at %}
-    <div class="scheduled">Posted at {{ posted_at }}</div>
-    {% elif scheduled_for %}
-    <div class="scheduled">Scheduled for {{ scheduled_for }}</div>
-    {% endif %}
+    <div id="tab-contents" role="tabpanel" hx-get="/tab1" hx-trigger="load"></div>
 
     <div class="suggested-post">
         <p>{{post_text}}</p>

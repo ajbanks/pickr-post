@@ -26,6 +26,10 @@
             <h2>{{ today }}</h2>
         </div>
         <div class="topic">
+        <p>{{ schedule_text }}</p>
+
+        </div>
+        <div class="topic">
             <div class="container cards">
                 {% if generated_post_fragment %}
                 {{ generated_post_fragment | safe }}
