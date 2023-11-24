@@ -1,14 +1,9 @@
 import logging
 from typing import List
 
-from sqlalchemy import exc, insert
+from sqlalchemy import exc
 
-from .models import (
-    db,
-    Schedule,
-    SchedulePost,
-    ModeledTopic
-)
+from .models import ModeledTopic, Schedule, SchedulePost, db
 
 TOPIC_TEXT_SUFFIX = """
 The posts in the scehdule are able to be edited, or posted at a different time by clicking on the Edit and Schedule button.

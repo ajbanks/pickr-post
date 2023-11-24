@@ -5,8 +5,6 @@ from celery.schedules import crontab
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
 
-# TODO: split into dev/prod configs
-
 
 class Config:
     # Flask
@@ -15,11 +13,9 @@ class Config:
     SECRET_KEY = environ.get("SECRET_KEY")
     TEMPLATES_FOLDER = "templates"
 
-    # login sessions #TODO when ready for produciton uncomment cookie settings
-    # SESSION_COOKIE_SAMESITE = "strict"
-    # SESSION_COOKIE_SECURE = True
-    # REMEMBER_COOKIE_SAMESITE = "strict"
-    # REMEMBER_COOKIE_SECURE = True
+    # login sessions
+    SESSION_COOKIE_SECURE = True
+    REMEMBER_COOKIE_SECURE = True
 
     # Database
     SQLALCHEMY_DATABASE_URI = environ.get("SQLALCHEMY_DATABASE_URI")
@@ -38,6 +34,11 @@ class Config:
     STRIPE_ENDPOINT_SECRET = environ.get("STRIPE_ENDPOINT_SECRET")
     STRIPE_WEBHOOK_LOG = "./stripe-webhook.log"
 
+    # Twitter/X
+    TWITTER_API_KEY = environ.get("TWITTER_API_KEY")
+    TWITTER_API_KEY_SECRET = environ.get("TWITTER_API_KEY_SECRET")
+    TWITTER_CALLBACK_URL = environ.get("TWITTER_CALLBACK_URL")
+
     # Celery
     timezone = "Europe/London"  # timezone for cron jobs
     CELERY = dict(
@@ -46,12 +47,15 @@ class Config:
         broker_connection_retry_on_startup=True,
         task_ignore_result=False,
         task_create_missing_queues=True,
+        # The following determines what queue the tasks are on.
+        # Any compute-heavy tasks should be put on "model_runner" queue.
         task_default_queue="default",
         task_routes={
             "pickr_flask.tasks.run_niche_topic_model": {
                 "queue": "model_runner"
             }
         },
+        # Set schedules for periodic tasks using celery beat
         beat_schedule={
             "task_update_reddit_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_reddit_update",
@@ -64,6 +68,10 @@ class Config:
             "task_run_schedule_every_week": {
                 "task": "pickr_flask.tasks.run_schedule",
                 "schedule": crontab(hour=7, minute=0, day_of_week=1),
+            },
+            "task_post_scheduled_tweets": {
+                "task": "pickr_flask.tasks.post_scheduled_tweets",
+                "schedule": crontab(minute="*/5"),  # every 5 min
             }
         }
     )
@@ -74,3 +82,10 @@ class Config:
     MAIL_USE_SSL = True
     MAIL_USERNAME = environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = environ.get("MAIL_PASSWORD")
+
+
+class DevConfig(Config):
+    TESTING = True
+    DEBUG = True
+    SESSION_COOKIE_SECURE = False
+    REMEMBER_COOKIE_SECURE = False

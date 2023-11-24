@@ -4,27 +4,22 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List
-from celery import shared_task, chain
 
-from sqlalchemy import Date, cast, and_, exc
-
+import tweepy
+from celery import chain, shared_task
+from flask import current_app as app
+from sqlalchemy import Date, and_, cast
 from topic_model import topic
-from .models import (
-    db,
-    RedditPost, Niche, ModeledTopic, PickrUser,
-    user_niche_assoc
-    _to_dict,
-)
-from .post_schedule import create_schedule_text, create_schedule_text_no_trends, write_schedule, write_schedule_posts
 
-from .reddit import (
-    process_post,
-    fetch_subreddit_posts,
-    write_reddit_modeled_overview,
-    write_modeled_topic_with_reddit_posts,
-    write_reddit_posts,
-    write_generated_posts,
-)
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
+                     ScheduledPost, _to_dict, db, user_niche_assoc)
+from .post_schedule import (create_schedule_text_no_trends, write_schedule,
+                            write_schedule_posts)
+from .queries import latest_post_edit, oauth_session_by_user
+from .reddit import (fetch_subreddit_posts, process_post,
+                     write_generated_posts,
+                     write_modeled_topic_with_reddit_posts,
+                     write_reddit_modeled_overview, write_reddit_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
 
@@ -43,28 +38,18 @@ def run_schedule():
         create_schedule(user.id).apply_async(
             args=(user.id,)
         )
-        
 
 @shared_task
-def create_schedule(user_id, num_topics_per_niche = 3):
+def create_schedule(user_id, num_topics_per_niche=3):
     '''
     Generate post schedule
     '''
-    total_posts = 21 # 3 posts per day is 21
-    
-    niche_ids = user_niche_assoc.query.filter(
-        and_(
-            user_niche_assoc.user_id.in_(user_id),
-        )
-    ).all()
+    user = PickrUser.query.get(user_id)
+    niches = user.niches
 
-    niches = Niche.query.filter(
-        and_(
-            Niche.id.in_(niche_ids),
-        )
-    ).all()
-    num_posts_per_niche = total_posts / len(niches)
-    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche) 
+    total_posts = 21  # 3 posts per day is 21
+    num_posts_per_niche = 3
+    num_posts_per_topic = math.ceil(num_posts_per_niche / num_topics_per_niche)
 
     topics = []
     generated_posts = []
@@ -72,52 +57,43 @@ def create_schedule(user_id, num_topics_per_niche = 3):
         logging.info(
             f"Creating niche {niche.title} schedule for user: {user_id}"
         )
-
-        # get modeled topics
-        max_date = ModeledTopic.query.filter(
-            ModeledTopic.niche_id.in_(niche.id),
-            ).order_by(
-                ModeledTopic.date.desc()
-        ).first().date.date()
         topics = ModeledTopic.query.filter(
             and_(
-                ModeledTopic.niche_id.in_([n]),
-                cast(ModeledTopic.date, Date) == max_date
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
             )
         ).order_by(
             ModeledTopic.size.desc()
         ).all()
 
         # choose num_topics_per_niche random modeled topics
-        random.shuffle(topics)
         topics += topics[:num_topics_per_niche]
 
-        # choose total_posts random generated posts form each modeled topic
+        # choose total_posts random generated posts from each modeled topic
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
-        random.shuffle(generated_posts)
+    # endfor
 
-    # create schedule text
     generated_posts = generated_posts[:total_posts]
-    schedule_text = create_schedule_text_no_trends(topics)
-    assert len(generated_posts) == len(total_posts)
     schedule = {
         "id": uuid.uuid4(),
         "user_id": user_id,
-        "schedule_text": schedule_text
     }
 
     schedule_posts = []
     for p in generated_posts:
         post = {
             "schedule_id": schedule["id"],
-            "post_id": p.id
+            "generated_post_id": p.id,
+            "user_id": user.id,
         }
         schedule_posts.append(post)
 
     write_schedule(schedule)
     write_schedule_posts(schedule_posts)
+
+    return schedule["id"]
 
 
 @shared_task
@@ -354,3 +330,80 @@ def generate_niche_gpt_topics(niche_id):
 
     write_reddit_modeled_overview(modeled_topics)
     write_generated_posts(generated_tweets)
+
+
+@shared_task
+def post_scheduled_tweets():
+    '''
+    Retrieve any scheduled tweets that need to be posted from the DB
+    and post them to twitter.
+    '''
+    scheduled_posts = (
+        ScheduledPost.query.filter(
+            and_(
+                ScheduledPost.posted_at.is_(None),
+                ScheduledPost.scheduled_for < datetime.now()
+            )
+        )
+        .order_by(
+            ScheduledPost.user_id, ScheduledPost.scheduled_for
+        )
+        .all()
+    )
+    if not scheduled_posts:
+        logging.info("no tweets to schedule")
+        return
+
+    # post the tweets grouped by user
+    uid_to_posts = {}
+    for p in scheduled_posts:
+        uid = p.user_id
+        if uid not in uid_to_posts.keys():
+            uid_to_posts[uid] = []
+        uid_to_posts[uid].append(p)
+
+    for user_id, posts in uid_to_posts.items():
+        oauth_sess = oauth_session_by_user(user_id)
+        if oauth_sess is None or oauth_sess.access_token is None \
+           or oauth_sess.access_token_secret is None:
+            logging.error(
+                f"no twitter credentials found for user: user_id={user_id}"
+            )
+            continue
+
+        client = tweepy.Client(
+            consumer_key=app.config["TWITTER_API_KEY"],
+            consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
+            access_token=oauth_sess.access_token,
+            access_token_secret=oauth_sess.access_token_secret,
+            wait_on_rate_limit=True,
+        )
+
+        num_posted = 0
+        for p in posts:
+            post_edit = latest_post_edit(p.generated_post_id, user_id)
+            if post_edit is None:
+                gp = GeneratedPost.get(p.generated_post_id)
+                post_text = gp.text
+            else:
+                post_text = post_edit.text
+
+            try:
+                resp = client.create_tweet(text=post_text)
+            except (tweepy.errors.BadRequest, tweepy.errors.Unauthorized) as e:
+                logging.error(
+                    f"error posting tweet for user_id={user_id}: {e}"
+                )
+                break
+
+            p.tweet_id = resp.data["id"]
+            p.posted_at = datetime.now()
+            db.session.add(p)
+            db.session.commit()
+            num_posted += 1
+        # endfor
+
+        logging.info(
+            f"posted {num_posted} tweets for user_id={user_id}"
+        )
+    # endfor

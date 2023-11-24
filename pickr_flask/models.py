@@ -1,19 +1,13 @@
 import enum
+from uuid import uuid4
 
 from flask_login import UserMixin
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-)
-from sqlalchemy.dialects.postgresql import UUID, ENUM
+from sqlalchemy import (BigInteger, Boolean, Column, DateTime, ForeignKey,
+                        Integer, String)
+from sqlalchemy.dialects.postgresql import ENUM, UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from uuid import uuid4
+
 from . import db
 
 DEFAULT_SCHEMA = "pickr"
@@ -112,36 +106,32 @@ class PickrUser(UserMixin, db.Model):
         return f"<PickrUser id={self.id} username={self.username}>"
 
 
-class Schedule(db.Model):
-    """Schedule represents a users schedule."""
-    __tablename__ = "schedule"
+class OAuthSession(db.Model):
+    '''
+    OAuthSession stores info about a Twitter Oauth1 session
+    initiated by a user.
+    '''
+    __tablename__ = "oauth_session"
     __table_args__ = {"schema": DEFAULT_SCHEMA}
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    schedule_text = Column(String(10000), nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id"),
+        nullable=False,
     )
-    schedule_creation_date = Column(DateTime, nullable=False, default=func.now())
+    oauth_token = Column(
+        String(64),
+        nullable=False,
+        index=True,
+        unique=True
+    )
+    oauth_token_secret = Column(String(64), nullable=False)
+    access_token = Column(String(64))  # might want to encrypt these
+    access_token_secret = Column(String(64))
+    created_at = Column(DateTime, nullable=False)
 
-
-class SchedulePost(db.Model):
-    """ScheSchedulePostdule represents a post for a Schedule."""
-    __tablename__ = "schedulepost"
-    __table_args__ = {"schema": DEFAULT_SCHEMA}
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
-    schedule_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),
-        index=True
-    )
-    post_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
-        index=True
-    )
-    celery_id = Column(UUID(as_uuid=True), nullable=True)
-    schedule_time
+    def __repre__(self):
+        return f"<OAuthSession oauth_token={self.oauth_token}>"
 
 
 class StripeSubscriptionStatus(enum.Enum):
@@ -223,6 +213,76 @@ class GeneratedPost(db.Model):
     )
 
 
+class PostEdit(db.Model):
+    '''Post edit represents an edit the user makes to a generated post'''
+    __tablename__ = "post_edit"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    text = Column(String, nullable=False)
+    generated_post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
+        index=True
+    )
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id"),
+    )
+    created_at = Column(DateTime, nullable=True)
+
+
+class Schedule(db.Model):
+    """Schedule represents a users schedule."""
+    __tablename__ = "schedule"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    schedule_text = Column(String(10000), nullable=False)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id")
+    )
+    schedule_creation_date = Column(
+        DateTime,
+        nullable=False,
+        default=func.now()
+    )
+
+    scheduled_posts = relationship("ScheduledPost")
+
+    def __repr__(self):
+        return f"<Schedule id={self.id}>"
+
+
+class ScheduledPost(db.Model):
+    """SchedulePostdule represents a scheduled twitter post."""
+    __tablename__ = "scheduled_post"
+    __table_args__ = {"schema": DEFAULT_SCHEMA}
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.user.id"),
+        nullable=False
+    )
+    schedule_id = Column(
+        Integer,
+        ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),
+        index=True
+    )
+    generated_post_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.generated_post.id"),
+        index=True
+    )
+    # UTC datetime
+    scheduled_for = Column(DateTime, nullable=False)
+    tweet_id = Column(BigInteger)
+    posted_at = Column(DateTime)
+    celery_id = Column(UUID(as_uuid=True))
+
+    def __repr__(self):
+        return f"<ScheduledPost id={self.id}>"
+
+
 class Subreddit(db.Model):
     """
     Table associating ids with the subreddit names
@@ -259,8 +319,10 @@ class RedditPost(db.Model):
     title = Column(String)
     body = Column(String)
     score = Column(Integer)
+    num_comments = Column(Integer)
     created_at = Column(DateTime, nullable=True)
     url = Column(String)
+    permalink = Column(String(128))
     clean_text = Column(String)  # processed title + body
     subreddit_id = Column(
         UUID(as_uuid=True),
