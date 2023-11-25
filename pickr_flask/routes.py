@@ -473,9 +473,7 @@ def home():
 @app.route("/weekly_schedule", methods=["GET"])
 @login_required
 def weekly_schedule():
-    # TODO: find a way to get the user's timezone here
-    timezone = ZoneInfo("UTC")
-
+    
     # TODO: fix bad query patterns (N+1 select)
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
@@ -483,14 +481,38 @@ def weekly_schedule():
     print('scehdule',schedule)
     if schedule is None:
         return render_template("weekly_schedule.html")
+    
+    schedule_frag = weekly_post(datetime.now().isocalendar().weekday - 1)
 
-    # show posts in this "Schedule" that are for this weekday
-    weekday = datetime.now().isocalendar().weekday
-    scheduled_posts = filter(
-        lambda p: p.scheduled_day == weekday,
-        schedule.scheduled_posts
+    return render_template(
+        "weekly_schedule.html",
+        schedule_text=schedule.schedule_text,
+        generated_post_fragment=schedule_frag
     )
 
+
+@app.route("/weekly_post/<week_day>", methods=["GET"])
+@login_required
+def weekly_post(week_day: int):
+    week_day = int(week_day)
+    if week_day is None:
+        week_day = datetime.now().isocalendar().weekday - 1
+    else:
+        week_day = int(week_day)
+    # TODO: fix bad query patterns (N+1 select)
+    schedule = Schedule.query.filter_by(
+        user_id=current_user.id,
+    ).limit(1).one()
+    if schedule is None:
+        return None
+
+    # show posts in this "Schedule" that are for this weekday
+    scheduled_posts = filter(
+        lambda p: p.scheduled_day == week_day,
+        schedule.scheduled_posts
+    )
+    # TODO: find a way to get the user's timezone here
+    timezone = ZoneInfo("UTC")
     now = datetime.now(tz=timezone)
 
     post_html_fragments = []
@@ -504,12 +526,8 @@ def weekly_schedule():
             )
         )
     post_html_fragment = "\n".join(post_html_fragments)
-    return render_template(
-        "weekly_schedule.html",
-        today='2023-01-01',#now.strftime(DATETIME_FRIENDLY_FMT),
-        generated_post_fragment=post_html_fragment,
-        schedule_text=''#schedule.schedule_text
-    )
+    print('got schdeule)')
+    return post_html_fragment
 
 @app.route("/all_topics")
 @login_required

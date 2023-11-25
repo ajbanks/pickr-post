@@ -23,16 +23,28 @@
         {% endwith %}
         <div class="container">
             <h1>Tweet Schedule</h1>
-            <h2>{{ today }}</h2>
         </div>
-        <div class="topic">
-            <div class="container cards">
-                {% if generated_post_fragment %}
-                {{ generated_post_fragment | safe }}
-                {% else %}
-                <p>No schedule generated yet...</p>
-                {% endif %}
+        <div id="tabs" class="topic">
+            <div class="tab-list" role="tablist">
+                <button hx-get="/weekly_post/0" class="selected" role="tab" aria-selected="false" aria-controls="tab-content">Monday</button>
+                <button hx-get="/weekly_post/1" role="tab" aria-selected="false" aria-controls="tab-content">Tuesday</button>
+                <button hx-get="/weekly_post/2" role="tab" aria-selected="false" aria-controls="tab-content">Wednesday</button>
+                <button hx-get="/weekly_post/3" role="tab" aria-selected="false" aria-controls="tab-content">Thursday</button>
+                <button hx-get="/weekly_post/4" role="tab" aria-selected="false" aria-controls="tab-content">Friday</button>
+                <button hx-get="/weekly_post/5" role="tab" aria-selected="false" aria-controls="tab-content">Saturday</button>
+                <button hx-get="/weekly_post/6" role="tab" aria-selected="false" aria-controls="tab-content">Sunday</button>
             </div>
+            
+            <div id="tab-content" role="tabpanel" class="tab-content">
+                <div  class="container cards">
+                    {% if generated_post_fragment %}
+                    {{ generated_post_fragment | safe }}
+                    {% else %}
+                    <p>No schedule generated yet...</p>
+                    {% endif %}
+                </div>
+            </div>
+            
         </div>
 </div>
 
