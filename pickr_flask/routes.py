@@ -480,6 +480,7 @@ def weekly_schedule():
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
     ).limit(1).one()
+    print('scehdule',schedule)
     if schedule is None:
         return render_template("weekly_schedule.html")
 
@@ -507,7 +508,7 @@ def weekly_schedule():
         "weekly_schedule.html",
         today='2023-01-01',#now.strftime(DATETIME_FRIENDLY_FMT),
         generated_post_fragment=post_html_fragment,
-        schedule_text='schedule post'
+        schedule_text=''#schedule.schedule_text
     )
 
 @app.route("/all_topics")
