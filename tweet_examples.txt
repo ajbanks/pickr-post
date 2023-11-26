@@ -1,0 +1,28 @@
+here is a example of a tweet about the benefits of websites for businesses:
+'A website is no longer a luxury, It's an automated machine for generating leads, scaling marketing, and boosting your business. 
+
+Time to get online'
+
+here is an example of a tweet about software developers using jupyter notebooks (a tool used by data scientists):
+'One thing software developers could learn from data scientists:
+
+Start using Jupyter Notebooks.
+
+Your life will never be the same.'
+
+here is an example of a tweet about using sql and pandas in python:
+'Python is powerful! :fire:
+
+You can execute SQL Queries using Python & load the results in a Pandas DataFrame! :panda_face:
+
+Check this out:point_down:'
+
+here is an example tweet about the reality of entrepreneurship:
+The reality of entrepreneurship
+1. No safety net
+2. It's all on YOU
+3. Everyone think you've "made it" apart from you
+4. Constantly worries about cash and income
+5. Pension? Lol
+6. Monday = Sunday. No difference.
+And yet it's still worth it"

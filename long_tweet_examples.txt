@@ -1,0 +1,47 @@
+here is a example of a short public statement about the benefits of websites for businesses:
+'A website is no longer a luxury, It's an automated machine for generating leads, scaling marketing, and boosting your business. 
+
+Time to get online'
+
+here is an example of a short public statement about software developers using jupyter notebooks (a tool used by data scientists):
+'One thing software developers could learn from data scientists:
+
+Start using Jupyter Notebooks.
+
+Your life will never be the same.'
+
+here is an example of a short public statement about using sql and pandas in python:
+'Python is powerful! :fire:
+
+You can execute SQL Queries using Python & load the results in a Pandas DataFrame! :panda_face:
+
+Check this out:point_down:'
+
+here is an example short public statement about the reality of entrepreneurship:
+The reality of entrepreneurship
+1. No safety net
+2. It's all on YOU
+3. Everyone think you've "made it" apart from you
+4. Constantly worries about cash and income
+5. Pension? Lol
+6. Monday = Sunday. No difference.
+And yet it's still worth it"
+
+
+here is an example short public statement about marketing strategies:
+'Great customer service is the most underrated marketing strategy.'
+
+here is an example seo marketing short public statement about ecommerce sites and web links:
+Pro Tip: Many ecom sites have powerful links pointing to site search URLs which are often blocked by robots.txt. Redirect these (where it makes sense) to product/category URLs so that those links can be 'seen' and help improve rankings
+
+here is an example marketing short public statement about increasing conversions:
+Increasing conversions isn’t about changing elements on a page and hoping for the best.. It’s about solving people’s problems.
+
+here is an example entrepreneurship short public statement about what it takes for business success:
+'Half of business success: Get in the game and make reasonable decisions for 5+ years.'
+
+here is an example entrepreneurship short public statement about working long hours:
+If you work 70+ hours a week, you are a poor delegator and it is your fault. I don’t care what business you are in or what kind of opportunities you are chasing.
+
+here is an example entrepreneurship short public statement about entreprneurs talking of their potential to hide from reality:
+People use their “potential” as a ego padding for why they haven’t accomplished anything yet. No one cares about your potential but you. Work you’ve done > Work you say you’re “capable of”.
