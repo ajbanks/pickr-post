@@ -498,11 +498,12 @@ def weekly_schedule():
 @login_required
 def weekly_post(week_day: int = None):
     print('--------weekly_post--------', week_day)
-    if week_day is None:
+    if week_day is None or int(week_day) == -1:
         week_day = datetime.now().isocalendar().weekday - 1
-        print(week_day)
+        print('updated week day', week_day)
     else:
         week_day = int(week_day)
+        print('in else', week_day)
     # TODO: fix bad query patterns (N+1 select)
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
@@ -510,7 +511,6 @@ def weekly_post(week_day: int = None):
     if schedule is None:
         print('return None')
         return None
-    print('HIIIIIIIIIIII')
     # show posts in this "Schedule" that are for this weekday
     scheduled_posts = filter(
         lambda p: p.scheduled_day == week_day,
@@ -538,13 +538,13 @@ def weekly_post(week_day: int = None):
     post_html_fragment = "\n".join(post_html_fragments)
     schedule_html = f"""
         <div class="tab-list" role="tablist">
-            <button hx-get="/weekly_post/0" hx-target="#tabs" role="tab" aria-selected={days_bool[0]} aria-controls="tab-content" {class_sel[0]}>Monday</button>
-            <button hx-get="/weekly_post/1" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[1]}>Tuesday</button>
-            <button hx-get="/weekly_post/2" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[2]}>Wednesday</button>
-            <button hx-get="/weekly_post/3" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[3]}>Thursday</button>
-            <button hx-get="/weekly_post/4" hx-target="#tabs" role="tab" aria-selected={days_bool[4]} aria-controls="tab-content" {class_sel[4]}>Friday</button>
-            <button hx-get="/weekly_post/5" hx-target="#tabs" role="tab" aria-selected={days_bool[5]} aria-controls="tab-content" {class_sel[5]}>Saturday</button>
-            <button hx-get="/weekly_post/6" hx-target="#tabs" role="tab" aria-selected={days_bool[6]} aria-controls="tab-content" {class_sel[6]}>Sunday</button>
+            <button hx-get="/weekly_post/0" hx-target="#tabs" role="tab" aria-selected={days_bool[0]} aria-controls="tab-content" {class_sel[0]}>Mon</button>
+            <button hx-get="/weekly_post/1" hx-target="#tabs" role="tab" aria-selected={days_bool[1]} aria-controls="tab-content" {class_sel[1]}>Tue</button>
+            <button hx-get="/weekly_post/2" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[2]}>Wed</button>
+            <button hx-get="/weekly_post/3" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[3]}>Thur</button>
+            <button hx-get="/weekly_post/4" hx-target="#tabs" role="tab" aria-selected={days_bool[4]} aria-controls="tab-content" {class_sel[4]}>Fri</button>
+            <button hx-get="/weekly_post/5" hx-target="#tabs" role="tab" aria-selected={days_bool[5]} aria-controls="tab-content" {class_sel[5]}>Sat</button>
+            <button hx-get="/weekly_post/6" hx-target="#tabs" role="tab" aria-selected={days_bool[6]} aria-controls="tab-content" {class_sel[6]}>Sun</button>
         </div>
         
         <div class="container cards" id="tab-content" role="tabpanel">
