@@ -471,7 +471,7 @@ def home():
         post_edit = latest_post_edit(gp.generated_post_id, user_id)
 
         if post_edit is None:
-            # a post edit hasnt been made. this post hasn't been tone matched
+            # a post edit hasn't been made. Which means this post needs to be tone matched
             user_tweet_examples = current_user.tweet_examples
             tone_matched_tweet = rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
             new_edit = PostEdit(
