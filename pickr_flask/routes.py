@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from uuid import UUID
 from zoneinfo import ZoneInfo
-
+# from backports.zoneinfo import ZoneInfo
 import stripe
 import tweepy
 from flask import Markup, abort
@@ -197,11 +197,20 @@ def signup():
             password_hash = generate_password_hash(
                 form.password.data, method=PASSWORD_HASH_METHOD
             )
+            client = tweepy.Client(
+                consumer_key=app.config["TWITTER_API_KEY"],
+                consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
+                access_token=oauth_sess.access_token,
+                access_token_secret=oauth_sess.access_token_secret,
+                wait_on_rate_limit=True,
+            )
+            tweets = "\n public statement example: \n".join([status.text for status in client.user_timeline(screen_name=form.name.data, count=20, include_rts=False)])
             user = PickrUser(
                 username=form.name.data,
                 email=form.email.data,
                 password=password_hash,
                 created_at=datetime.now(),
+                tweet_examples=tweets
             )
             app.logger.info(
                 f"New user signup: username={user.username}"
@@ -455,6 +464,25 @@ def home():
         return redirect(url_for("upgrade"))
     niche_ids = [n.id for n in current_user.niches]
     topics = top_modeled_topic_query(niche_ids).limit(3).all()
+
+
+    # convert posts into a users tone if this hasn't already been done
+    for gp in topic.generated_posts[:3]:
+        post_edit = latest_post_edit(gp.generated_post_id, user_id)
+
+        if post_edit is None:
+            # a post edit hasnt been made. this post hasn't been tone matched
+            user_tweet_examples = current_user.tweet_examples
+            tone_matched_tweet = rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
+            new_edit = PostEdit(
+                text=tone_matched_tweet,
+                created_at=datetime.now(),
+                user_id=current_user.id,
+                generated_post_id=gp.id
+            )
+            db.session.add(new_edit)
+            db.session.commit()
+
 
     # generated posts HTML is rendered separately to make it reusable
     posts_html_fragments = [

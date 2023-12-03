@@ -360,7 +360,7 @@ def generate_tweets_for_topic(
     return generated_tweets
 
 
-def rewrite_tweet_in_tone(tweet, user_tweet_examples):
+def rewrite_tweet_in_users_tone(tweet, user_tweet_examples):
     """Given a string of user tweets rewrite a tweet in the users tone"""
     message = f"You are an educational social media content creator. You manage social media profiles and have been shown a public statement that you have to rewrite in the tone and style of your client. Here are some examples of your clients public statements {user_tweet_examples}. Here is the public statement that I want you to rewrite in the style and tone of the examples: {tweet}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's."
     return send_chat_gpt_message(message).strip(STRIP_CHARS)
