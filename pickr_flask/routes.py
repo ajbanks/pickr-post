@@ -1,4 +1,5 @@
 import random
+import datetime as dt
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from uuid import UUID
@@ -488,6 +489,7 @@ def weekly_schedule():
     return render_template(
         "weekly_schedule.html",
         schedule_text=schedule.schedule_text,
+        week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
         generated_post_fragment=schedule_frag
     )
 
@@ -495,9 +497,10 @@ def weekly_schedule():
 @app.route("/weekly_post/<week_day>", methods=["GET"])
 @login_required
 def weekly_post(week_day: int = None):
-    print('--------weekly_post--------')
+    print('--------weekly_post--------', week_day)
     if week_day is None:
         week_day = datetime.now().isocalendar().weekday - 1
+        print(week_day)
     else:
         week_day = int(week_day)
     # TODO: fix bad query patterns (N+1 select)
@@ -507,7 +510,7 @@ def weekly_post(week_day: int = None):
     if schedule is None:
         print('return None')
         return None
-
+    print('HIIIIIIIIIIII')
     # show posts in this "Schedule" that are for this weekday
     scheduled_posts = filter(
         lambda p: p.scheduled_day == week_day,
@@ -548,6 +551,7 @@ def weekly_post(week_day: int = None):
             {post_html_fragment}
         </div>
     """
+    print(schedule_html)
     return schedule_html
 
 

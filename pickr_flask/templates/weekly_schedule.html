@@ -22,8 +22,13 @@
             {% endif %}
         {% endwith %}
         <div class="container">
-            <h1>Tweet Schedule</h1>
+            <h1>Weekly Post Schedule</h1>
+            <p>Your curated post schedule for week beginning {{week_date}}</p>
         </div>
+        <div class="user-account">
+            <p>{{ schedule_text}}</p>
+        </div>
+        
         <div id="tabs" class="topic">
             <div class="tab-list" role="tablist">
                 <button hx-trigger="load" hx-get="/weekly_post/0" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content" class="selected">Monday</button>
