@@ -473,16 +473,17 @@ def home():
 @app.route("/weekly_schedule", methods=["GET"])
 @login_required
 def weekly_schedule():
-    
+    print('--------weekly_schedule--------')
     # TODO: fix bad query patterns (N+1 select)
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
     ).limit(1).one()
-    print('scehdule',schedule)
+    
     if schedule is None:
+        print('return None')
         return render_template("weekly_schedule.html")
     
-    schedule_frag = weekly_post(datetime.now().isocalendar().weekday - 1)
+    schedule_frag = weekly_post()
 
     return render_template(
         "weekly_schedule.html",
@@ -493,8 +494,8 @@ def weekly_schedule():
 
 @app.route("/weekly_post/<week_day>", methods=["GET"])
 @login_required
-def weekly_post(week_day: int):
-    week_day = int(week_day)
+def weekly_post(week_day: int = None):
+    print('--------weekly_post--------')
     if week_day is None:
         week_day = datetime.now().isocalendar().weekday - 1
     else:
@@ -504,6 +505,7 @@ def weekly_post(week_day: int):
         user_id=current_user.id,
     ).limit(1).one()
     if schedule is None:
+        print('return None')
         return None
 
     # show posts in this "Schedule" that are for this weekday
@@ -525,9 +527,30 @@ def weekly_post(week_day: int):
                 default_time=default_dt.strftime(DATETIME_ISO_FMT),
             )
         )
+    days_bool = ['"false"', '"false"', '"false"', '"false"', '"false"', '"false"', '"false"']
+    class_sel = ['', '', '', '', '', '', '', ]
+    class_sel[week_day] = 'class="selected"'
+    print('WEEK DAY', week_day)
+    #days_bool[week_day] = '"true"'
     post_html_fragment = "\n".join(post_html_fragments)
-    print('got schdeule)')
-    return post_html_fragment
+    schedule_html = f"""
+        <div class="tab-list" role="tablist">
+            <button hx-get="/weekly_post/0" hx-target="#tabs" role="tab" aria-selected={days_bool[0]} aria-controls="tab-content" {class_sel[0]}>Monday</button>
+            <button hx-get="/weekly_post/1" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[1]}>Tuesday</button>
+            <button hx-get="/weekly_post/2" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[2]}>Wednesday</button>
+            <button hx-get="/weekly_post/3" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[3]}>Thursday</button>
+            <button hx-get="/weekly_post/4" hx-target="#tabs" role="tab" aria-selected={days_bool[4]} aria-controls="tab-content" {class_sel[4]}>Friday</button>
+            <button hx-get="/weekly_post/5" hx-target="#tabs" role="tab" aria-selected={days_bool[5]} aria-controls="tab-content" {class_sel[5]}>Saturday</button>
+            <button hx-get="/weekly_post/6" hx-target="#tabs" role="tab" aria-selected={days_bool[6]} aria-controls="tab-content" {class_sel[6]}>Sunday</button>
+        </div>
+        
+        <div class="container cards" id="tab-content" role="tabpanel">
+            {post_html_fragment}
+        </div>
+    """
+    return schedule_html
+
+
 
 @app.route("/all_topics")
 @login_required

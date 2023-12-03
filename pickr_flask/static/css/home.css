@@ -506,4 +506,24 @@
 
 #tabs > .tab-list {
   border-bottom: solid 3px #eee;
+  border-bottom-width: 3px;
+  border-bottom-style: solid;
+  border-bottom-color: rgb(238, 238, 238);
+}
+
+#tabs > .tab-content {
+  padding: 10px;
+  margin-bottom: 100px;
+}
+
+#tabs > .tab-list button {
+  border: none;
+  display: inline-block;
+  padding: 5px 10px;
+  cursor: pointer;
+  background-color: transparent;
+} 
+
+#tabs > .tab-list button.selected {
+  background-color: #eee;
 }
