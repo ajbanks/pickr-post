@@ -25,7 +25,7 @@
             <h1>Weekly Post Schedule</h1>
             <p>Your curated post schedule for week beginning {{week_date}}</p>
         </div>
-        <div class="user-account">
+        <div class="info-desc">
             <p>{{ schedule_text}}</p>
         </div>
         
@@ -48,6 +48,27 @@
                 <!--{% endif %}-->
             </div>
         </div>
+        <br/>
+        <br/>
+        <br/>
+        <div class="container">
+            <div class="info-desc">
+                <p>New trends in your niche</p>
+            </div>
+        </div>
+        {% for topic in topics %}
+        <div class="topic">
+            <div class="accordion clickable">
+                <h3>{{topic.name}}</h3>
+                <p style="font-size:medium">{{topic.description if topic.description}}</p>
+            </div>
+            <div class="more">
+                <a href="/topic/{{ topic_ids[ loop.index-1 ] }}">View topic details and generated posts↗</a>
+            </div>
+        </div>
+        {% endfor %}
+
+
             
         </div>
 </div>

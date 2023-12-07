@@ -527,3 +527,21 @@
 #tabs > .tab-list button.selected {
   background-color: #eee;
 }
+
+.trends {
+  font-size: xx-small;
+}
+
+.info-desc {
+  border: 1px solid black;
+  box-shadow: 1px 1px 1px black;
+  padding: 30px 30px;
+  border-radius: 6px;
+  margin: 30px;
+  text-align: left;
+}
+
+.info-desc h2 {
+  font-weight: 400;
+  color: black;
+}

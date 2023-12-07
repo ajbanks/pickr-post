@@ -474,7 +474,6 @@ def home():
 @app.route("/weekly_schedule", methods=["GET"])
 @login_required
 def weekly_schedule():
-    print('--------weekly_schedule--------')
     # TODO: fix bad query patterns (N+1 select)
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
@@ -486,30 +485,33 @@ def weekly_schedule():
     
     schedule_frag = weekly_post()
 
+    niche_ids = [n.id for n in current_user.niches]
+    topics = top_modeled_topic_query(niche_ids).limit(3).all()[:3]
+    topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
+
+
     return render_template(
         "weekly_schedule.html",
         schedule_text=schedule.schedule_text,
         week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
-        generated_post_fragment=schedule_frag
+        #generated_post_fragment=posts_html_fragments,
+        topics=topics,
+        topic_ids=topic_ids
     )
 
 
 @app.route("/weekly_post/<week_day>", methods=["GET"])
 @login_required
 def weekly_post(week_day: int = None):
-    print('--------weekly_post--------', week_day)
     if week_day is None or int(week_day) == -1:
         week_day = datetime.now().isocalendar().weekday - 1
-        print('updated week day', week_day)
     else:
         week_day = int(week_day)
-        print('in else', week_day)
     # TODO: fix bad query patterns (N+1 select)
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
     ).limit(1).one()
     if schedule is None:
-        print('return None')
         return None
     # show posts in this "Schedule" that are for this weekday
     scheduled_posts = filter(
@@ -533,7 +535,6 @@ def weekly_post(week_day: int = None):
     days_bool = ['"false"', '"false"', '"false"', '"false"', '"false"', '"false"', '"false"']
     class_sel = ['', '', '', '', '', '', '', ]
     class_sel[week_day] = 'class="selected"'
-    print('WEEK DAY', week_day)
     #days_bool[week_day] = '"true"'
     post_html_fragment = "\n".join(post_html_fragments)
     schedule_html = f"""
@@ -551,7 +552,6 @@ def weekly_post(week_day: int = None):
             {post_html_fragment}
         </div>
     """
-    print(schedule_html)
     return schedule_html
 
 
