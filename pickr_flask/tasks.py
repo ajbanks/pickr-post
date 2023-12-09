@@ -202,7 +202,7 @@ def run_niche_trends(niche_id) -> List[dict]:
                 "description": title_desc[1],
                 "date": datetime.now(),
                 "size": 0,
-                "trend_class": "trending",
+                "trend_type": "news",
             }
 
             # create news articles
