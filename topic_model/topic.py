@@ -9,17 +9,20 @@ from typing import List, Tuple
 from datetime import datetime, timedelta
 import re
 
+import pandas as pd
+import numpy as np
 import backoff
 import openai
 from openai.error import OpenAIError
-import pandas as pd
-import numpy as np
+from flask import current_app as app
 from sklearn.feature_extraction.text import CountVectorizer
 # from sklearn.metrics.pairwise import cosine_similarity
 
 RANDOM_STATE = 42
 
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai_key = app.config["OPENAI_API_KEY"]
+openai.api_key = openai_key
+OPEN_AI_MODEL = "gpt-4"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
     "Playful and Youthful",
@@ -28,7 +31,9 @@ BRAND_VOICES = [
     "Friendly and Supportive",
     "Bold and Innovative",
 ]
-
+with open('long_tweet_examples.txt', mode='r', encoding="utf-8") as read_file:
+    TWEET_EXAMPLES = read_file.read()
+    
 
 def build_subtopic_model(texts: List[str], reduce_topics=False):
     '''
@@ -148,7 +153,10 @@ def generate_topic_overview(
     ])
     # if not is_valid_topic_gpt(body):
     #     return "", ""
+    #print('topic_keywords', topic_keywords, 'topic_documents', topic_documents)
+    print('getting label and desc')
     topic_label, topic_desc = get_label_and_description(topic_documents, topic_keywords)
+    print('checking if top is relevant')
     if not is_topic_relevant_gpt(niche_title, topic_desc):
         return "", ""
     return topic_label, topic_desc
@@ -187,34 +195,49 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     return resp.lower().strip(string.punctuation) == "yes"
 
 
+def is_topic_informational_gpt(text) -> bool:
+    resp = send_chat_gpt_message(
+        is_informational_post(text),
+        temperature=0.2
+    )
+    return resp.lower().strip(string.punctuation) == "yes"
+
+
 @backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description(topic_documents, topic_keywords):
-
-    topic_label = (
-        openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": create_label_prompt(topic_documents, topic_keywords)}],
-            temperature=0.2,
-        )
-        .choices[0]
-        .message.content
-    )
+    print('getting label')
+    topic_label = send_chat_gpt_message(create_label_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
         topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
-    topic_desc = (
-        openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": create_summary_prompt(topic_documents, topic_keywords)}],
-            temperature=0.2,
-        )
-        .choices[0]
-        .message.content
-    )
+    print('getting desc')
+    topic_desc = send_chat_gpt_message(create_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
+    try:
+        print('refining desc)')
+        topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+        #topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
+        #topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+    except Exception as e:
+        print(e)
+        pass
+    return topic_label, topic_desc
+
+
+@backoff.on_exception(backoff.expo, OpenAIError)
+def get_label_and_description_no_keywords(topic_documents):
+    topic_label = send_chat_gpt_message(create_label_prompt_no_keywords(topic_documents), temperature=0.2)
+    try:
+        topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
+    except Exception:
+        pass
+    topic_desc = send_chat_gpt_message(create_summary_prompt_no_keywords(topic_documents), temperature=0.2)
     try:
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
-    except Exception:
+        #topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
+        #topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+    except Exception as e:
+        print(e)
         pass
     return topic_label, topic_desc
 
@@ -299,11 +322,11 @@ def trend_type(points):
 
 
 @backoff.on_exception(backoff.expo, OpenAIError)
-def send_chat_gpt_message(message, temperature=0.8):
+def send_chat_gpt_message(message, temperature=1):
     # TODO: check the temperature is correct
     return (
         openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model=OPEN_AI_MODEL,
             messages=[{"role": "user", "content": message}],
             temperature=temperature,
         )
@@ -312,21 +335,11 @@ def send_chat_gpt_message(message, temperature=0.8):
     )
 
 
-def rewrite_tweets_in_brand_voices(tweet_list):
-    """rewrite tweets in different brand voices"""
-    new_tweets = []
-
-    for tweet in tweet_list:
-        for brand_voice in BRAND_VOICES:
-            new_tweets.append(rewrite_post_in_brand_voice(brand_voice, tweet))
-
-    return tweet_list + new_tweets
-
-
 # TODO(meiji163) Use the BERTopic keywords for generation too
 def generate_tweets_for_topic(
         num_tweets,
         topic_label,
+        topic_summary,
         num_topics_from_topic_label=5
 ):
     """
@@ -341,40 +354,26 @@ def generate_tweets_for_topic(
         1 if num_tweets_per_tweet_type <= 0 else num_tweets_per_tweet_type
     )
 
-    # get topics related to topic label
-    # TODO: potentially remove the generate_related_topics
-    # as it might not be necessary
-    related_topics = generate_related_topics(
-        num_topics_from_topic_label, topic_label
-    )[:num_topics_from_topic_label]
-    related_topics = [r for r in related_topics if r.strip() != ""]
     generated_tweets = []
-    for topic in [topic_label]+related_topics:
-        # TODO: generate_informative_tweets_for_topic and
-        # generate_future_focused_tweets_for_topic dont reliably create
-        # the correct number of tweets (maybe due to temp value)
-        # and the split function doesnt accurately split tweets
-
-        for i in range(num_tweets_per_tweet_type):
-            tweet = generate_informative_tweet_for_topic(topic)
+    
+    for i in range(num_tweets):
+        tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_label))
+        if is_topic_informational_gpt(tweet):
             generated_tweets.append({
-                "topic_label": topic,
+                "topic_label": topic_label,
                 "information_type": "informative",
                 "text": tweet,
             })
 
-            tweet = generate_funny_tweet_for_topic(topic)
+        tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_summary))
+        if is_topic_informational_gpt(tweet):
             generated_tweets.append({
-                "topic_label": topic,
+                "topic_label": topic_label,
                 "information_type": "funny",
                 "text": tweet,
             })
-    #generated_tweets = list(filter(
-    #    lambda t: len(t["text"]) >= 30,
-    #    generated_tweets
-    #))
 
-    return related_topics, generated_tweets
+    return generated_tweets
 
 
 def valid_topic_test(text):
@@ -382,25 +381,61 @@ def valid_topic_test(text):
 
 
 def is_topic_related_to_niche(topic_label, niche_label):
-    prompt_string = f"You will answer my questions to the best of your ability and truthfully. Is the topic descroption below related to {niche_label}? Answer Yes or No. \n\n '{topic_label}'"
+    prompt_string = f"You will answer my questions to the best of your ability and truthfully. Is the topic description below related to {niche_label}? Answer Yes or No. \n\n '{topic_label}'"
     return prompt_string
+
+
+def create_summarise_topic_summary_prompt(summary):
+    return f"""
+        You are excellent at creating concise and short descriptions that summarise the description of a topic. Your summarisations cover a maximum of two themes and are easy to to understand.
+        I have a topic that has the following description: {summary}
+        
+        Based on the information above, please give a description of this topic that is a maximum of two sentences long and covers a maximum of two themes, in the following format:
+        topic: <description>
+        """
 
 
 def create_summary_prompt(documents, keywords):
     return f"""
-        I have a topic that is described by the following keywords: {keywords}
+        You are excellent at creating concise and short descriptions that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
         In this topic, the following documents are a small but representative subset of all documents in the topic:
         {documents}
+
+        The topic is described by the following keywords: {keywords}
         
-        Based on the information above, please give a description of this topic in the following format:
+        Based on the information above, please give a description of this topic that is a maximum of two sentences long and covers a maximum of two themes, in the following format:
         topic: <description>
         """
 
+
 def create_label_prompt(documents, keywords):
     return f"""
-        I have a topic that contains the following documents: 
+        You are excellent at creating concise and short labels that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
+        I have a topic that contains the following documents:
         {documents}
         The topic is described by the following keywords: {keywords}
+        
+        Based on the information above, extract a short topic label in the following format:
+        topic: <topic label>
+        """
+
+
+def create_summary_prompt_no_keywords(documents):
+    return f"""
+        You are excellent at creating concise and short descriptions that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
+        In this topic, the following documents are a small but representative subset of all documents in the topic:
+        {documents}
+        
+        Based on the information above, please give a description of this topic that is a maximum of two sentences long and covers a maximum of two themes, in the following format:
+        topic: <description>
+        """
+
+
+def create_label_prompt_no_keywords(documents):
+    return f"""
+        You are excellent at creating concise and short labels that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
+        I have a topic that contains the following documents:
+        {documents}
         
         Based on the information above, extract a short topic label in the following format:
         topic: <topic label>
@@ -426,8 +461,24 @@ def generate_related_topics(
 #     return f"You are a social media content creator. You manage social media profiles and have been asked to come up with tweets that your client should tweet. Create 10 tweets related to {topic} written in a {brand_voice} brand voice. Don't add any numbering to the tweets and separate each tweet with a new line character."
 
 
+def is_informational_post(post_text):
+    return f"""
+    
+    You are excellent at answering questions accurately and determining whether a tweet is informational and sharing knowledge. I will give you a tweet and you will reply 'Yes' if the tweet is informational or 'No' if it is not:
+
+    TWEET: {post_text}
+    """
+
+
+def generate_informative_tweet_for_topic_awesome_prompt(topic_summary):
+    """Implementation: original_gpt4_awesome-chatgpt-prompts_3examples_tweet_generation_results.csv
+    """
+    message = f"I want you to act as a social media manager. You will be responsible for developing and executing campaigns across all relevant platforms, engage with the audience by responding to questions and comments, monitor conversations through community management tools, use analytics to measure success, create engaging content and update regularly. You manage social media profiles and have been asked to come up with a brief public statement that your client should post. I want you to read this topic summary, pick out an interesting topic and write a brief public statement about it. Use the topic summary to help you. Here is the topic summary: {topic_summary}. think step-by-step. Analyse the topic and identify its relevance to the audience. Then think of a good point that the audience should know. Then create the public statement. Don't mention any personal stories or situations from the past. Don't introduce the topic at the beginning of the tweet with words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources. You aren't selling anything Don't include any emoji's. Here are some statement examples you can use as inspiration (don't directly copy the styles/formats: {TWEET_EXAMPLES}."
+    return message
+
+
 def generate_informative_tweet_for_topic(topic):
-    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet that explains {topic}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
+    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a brief public statement that your client should post. Create a brief public statement that explains {topic}. Don't mention any specific twitter users, tools or resources. Don't include any emoji's."
     return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 
@@ -437,7 +488,7 @@ def generate_funny_tweet_for_topic(topic):
 
 
 def generate_informative_tweet_for_topic_desc(topic_label, topic_desc):
-    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a tweet that your client should tweet. Create a brief tweet for the topic '{topic_label}' with the following description: {topic_desc}. \n\nDon't mention any specific twitter users, tools or resources. Don't include any emoji's. Write in the style of a 16 year old."
+    message = f"You are an educational social media content creator. You manage social media profiles and have been asked to come up with a short public statement that your client should post. Create a brief statement for the topic '{topic_label}' with the following description: {topic_desc}. \n\nDon't mention any specific people, tools or resources. Don't include any emoji's."
     return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 
@@ -469,8 +520,3 @@ def generate_hyperbole_tweets_for_topic(topic):
 def generate_advice_tweets_for_topic(topic):
     message = f"You are a Twitter content creator that creates viral tweets with lots of likes and retweets. You give advice using emotive and hyperbolic language. Create a tweet about '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users or tools and use a maximum of two emojis."
     return send_chat_gpt_message(message)
-
-
-def rewrite_post_in_brand_voice(brand_voice, tweet):
-    message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
-    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))
