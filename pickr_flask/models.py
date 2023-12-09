@@ -203,7 +203,6 @@ class ModeledTopic(db.Model):
     generated_posts = relationship("GeneratedPost")
     reddit_posts = relationship("RedditPost", secondary=reddit_modeled_topic_assoc)
     news_posts = relationship("NewsArticle", secondary=news_modeled_topic_assoc)
-    trend_class = Column(String(32), nullable=True)
     # tweets that the model clustered into this topic.
     # tweets = relationship("Tweet", secondary=tweet_modeled_topic_assoc)
 
