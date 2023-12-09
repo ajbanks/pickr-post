@@ -12,6 +12,12 @@ Go ahead and edit the posts in the schedule if they are not quite to your liking
 """
 
 
+def get_simple_schedule_text():
+    return """
+        Your post schedule for the week is below. The posts are based on topics trending in your niche right now on social media. Use the edit & schedule buttons to post on X/Twitter.
+        """
+
+
 def create_schedule_text(topics: List[ModeledTopic]):
     return None
 

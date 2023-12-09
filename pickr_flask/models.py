@@ -369,7 +369,7 @@ class RedditPost(db.Model):
 
     def __repr__(self):
         return f"<RedditPost id={self.id} url={self.url}>"
-
+    
 
 class NewsArticle(db.Model):
     """
@@ -426,6 +426,7 @@ class Tweet(db.Model):
     url = Column(String(255), nullable=True)
     username = Column(String(255), nullable=False)
     text = Column(String, nullable=True)
+    clean_text = Column(String, nullable=True)
     created_at = Column(String, nullable=True)
     author_id = Column(Integer, nullable=True)
     retweets = Column(Integer, nullable=True)

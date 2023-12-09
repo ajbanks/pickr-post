@@ -19,7 +19,8 @@ from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
 from .newsapi import (get_trends, write_modeled_topic_with_news_article,
                       write_news_articles)
-from .post_schedule import write_schedule, write_schedule_posts
+from .post_schedule import (write_schedule, write_schedule_posts, 
+                            get_simple_schedule_text)
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
@@ -44,6 +45,7 @@ def run_schedule():
             args=(user.id,)
         )
 
+
 @shared_task
 def create_schedule(user_id):
     '''
@@ -53,33 +55,49 @@ def create_schedule(user_id):
     niches = user.niches
 
     num_posts_per_topic = 3
+    total_num_posts = 7 * 3  # 3 posts for each day of the week
+    total_topics = total_num_posts / num_posts_per_topic
+    num_topics_per_niche = total_topics / len(niches)  # even number of topics for each niche
 
     generated_posts = []
     for niche in niches:
         logging.info(
             f"Creating niche {niche.title} schedule for user: {user_id}"
         )
-        topics = ModeledTopic.query.filter(
+        # get both top trending and evergreen topics and choose a random selection of them
+        news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.trend_type == 'trend'
             )
         ).order_by(
             ModeledTopic.size.desc()
-        ).limit(3).all()
+        ).limit(num_topics_per_niche).all()
 
+        evergreen_topics = ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.trend_type != 'trend'
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).limit(num_topics_per_niche).all()
+        topics = news_topics + evergreen_topics
+        random.shuffle(topics)
+        topics = topics[:num_topics_per_niche]
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
-    # endfor
 
     schedule = write_schedule({
         "user_id": user_id,
-        "week_number": datetime.now().isocalendar().week
+        "week_number": datetime.now().isocalendar().week,
+        "schedule_text": get_simple_schedule_text()
     })
 
     #  pick 3 random posts for each day
-    random.shuffle(generated_posts)
     scheduled_posts = []
     schedule_hours = [9, 12, 17]
     for day in range(7):
