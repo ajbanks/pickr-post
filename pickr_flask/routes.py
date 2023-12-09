@@ -27,7 +27,8 @@ from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
                      db)
 from .queries import (get_scheduled_post, latest_post_edit,
                       oauth_session_by_token, oauth_session_by_user,
-                      reddit_posts_for_topic_query, top_modeled_topic_query)
+                      reddit_posts_for_topic_query, top_modeled_topic_query,
+                      top_trending_modeled_topic_query)
 from .subscription import (handle_checkout_completed,
                            handle_subscription_deleted,
                            handle_subscription_updated, is_user_account_valid,
@@ -428,7 +429,7 @@ def upgrade():
     else:
         return render_template("upgrade.html")
 
-
+"""
 @app.route("/home")
 @login_required
 def home():
@@ -469,11 +470,22 @@ def home():
         topic_ids=topic_ids,
         generated_posts_fragments=posts_html_fragments,
     )
+"""
 
-
-@app.route("/weekly_schedule", methods=["GET"])
+@app.route("/home", methods=["GET"])
 @login_required
-def weekly_schedule():
+def home():
+    log_user_activity(current_user, "home")
+    oauth = oauth_session_by_user(current_user.id)
+    if oauth is None or oauth.access_token is None:
+        msg = render_template_string('''
+        <a href="{{ url_for("twitter_auth") }}">Sign in with Twitter</a>
+        to schedule tweets.
+        ''')
+        flash(Markup(msg))
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
     # TODO: fix bad query patterns (N+1 select)
     schedule = Schedule.query.filter_by(
         user_id=current_user.id,
@@ -481,20 +493,19 @@ def weekly_schedule():
     
     if schedule is None:
         print('return None')
-        return render_template("weekly_schedule.html")
+        return render_template("home.html")
     
     schedule_frag = weekly_post()
 
     niche_ids = [n.id for n in current_user.niches]
-    topics = top_modeled_topic_query(niche_ids).limit(3).all()[:3]
+    topics = top_trending_modeled_topic_query(niche_ids).limit(3).all()
     topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
 
 
     return render_template(
-        "weekly_schedule.html",
+        "home.html",
         schedule_text=schedule.schedule_text,
         week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
-        #generated_post_fragment=posts_html_fragments,
         topics=topics,
         topic_ids=topic_ids
     )

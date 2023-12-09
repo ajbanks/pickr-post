@@ -115,3 +115,24 @@ def top_modeled_topic_query(niche_ids: List[UUID]) -> Query:
             ModeledTopic.size.desc()
         )
     )
+
+
+def top_trending_modeled_topic_query(niche_ids: List[UUID]) -> Query:
+    '''
+    Return a query object that returns top recent modeled topics
+    for a list of niches.
+    '''
+    return (
+        ModeledTopic.query
+        .filter(
+            and_(
+                ModeledTopic.niche_id.in_(niche_ids),
+                ModeledTopic.generated_posts.any(),
+                ModeledTopic.trend_type == 'trend'
+            )
+        )
+        .order_by(
+            ModeledTopic.date.desc(),
+            ModeledTopic.size.desc()
+        )
+    )
