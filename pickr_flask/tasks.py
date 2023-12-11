@@ -63,33 +63,9 @@ def create_schedule(user_id):
         ).limit(3).all()
 
         for t in topics:
-
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
-
-
-
-        # convert posts into a users tone if this hasn't already been done
-        for gp in generated_posts:
-
-            post_edit = latest_post_edit(gp.generated_post_id, user_id)
-
-            if post_edit is None:
-                # a post edit hasn't been made. Which means this post needs to be tone matched
-                user_tweet_examples = current_user.tweet_examples
-                tone_matched_tweet = rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
-                new_edit = PostEdit(
-                    text=tone_matched_tweet,
-                    created_at=datetime.now(),
-                    user_id=current_user.id,
-                    generated_post_id=gp.id
-                )
-                db.session.add(new_edit)
-                db.session.commit()
-
     # endfor
-
-
 
     schedule = write_schedule({
         "user_id": user_id,
