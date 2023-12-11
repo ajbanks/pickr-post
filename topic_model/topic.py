@@ -18,8 +18,8 @@ from sklearn.feature_extraction.text import CountVectorizer
 # from sklearn.metrics.pairwise import cosine_similarity
 
 RANDOM_STATE = 42
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
+openai_key = "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"
+openai.api_key = openai_key #os.getenv("OPENAI_API_KEY")
 OPEN_AI_MODEL = "gpt-4"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
