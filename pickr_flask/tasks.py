@@ -81,15 +81,13 @@ def create_schedule(user_id):
                 new_edit = PostEdit(
                     text=tone_matched_tweet,
                     created_at=datetime.now(),
-                    user_id=current_user.id,
+                    user_id=user_id,
                     generated_post_id=gp.id
                 )
                 db.session.add(new_edit)
                 db.session.commit()
 
     # endfor
-
-
 
     schedule = write_schedule({
         "user_id": user_id,
