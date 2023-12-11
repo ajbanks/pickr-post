@@ -63,7 +63,6 @@ def create_schedule(user_id):
         ).limit(3).all()
 
         for t in topics:
-
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
 
