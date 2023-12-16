@@ -208,9 +208,13 @@ def signup():
                 wait_on_rate_limit=True,
             )
 
+            #get the twitter id for this users username
             user_twitter_id = return_twitterid(client, form.name.data)
+
+            # pull tweets from their timeline excluding their retweets
             response = client.get_users_tweets(user_twitter_id, max_results=20, exclude=["retweets"])
 
+            #if there isn't enough tweet examples then try again ,this time including retweets
             if response.data is not None and len(response.data) > 10:
                 tweets = "\n\n public statement example: \n".join(
                     [status.text for status in response.data])
