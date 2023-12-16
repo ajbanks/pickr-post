@@ -51,9 +51,7 @@ class Config:
         # Any compute-heavy tasks should be put on "model_runner" queue.
         task_default_queue="default",
         task_routes={
-            "pickr_flask.tasks.run_niche_topic_model": {
-                "queue": "model_runner"
-            }
+            "pickr_flask.tasks.run_niche_topic_model": {"queue": "model_runner"}
         },
         # Set schedules for periodic tasks using celery beat
         beat_schedule={
@@ -83,6 +81,11 @@ class Config:
     MAIL_USERNAME = environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = environ.get("MAIL_PASSWORD")
 
+    # OpenAI API
+    OPENAI_API_KEY = environ.get("OPENAI_API_KEY")
+    
+    # News API
+    NEWS_API_KEY = environ.get("NEWS_API_KEY")
 
 class DevConfig(Config):
     TESTING = True
