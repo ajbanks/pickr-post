@@ -209,9 +209,16 @@ def signup():
             )
 
             user_twitter_id = return_twitterid(client, form.name.data)
-            response = client.get_users_tweets(user_twitter_id)
-            tweets = "\n public statement example: \n".join(
-                [status.text for status in response.data])
+            response = client.get_users_tweets(user_twitter_id, max_results=20, exclude=["retweets"])
+
+            if response.data is not None and len(response.data) > 10:
+                tweets = "\n\n public statement example: \n".join(
+                    [status.text for status in response.data])
+            else:
+                response = client.get_users_tweets(user_twitter_id, max_results=20)
+                tweets = "\n\n public statement example: \n".join(
+                    [status.text for status in response.data])
+
 
             user = PickrUser(
                 username=form.name.data,
