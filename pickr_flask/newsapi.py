@@ -1,5 +1,4 @@
 import logging
-import uuid
 import re
 from datetime import date, timedelta
 from os import environ
@@ -27,8 +26,9 @@ def get_trends(term: str, niche: str, page_size=100, num_pages=1, min_words=4, m
     if date_from is None or date_to is None:
         date_to = date.today() - timedelta(days=1)
         date_to = date_to.strftime("%Y-%m-%d")
-        date_from = date.today() - timedelta(days=14)
+        date_from = date_from - timedelta(days=14)
         date_from = date_from.strftime("%Y-%m-%d")
+    print(date_from, date_to)
     for i in range(num_pages):
         try:
             all_articles = newsapi.get_everything(
