@@ -49,6 +49,7 @@ def create_schedule(user_id):
     num_posts_per_topic = 3
 
     generated_posts = []
+
     for niche in niches:
         logging.info(
             f"Creating niche {niche.title} schedule for user: {user_id}"
@@ -75,8 +76,9 @@ def create_schedule(user_id):
 
             if post_edit is None:
                 # a post edit hasn't been made. Which means this post needs to be tone matched
-                user_tweet_examples = current_user.tweet_examples
-                tone_matched_tweet = rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
+                user_tweet_examples = user.tweet_examples
+                tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
+
                 new_edit = PostEdit(
                     text=tone_matched_tweet,
                     created_at=datetime.now(),
