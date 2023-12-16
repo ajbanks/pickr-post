@@ -29,7 +29,7 @@ from .subscription import (handle_checkout_completed,
                            handle_subscription_updated, is_user_account_valid,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics
-from .util import log_user_activity
+from .util import log_user_activity, return_twitterid
 
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
 DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
@@ -194,17 +194,25 @@ def signup():
             email=form.email.data,
         ).first()
         if existing_user is None:
+            print('user doesnt exist')
             password_hash = generate_password_hash(
                 form.password.data, method=PASSWORD_HASH_METHOD
             )
+
             client = tweepy.Client(
-                consumer_key=app.config["TWITTER_API_KEY"],
-                consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
-                access_token=oauth_sess.access_token,
-                access_token_secret=oauth_sess.access_token_secret,
+                bearer_token=app.config["TWITTER_BEARER_TOKEN"],
+                consumer_key=app.config["TWITTER_CLIENT_ID"],
+                consumer_secret=app.config["TWITTER_CLIENT_SECRET"],
+                access_token=app.config["TWITTER_ACCESS_TOKEN"],
+                access_token_secret=app.config["TWITTER_ACCESS_TOKEN_SECRET"],
                 wait_on_rate_limit=True,
             )
-            tweets = "\n public statement example: \n".join([status.text for status in client.user_timeline(screen_name=form.name.data, count=20, include_rts=False)])
+
+            user_twitter_id = return_twitterid(client, form.name.data)
+            response = client.get_users_tweets(user_twitter_id)
+            tweets = "\n public statement example: \n".join(
+                [status.text for status in response.data])
+
             user = PickrUser(
                 username=form.name.data,
                 email=form.email.data,

@@ -38,6 +38,12 @@ class Config:
     TWITTER_API_KEY = environ.get("TWITTER_API_KEY")
     TWITTER_API_KEY_SECRET = environ.get("TWITTER_API_KEY_SECRET")
     TWITTER_CALLBACK_URL = environ.get("TWITTER_CALLBACK_URL")
+    TWITTER_BEARER_TOKEN = environ.get("TWITTER_BEARER_TOKEN")
+    TWITTER_ACCESS_TOKEN = environ.get("TWITTER_ACCESS_TOKEN")
+    TWITTER_ACCESS_TOKEN_SECRET = environ.get("TWITTER_ACCESS_TOKEN_SECRET")
+    TWITTER_CLIENT_ID = environ.get("TWITTER_CLIENT_ID")
+    TWITTER_CLIENT_SECRET = environ.get("TWITTER_CLIENT_SECRET")
+
 
     # Celery
     timezone = "Europe/London"  # timezone for cron jobs
