@@ -30,6 +30,7 @@ from .subscription import (handle_checkout_completed,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity, return_twitterid
+from.x_caller import X_Caller
 
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
 DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
@@ -199,30 +200,10 @@ def signup():
                 form.password.data, method=PASSWORD_HASH_METHOD
             )
 
-            client = tweepy.Client(
-                bearer_token=app.config["TWITTER_BEARER_TOKEN"],
-                consumer_key=app.config["TWITTER_CLIENT_ID"],
-                consumer_secret=app.config["TWITTER_CLIENT_SECRET"],
-                access_token=app.config["TWITTER_ACCESS_TOKEN"],
-                access_token_secret=app.config["TWITTER_ACCESS_TOKEN_SECRET"],
-                wait_on_rate_limit=True,
-            )
-
+            x_caller = X_Caller()
             #get the twitter id for this users username
-            user_twitter_id = return_twitterid(client, form.name.data)
-            tweets = ""
-            # pull tweets from their timeline excluding their retweets
-            response = client.get_users_tweets(user_twitter_id, max_results=30, exclude=["retweets"])
-
-            #if there isn't enough tweet examples then try again ,this time including retweets
-            if response.data is not None and len(response.data) > 10:
-                tweets = "\n\n public statement example: \n".join(
-                    [status.text for status in response.data])
-            else:
-                response = client.get_users_tweets(user_twitter_id, max_results=30)
-                if response.data is not None:
-                    tweets = "\n\n public statement example: \n".join(
-                        [status.text for status in response.data])
+            user_twitter_id = x_caller.return_twitterid(form.name.data)
+            tweets = x_caller.get_tweets_for_tone_matching(user_twitter_id)
 
 
             user = PickrUser(

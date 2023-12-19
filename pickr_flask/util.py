@@ -88,10 +88,3 @@ def load_initial_data(data):
     return True
 
 
-
-def return_twitterid(client, screen_name):
-    print("The screen name is: " + screen_name)
-    twitterid = client.get_user(username=screen_name)
-    print(type(twitterid)) #to confirm the type of object
-    print(f"The Twitter ID is {twitterid.data.id}.")
-    return twitterid.data.id
