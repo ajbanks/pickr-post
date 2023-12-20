@@ -475,33 +475,46 @@ def home():
 @app.route("/home", methods=["GET"])
 @login_required
 def home():
+    app.logger.info("log users activity")
     log_user_activity(current_user, "home")
+    app.logger.info("get auth session")
     oauth = oauth_session_by_user(current_user.id)
     if oauth is None or oauth.access_token is None:
+        app.logger.info("auth session doesnt exist so rendering markup")
         msg = render_template_string('''
         <a href="{{ url_for("twitter_auth") }}">Sign in with Twitter</a>
         to schedule tweets.
         ''')
         flash(Markup(msg))
-
+    app.logger.info("check if ysers account is valid")
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
     # TODO: fix bad query patterns (N+1 select)
-    schedule = Schedule.query.filter_by(
-        user_id=current_user.id,
-    ).limit(1).one()
-    
-    if schedule is None:
-        print('return None')
-        return render_template("home.html")
-    
-    schedule_frag = weekly_post()
 
+    app.logger.info("get users niches, trending topics and topics ids")
     niche_ids = [n.id for n in current_user.niches]
     topics = top_trending_modeled_topic_query(niche_ids).limit(3).all()
     topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
 
+    app.logger.info("get users schedule")    
+    try: 
+        schedule = Schedule.query.filter_by(
+            user_id=current_user.id,
+        ).limit(1).one()
+    except Exception:
+        app.logger.info("user doesnt have a schedule or couldnt be retrieved")
+        return render_template(
+            "home.html",
+            schedule_text="You do not yet have a schedule",
+            week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
+            topics=topics,
+            topic_ids=topic_ids
+        )
+    
+    app.logger.info("get html of schedle")
+    #schedule_frag = weekly_post()
 
+    app.logger.info("exit home function")
     return render_template(
         "home.html",
         schedule_text=schedule.schedule_text,
