@@ -9,7 +9,7 @@ from celery import chain, shared_task
 from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
-
+from .x_caller import X_Caller
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
 from .post_schedule import write_schedule, write_schedule_posts
@@ -21,6 +21,12 @@ from .reddit import (fetch_subreddit_posts, process_post,
 
 TOPIC_MODEL_MIN_DOCS = 20
 
+
+@shared_task
+def run_marketing_functions():
+    x_caller = X_Caller()
+    # send marketing dms
+    x_caller.send_marketing_dms(50)
 
 @shared_task
 def run_schedule():

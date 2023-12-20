@@ -29,7 +29,7 @@ from .subscription import (handle_checkout_completed,
                            handle_subscription_updated, is_user_account_valid,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics
-from .util import log_user_activity, return_twitterid
+from .util import log_user_activity
 from.x_caller import X_Caller
 
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"

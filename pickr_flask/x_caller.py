@@ -1,11 +1,23 @@
 import pandas as pd
 from datetime import datetime
 import tweepy
+import time
+from flask import current_app as app
 
 # from .models import db, Topic, ModeledTopic, Tweet, PickrUser, GeneratedPost, Niche
 
-TWITTER_USERS_CSV = ""
-AUTO_DM_MESSAGE = """Hi!. I can see you're building your x following. Get help here pickrsocial.com"""
+TWITTER_USERS_CSV = "data/all_competitor_followers.csv"
+AUTO_DM_MESSAGE = """Hi!. I can see you're building your X following.
+
+I'd love to help you build your audience.
+
+I've built a bespoke tool that analyses the type of content your target audience loves, and then generates 
+human-like viral tweets for you based on this analysis. More followers = more opportunities.
+We're making it available free for 14 days as we are in Beta testing. Interested?
+
+pickrsocial.com
+
+"""
 
 class X_Caller:
 
@@ -54,14 +66,25 @@ class X_Caller:
 
 
     def is_x_bio_valid(self, bio):
-        valid_terms = ["marketing", "marketer", "seo", "advertising", "content", "writer", "entrepreneur", "fitness", "muscle", "course", "startup", "saas", "diet"]
+        valid_terms = ["marketing", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur", "fitness", "muscle", "course", "startup", "saas", "diet"]
 
         for term in valid_terms:
 
-            if term in bio:
+            if term in bio.lower():
                 return True
 
         return False
+
+    def send_marketing_dms(self, number_dms=5):
+        """
+            5 requests / 15 mins PER USER
+            500 requests / 24 hours PER USER
+
+        """
+
+        for i in range(number_dms):
+            self.dm_next_person_in_csv()
+            time.sleep(180)
 
     def dm_next_person_in_csv(self):
 
@@ -72,14 +95,17 @@ class X_Caller:
             if dm_df["been_messaged"].values[i] == 1:
                 continue
 
-            elif self.is_x_bio_valid(dm_df["Bio"].values[i]):
+            elif self.is_x_bio_valid(str(dm_df["Bio"].values[i])):
+
                 dm_df["been_messaged"].values[i] = 1
                 user_id = dm_df["User Id"].values[i]
-                self.auto_dm(user_id, AUTO_DM_MESSAGE)
+                resp = self.auto_dm(user_id, AUTO_DM_MESSAGE)
+                dm_df.to_csv(TWITTER_USERS_CSV)
+                return resp
 
-                break
+        return "FALSE"
 
-        dm_df.to_csv(TWITTER_USERS_CSV)
+
 
 
 
