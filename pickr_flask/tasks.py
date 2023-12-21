@@ -27,6 +27,7 @@ TOPIC_MODEL_MIN_DOCS = 20
 @shared_task
 def run_marketing_functions():
     x_caller = X_Caller()
+
     # send marketing dms
     x_caller.send_marketing_dms(50)
 
@@ -455,10 +456,15 @@ def post_scheduled_tweets():
             )
             continue
 
+        client = tweepy.Client(
+            consumer_key=app.config["TWITTER_API_KEY"],
+            consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
+            access_token=oauth_sess.access_token,
+            access_token_secret=oauth_sess.access_token_secret,
+            wait_on_rate_limit=True,
+        )
+
         num_posted = 0
-
-        x_caller = X_Caller()
-
         for p in posts:
             post_edit = latest_post_edit(p.generated_post_id, user_id)
             if post_edit is None:
@@ -468,7 +474,7 @@ def post_scheduled_tweets():
                 post_text = post_edit.text
 
             try:
-                resp = x_caller.post_tweet(tweet=post_text)
+                resp = client.create_tweet(text=post_text)
             except (tweepy.errors.BadRequest, tweepy.errors.Unauthorized) as e:
                 logging.error(
                     f"error posting tweet for user_id={user_id}: {e}"
