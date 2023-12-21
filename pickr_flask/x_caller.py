@@ -52,7 +52,7 @@ class X_Caller:
             tweets = "\n\n public statement example: \n".join(
                 [status.text for status in response.data])
         else:
-            response = client.get_users_tweets(user_twitter_id, max_results=max_results)
+            response = self.client.get_users_tweets(user_twitter_id, max_results=max_results)
             if response.data is not None:
                 tweets = "\n\n public statement example: \n".join(
                     [status.text for status in response.data])

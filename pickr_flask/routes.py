@@ -208,20 +208,8 @@ def signup():
             #get the twitter id for this users username
             user_twitter_id = x_caller.return_twitterid(form.name.data)
 
-            tweets = ""
             # pull tweets from their timeline excluding their retweets
-            response = x_caller.get_tweets_for_tone_matching(user_twitter_id)
-
-            #if there isn't enough tweet examples then try again ,this time including retweets
-            if response.data is not None and len(response.data) > 10:
-                tweets = "\n\n public statement example: \n".join(
-                    [status.text for status in response.data])
-            else:
-                response = client.get_users_tweets(user_twitter_id, max_results=30)
-                if response.data is not None:
-                    tweets = "\n\n public statement example: \n".join(
-                        [status.text for status in response.data])
-
+            tweets = x_caller.get_tweets_for_tone_matching(user_twitter_id)[:5000]
 
             user = PickrUser(
                 username=form.name.data,

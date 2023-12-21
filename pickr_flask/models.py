@@ -119,7 +119,7 @@ class PickrUser(UserMixin, db.Model):
     # niches the user chose
     niches = relationship("Niche", secondary=user_niche_assoc)
     stripe_subscriptions = relationship("StripeSubscription")
-    tweet_examples = Column(String(1000), nullable=True)
+    tweet_examples = Column(String(5000), nullable=True)
     def __repr__(self):
         return f"<PickrUser id={self.id} username={self.username}>"
 
