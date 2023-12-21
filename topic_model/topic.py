@@ -8,18 +8,20 @@ import uuid
 from typing import List, Tuple
 from datetime import datetime, timedelta
 import re
-from flask import current_app as app
+
+import pandas as pd
+import numpy as np
 import backoff
 import openai
 from openai.error import OpenAIError
-import pandas as pd
-import numpy as np
+from flask import current_app as app
 from sklearn.feature_extraction.text import CountVectorizer
 # from sklearn.metrics.pairwise import cosine_similarity
 
 RANDOM_STATE = 42
-openai_key = "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"
-openai.api_key = openai_key #os.getenv("OPENAI_API_KEY")
+
+openai_key = app.config["OPENAI_API_KEY"]
+openai.api_key = openai_key
 OPEN_AI_MODEL = "gpt-4"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
@@ -151,7 +153,10 @@ def generate_topic_overview(
     ])
     # if not is_valid_topic_gpt(body):
     #     return "", ""
+    #print('topic_keywords', topic_keywords, 'topic_documents', topic_documents)
+    print('getting label and desc')
     topic_label, topic_desc = get_label_and_description(topic_documents, topic_keywords)
+    print('checking if top is relevant')
     if not is_topic_relevant_gpt(niche_title, topic_desc):
         return "", ""
     return topic_label, topic_desc
@@ -189,28 +194,50 @@ def is_topic_relevant_gpt(niche: str, topic: str) -> bool:
     )
     return resp.lower().strip(string.punctuation) == "yes"
 
+
 def is_topic_informational_gpt(text) -> bool:
     resp = send_chat_gpt_message(
         is_informational_post(text),
         temperature=0.2
     )
     return resp.lower().strip(string.punctuation) == "yes"
-    
 
 
 @backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description(topic_documents, topic_keywords):
+    print('getting label')
     topic_label = send_chat_gpt_message(create_label_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
         topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
+    print('getting desc')
     topic_desc = send_chat_gpt_message(create_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
+        print('refining desc)')
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
-        topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
-        topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+        #topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
+        #topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+    except Exception as e:
+        print(e)
+        pass
+    return topic_label, topic_desc
+
+
+@backoff.on_exception(backoff.expo, OpenAIError)
+def get_label_and_description_no_keywords(topic_documents):
+    topic_label = send_chat_gpt_message(create_label_prompt_no_keywords(topic_documents), temperature=0.2)
+    try:
+        topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
+        pass
+    topic_desc = send_chat_gpt_message(create_summary_prompt_no_keywords(topic_documents), temperature=0.2)
+    try:
+        topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+        #topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
+        #topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
+    except Exception as e:
+        print(e)
         pass
     return topic_label, topic_desc
 
@@ -308,17 +335,6 @@ def send_chat_gpt_message(message, temperature=1):
     )
 
 
-def rewrite_tweets_in_brand_voices(tweet_list):
-    """rewrite tweets in different brand voices"""
-    new_tweets = []
-
-    for tweet in tweet_list:
-        for brand_voice in BRAND_VOICES:
-            new_tweets.append(rewrite_post_in_brand_voice(brand_voice, tweet))
-
-    return tweet_list + new_tweets
-
-
 # TODO(meiji163) Use the BERTopic keywords for generation too
 def generate_tweets_for_topic(
         num_tweets,
@@ -370,7 +386,7 @@ def valid_topic_test(text):
 
 
 def is_topic_related_to_niche(topic_label, niche_label):
-    prompt_string = f"You will answer my questions to the best of your ability and truthfully. Is the topic descroption below related to {niche_label}? Answer Yes or No. \n\n '{topic_label}'"
+    prompt_string = f"You will answer my questions to the best of your ability and truthfully. Is the topic description below related to {niche_label}? Answer Yes or No. \n\n '{topic_label}'"
     return prompt_string
 
 
@@ -379,18 +395,20 @@ def create_summarise_topic_summary_prompt(summary):
         You are excellent at creating concise and short descriptions that summarise the description of a topic. Your summarisations cover a maximum of two themes and are easy to to understand.
         I have a topic that has the following description: {summary}
         
-        Based on the information above, please give a description of this topic that covers a maximum of two themes, in the following format:
+        Based on the information above, please give a description of this topic that is a maximum of two sentences long and covers a maximum of two themes, in the following format:
         topic: <description>
         """
+
 
 def create_summary_prompt(documents, keywords):
     return f"""
         You are excellent at creating concise and short descriptions that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
-        I have a topic that is described by the following keywords: {keywords}
         In this topic, the following documents are a small but representative subset of all documents in the topic:
         {documents}
+
+        The topic is described by the following keywords: {keywords}
         
-        Based on the information above, please give a description of this topic that covers a maximum of two themes, in the following format:
+        Based on the information above, please give a description of this topic that is a maximum of two sentences long and covers a maximum of two themes, in the following format:
         topic: <description>
         """
 
@@ -398,9 +416,31 @@ def create_summary_prompt(documents, keywords):
 def create_label_prompt(documents, keywords):
     return f"""
         You are excellent at creating concise and short labels that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
-        I have a topic that contains the following documents: 
+        I have a topic that contains the following documents:
         {documents}
         The topic is described by the following keywords: {keywords}
+        
+        Based on the information above, extract a short topic label in the following format:
+        topic: <topic label>
+        """
+
+
+def create_summary_prompt_no_keywords(documents):
+    return f"""
+        You are excellent at creating concise and short descriptions that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
+        In this topic, the following documents are a small but representative subset of all documents in the topic:
+        {documents}
+        
+        Based on the information above, please give a description of this topic that is a maximum of two sentences long and covers a maximum of two themes, in the following format:
+        topic: <description>
+        """
+
+
+def create_label_prompt_no_keywords(documents):
+    return f"""
+        You are excellent at creating concise and short labels that capture a maximum of two themes in a topic that is represented by a set of keywords and documents.
+        I have a topic that contains the following documents:
+        {documents}
         
         Based on the information above, extract a short topic label in the following format:
         topic: <topic label>
@@ -429,7 +469,7 @@ def generate_related_topics(
 def is_informational_post(post_text):
     return f"""
     
-    You are excellent at answering questions accurately and determining whether a tweet is informational and sharing knowledge. I will give you a tweets and you will reply 'Yes' if the tweet is informational or 'No' if it is not:
+    You are excellent at answering questions accurately and determining whether a tweet is informational and sharing knowledge. I will give you a tweet and you will reply 'Yes' if the tweet is informational or 'No' if it is not:
 
     TWEET: {post_text}
     """
@@ -485,8 +525,3 @@ def generate_hyperbole_tweets_for_topic(topic):
 def generate_advice_tweets_for_topic(topic):
     message = f"You are a Twitter content creator that creates viral tweets with lots of likes and retweets. You give advice using emotive and hyperbolic language. Create a tweet about '{topic}'. The tweet must be a maximum of 280 characters. Don't mention any specific twitter users or tools and use a maximum of two emojis."
     return send_chat_gpt_message(message)
-
-
-def rewrite_post_in_brand_voice(brand_voice, tweet):
-    message = f"You are a social media content creator. You manage people's social media profiles and have been asked to come up with tweets that your client should tweet. Your client has given you the following tweet and wants it to be rewritten in a {brand_voice} brand voice. Don't include any emoji's. Here is the tweet: {tweet}.  Return nothing but the new tweet."
-    return convert_chat_gpt_response_to_list(send_chat_gpt_message(message))

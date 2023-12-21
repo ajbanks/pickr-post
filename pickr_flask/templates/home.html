@@ -22,38 +22,55 @@
             {% endif %}
         {% endwith %}
         <div class="container">
-            <h1>Top Trending Topics</h1>
-            <h2>{{date}}</h2>
+            <h1>Weekly Post Schedule</h1>
+            <p>Your curated post schedule for week beginning {{week_date}}</p>
         </div>
-        {% for topic in topics %}
-        <div class="topic">
-            <div class="accordion clickable">
-                <h3>Topic {{ loop.index }} 🔥: {{topic.name}}</h3>
-                <p>{{topic.description if topic.description}}</p>
+        <div class="info-desc">
+            <p>{{ schedule_text}}</p>
+        </div>
+        
+        <div id="tabs" class="topic">
+            <div class="tab-list" role="tablist">
+                <button hx-trigger="load" hx-get="/weekly_post/-1" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content" class="selected">Mon</button>
+                <button hx-get="/weekly_post/1" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content">Tue</button>
+                <button hx-get="/weekly_post/2" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content">Wed</button>
+                <button hx-get="/weekly_post/3" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content">Thur</button>
+                <button hx-get="/weekly_post/4" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content">Fri</button>
+                <button hx-get="/weekly_post/5" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content">Sat</button>
+                <button hx-get="/weekly_post/6" hx-target="#tabs" role="tab" aria-selected="true" aria-controls="tab-content">Sun</button>
             </div>
-            <div class="accordion-content">
-                <h2>Tweets for you</h2>
-                <div class="tooltip">
-                    <p>
-                        Use these AI-generated tweets to post about your topic.
-                        Press the tweet button to edit a tweet, post it, or schedule it.
-                    </p>
-                </div>
-                <div class="container cards">
-                    {{ generated_posts_fragments[ loop.index-1 ] | safe}}
+            
+            <div class="container cards" id="tab-content" role="tabpanel">
+                <p>Your schedule has not been generated yet, please return in a few hours...</p>
+            </div>
+        </div>
+        <br/>
+        <br/>
+        <br/>
+        <div class="container">
+            <div class="info-desc">
+                <p>New trends in your niche</p>
+            </div>
+        </div>
+        {% if topic %}
+            {% for topic in topics %}
+            <div class="topic">
+                <div class="accordion clickable">
+                    <h3>{{topic.name}}</h3>
+                    <p style="font-size:medium">{{topic.description if topic.description}}</p>
                 </div>
                 <div class="more">
-                    <a href="/topic/{{ topic.id }}">More from this topic↗</a>
+                    <a href="/topic/{{ topic_ids[ loop.index-1 ] }}">View topic details and generated posts↗</a>
                 </div>
             </div>
-        </div>
-        {% endfor %}
-        {% if topics|length < 1 %} <div class="no_topics">
-            <hr/>
-            <p>Your account is still being set up. Please check again in 24 hours and you will have access to your trending topics and generated posts!</p>
-    </div>
-    {% endif %}
+            {% endfor %}
+        {% else %}
+        <p>No headlines today</p>
+        {% endif %}
 
+
+            
+        </div>
 </div>
 
 {% endblock %}

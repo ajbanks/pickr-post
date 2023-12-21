@@ -41,7 +41,10 @@ body {
 }
 
 .hide {
+  display: none;
   visibility: hidden;
+  max-width: 0;
+  max-height: 0;
 }
 
 .footer {

@@ -1,5 +1,4 @@
 import logging
-import math
 import random
 import uuid
 from datetime import datetime, timedelta
@@ -12,7 +11,10 @@ from topic_model import topic
 from .x_caller import X_Caller
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
-from .post_schedule import write_schedule, write_schedule_posts
+from .newsapi import (get_trends, write_modeled_topic_with_news_article,
+                      write_news_articles)
+from .post_schedule import (write_schedule, write_schedule_posts,
+                            get_simple_schedule_text)
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
@@ -43,6 +45,7 @@ def run_schedule():
             args=(user.id,)
         )
 
+
 @shared_task
 def create_schedule(user_id):
     '''
@@ -52,22 +55,38 @@ def create_schedule(user_id):
     niches = user.niches
 
     num_posts_per_topic = 3
+    total_num_posts = 7 * 3  # 3 posts for each day of the week
+    total_topics = total_num_posts / num_posts_per_topic
+    num_topics_per_niche = total_topics / len(niches)  # even number of topics for each niche
 
     generated_posts = []
-
     for niche in niches:
         logging.info(
             f"Creating niche {niche.title} schedule for user: {user_id}"
         )
-        topics = ModeledTopic.query.filter(
+        # get both top trending and evergreen topics and choose a random selection of them
+        news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.trend_type == 'trend'
             )
         ).order_by(
             ModeledTopic.size.desc()
-        ).limit(3).all()
+        ).limit(num_topics_per_niche).all()
 
+        evergreen_topics = ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.trend_type != 'trend'
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).limit(num_topics_per_niche).all()
+        topics = news_topics + evergreen_topics
+        random.shuffle(topics)
+        topics = topics[:num_topics_per_niche]
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
@@ -104,11 +123,11 @@ def create_schedule(user_id):
 
     schedule = write_schedule({
         "user_id": user_id,
-        "week_number": datetime.now().isocalendar().week
+        "week_number": datetime.now().isocalendar().week,
+        "schedule_text": get_simple_schedule_text()
     })
 
     #  pick 3 random posts for each day
-    random.shuffle(generated_posts)
     scheduled_posts = []
     schedule_hours = [9, 12, 17]
     for day in range(7):
@@ -130,31 +149,27 @@ def create_schedule(user_id):
 
 @shared_task
 def all_niches_reddit_update():
-    '''
+    """
     Scheduled daily task to fetch recent posts for all niches
     with subreddits and save to database.
-    '''
-    niches = Niche.query.filter(
-        and_(Niche.is_active, Niche.subreddits.any())
-    ).order_by(
-        Niche.title
-    ).all()
+    """
+    niches = (
+        Niche.query.filter(and_(Niche.is_active, Niche.subreddits.any()))
+        .order_by(Niche.title)
+        .all()
+    )
 
     for niche in niches:
-        logging.info(
-            f"Updating subreddits for niche: {niche.title}"
-        )
-        update_niche_subreddits.apply_async(
-            args=(niche.id,)
-        )
+        logging.info(f"Updating subreddits for niche: {niche.title}")
+        update_niche_subreddits.apply_async(args=(niche.id,))
 
 
 @shared_task
 def update_niche_subreddits(niche_id, posts_per_subreddit=200):
-    '''
+    """
     Fetch new posts for each subreddit related to this niche.
     Save the results to DB.
-    '''
+    """
     niche = Niche.query.get(niche_id)
     for subreddit in niche.subreddits:
         # TODO: do we want top/hot from previous day here instead?
@@ -165,55 +180,100 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
         for p in posts:
             p["subreddit_id"] = subreddit.id
             p["clean_text"] = process_post(p)
-        logging.info(
-            f"Fetched {len(posts)} posts: subredddit={subreddit.title}"
-        )
+        logging.info(f"Fetched {len(posts)} posts: subredddit={subreddit.title}")
 
         n_written = write_reddit_posts(posts)
-        logging.info(
-            f"Wrote {n_written} reddit posts: subreddit={subreddit.title}"
-        )
+        logging.info(f"Wrote {n_written} reddit posts: subreddit={subreddit.title}")
 
     return niche_id
 
 
 @shared_task
 def all_niches_run_pipeline():
-    '''
+    """
     Scheduled daily task to run topic pipeline for each niche
-    '''
-    niches = Niche.query.filter(
-        and_(Niche.is_active, Niche.subreddits.any())
-    ).order_by(
-        Niche.title
-    ).all()
+    """
+    niches = (
+        Niche.query.filter(and_(Niche.is_active, Niche.subreddits.any()))
+        .order_by(Niche.title)
+        .all()
+    )
 
     for niche in niches:
-        logging.info(
-            f"Running topic model for niche: {niche.title}"
-        )
+        logging.info(f"Running topic model for niche: {niche.title}")
         run_topic_pipeline(niche.id)
 
 
 def run_topic_pipeline(niche_id):
-    '''
+    """
     Topic pipeline is done by chaining celery tasks, so different workers
     can process different steps of the pipeline.
-    '''
+    """
+
+    # get trending topics from news api
+    pipeline_news = chain(
+        run_niche_trends.s(),
+        generate_modeled_topic_tweets.s()
+    )
+    pipeline_news.apply_async(args=(niche_id,))
+
+    # get evergreen topics from reddit
     pipeline = chain(
         run_niche_topic_model.s(),
         generate_niche_topic_overviews.s(niche_id),
-        generate_modeled_topic_tweets.s()
+        generate_modeled_topic_tweets.s(),
     )
     pipeline.apply_async(args=(niche_id,))
 
 
 @shared_task
-def run_niche_topic_model(niche_id) -> List[dict]:
-    '''
+def run_niche_trends(niche_id) -> List[dict]:
+    """
     First step of topic pipeline:
     read recent posts for the niche and run the BERTopic model.
-    '''
+    """
+    niche = Niche.query.get(niche_id)
+    terms = [t.term for t in niche.news_terms]
+
+    # get trends
+    all_topics = []
+    for term in terms:
+        topic_labels, topic_articles = get_trends(term, niche.title)
+
+        for i, title_desc in enumerate(topic_labels):
+            # create modeled topic
+            modeled_topic = {
+                "id": uuid.uuid4(),
+                "niche_id": niche_id,
+                "name": title_desc[0],
+                "description": title_desc[1],
+                "date": datetime.now(),
+                "size": 0,
+                "trend_class": "trending",
+            }
+
+            # create news articles
+            news_articles = []
+            for n in topic_articles[i]:
+                news_article = {"id": uuid.uuid4(), "title": n["title"], "url": n["url"], "published_date": n["published_date"]}
+                news_articles.append(news_article)
+
+            # write to db
+            write_news_articles(news_articles)
+            write_modeled_topic_with_news_article(
+                modeled_topic, [n["id"] for n in news_articles]
+            )
+            all_topics.append(modeled_topic)
+
+    return [t["id"] for t in all_topics]
+
+
+@shared_task
+def run_niche_topic_model(niche_id) -> List[dict]:
+    """
+    First step of topic pipeline:
+    read recent posts for the niche and run the BERTopic model.
+    """
     niche = Niche.query.get(niche_id)
     sub_ids = [sub.id for sub in niche.subreddits]
 
@@ -226,9 +286,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     ).all()
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
-        logging.error(
-            f"Not enough posts for topic model: niche={niche.title}"
-        )
+        logging.error(f"Not enough posts for topic model: niche={niche.title}")
         raise ValueError("Not enough posts to run topic model", niche.title)
 
     post_dicts = [_to_dict(p) for p in posts]
@@ -256,17 +314,17 @@ def run_niche_topic_model(niche_id) -> List[dict]:
 
 @shared_task
 def generate_niche_topic_overviews(
-        topic_dicts: List[dict],
-        niche_id: uuid.UUID,
-        max_modeled_topics=5,
+    topic_dicts: List[dict],
+    niche_id: uuid.UUID,
+    max_modeled_topics=5,
 ) -> List[uuid.UUID]:
-    '''
+    """
     Second step of topic pipeline:
     given the output of run_niche_topic_model, generate modeled topics
     and store them to the database.
 
     Returns list of modeled topic IDs that were created.
-    '''
+    """
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0
@@ -275,9 +333,7 @@ def generate_niche_topic_overviews(
             break
         # query the text of the representative posts for this topic
         post_ids = topic_dict["post_ids"]
-        posts_query = db.session.query(
-            RedditPost.clean_text
-        ).filter(
+        posts_query = db.session.query(RedditPost.clean_text).filter(
             RedditPost.id.in_(post_ids[:4])
         )
         texts = [t for (t,) in posts_query.all()]
@@ -286,7 +342,7 @@ def generate_niche_topic_overviews(
             texts,
             topic_dict["topic_keywords"],
             topic_dict["topic_rep_docs"],
-            niche.title
+            niche.title,
         )
         if topic_label == "" or topic_desc == "":
             continue  # discard this topic
@@ -299,9 +355,7 @@ def generate_niche_topic_overviews(
             "date": datetime.now(),
             "size": topic_dict["rank"],
         }
-        write_modeled_topic_with_reddit_posts(
-            modeled_topic, post_ids
-        )
+        write_modeled_topic_with_reddit_posts(modeled_topic, post_ids)
         modeled_topic_ids.append(modeled_topic["id"])
         count += 1
 
@@ -311,10 +365,10 @@ def generate_niche_topic_overviews(
 
 @shared_task
 def generate_modeled_topic_tweets(modeled_topic_ids):
-    '''
+    """
     Third step of topic pipeline:
     generate tweets for each modeled topic
-    '''
+    """
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
         _, generated_tweets = topic.generate_tweets_for_topic(
@@ -333,15 +387,13 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
 
 @shared_task
 def generate_niche_gpt_topics(niche_id):
-    '''
+    """
     Generate modeled topics and posts for a niche with GPT.
     This does not use BERTopic or reddit/twitter data.
-    '''
+    """
     niche = Niche.query.get(niche_id)
 
-    logging.info(
-        f"Generating GPT topics and posts: niche={niche.title}"
-    )
+    logging.info(f"Generating GPT topics and posts: niche={niche.title}")
     related_topics, generated_tweets = topic.generate_tweets_for_topic(
         num_tweets=2, topic_label=niche.title, num_topics_from_topic_label=5
     )
@@ -406,7 +458,7 @@ def post_scheduled_tweets():
         num_posted = 0
 
         x_caller = X_Caller()
-        
+
         for p in posts:
             post_edit = latest_post_edit(p.generated_post_id, user_id)
             if post_edit is None:

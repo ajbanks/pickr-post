@@ -2,7 +2,6 @@
 Flask application factory
 '''
 from os import path, pardir, environ
-import json
 from dotenv import load_dotenv
 
 import stripe
