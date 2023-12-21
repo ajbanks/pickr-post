@@ -87,9 +87,8 @@ def create_schedule(user_id):
             post_edit = latest_post_edit(gp.generated_post_id, user_id)
 
             if post_edit is None:
+
                 # a post edit hasn't been made. Which means this post needs to be tone matched
-
-
                 tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
 
                 new_edit = PostEdit(
@@ -404,15 +403,10 @@ def post_scheduled_tweets():
             )
             continue
 
-        client = tweepy.Client(
-            consumer_key=app.config["TWITTER_API_KEY"],
-            consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
-            access_token=oauth_sess.access_token,
-            access_token_secret=oauth_sess.access_token_secret,
-            wait_on_rate_limit=True,
-        )
-
         num_posted = 0
+
+        x_caller = X_Caller()
+        
         for p in posts:
             post_edit = latest_post_edit(p.generated_post_id, user_id)
             if post_edit is None:
@@ -422,7 +416,7 @@ def post_scheduled_tweets():
                 post_text = post_edit.text
 
             try:
-                resp = client.create_tweet(text=post_text)
+                resp = x_caller.post_tweet(tweet=post_text)
             except (tweepy.errors.BadRequest, tweepy.errors.Unauthorized) as e:
                 logging.error(
                     f"error posting tweet for user_id={user_id}: {e}"

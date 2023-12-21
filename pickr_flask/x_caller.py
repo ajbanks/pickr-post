@@ -86,6 +86,11 @@ class X_Caller:
             self.dm_next_person_in_csv()
             time.sleep(180)
 
+
+    def post_tweet(self, tweet: str):
+        return self.client.create_tweet(text=tweet)
+
+
     def dm_next_person_in_csv(self):
 
         dm_df = pd.read_csv(TWITTER_USERS_CSV, header=0)
