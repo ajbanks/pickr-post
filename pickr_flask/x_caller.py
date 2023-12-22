@@ -39,7 +39,15 @@ class X_Caller:
 
 
     def auto_dm(self, user_id, message):
-        return self.client.create_direct_message(participant_id=user_id, text=message, user_auth=True)
+
+        dm_client = tweepy.Client(
+            consumer_key=app.config["TWITTER_API_KEY"],
+            consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
+            access_token=app.config["TWITTER_OAUTH_TOKEN"],
+            access_token_secret=app.config["TWITTER_OAUTH_TOKEN_SECRET"],
+            wait_on_rate_limit=True,
+        )
+        return dm_client.create_direct_message(participant_id=user_id, text=message, user_auth=True)
 
     def get_tweets_for_tone_matching(self, user_twitter_id, max_results=30):
 
@@ -103,7 +111,7 @@ class X_Caller:
             elif self.is_x_bio_valid(str(dm_df["Bio"].values[i])):
 
                 dm_df["been_messaged"].values[i] = 1
-                user_id = dm_df["User Id"].values[i]
+                user_id = m_df["User Id"].values[i]
                 resp = self.auto_dm(user_id, AUTO_DM_MESSAGE)
                 dm_df.to_csv(TWITTER_USERS_CSV)
                 return resp
