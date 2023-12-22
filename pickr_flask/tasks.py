@@ -341,7 +341,7 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     """
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
-        _, generated_tweets = topic.generate_tweets_for_topic(
+        generated_tweets = topic.generate_tweets_for_topic(
             5, modeled_topic.name, modeled_topic.description, 3
         )
 
@@ -353,37 +353,6 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
             f"generated {num_tweets} tweets for modeled topic: {modeled_topic.name}"
         )
         write_generated_posts(generated_tweets)
-
-
-@shared_task
-def generate_niche_gpt_topics(niche_id):
-    """
-    Generate modeled topics and posts for a niche with GPT.
-    This does not use BERTopic or reddit/twitter data.
-    """
-    niche = Niche.query.get(niche_id)
-
-    logging.info(f"Generating GPT topics and posts: niche={niche.title}")
-    related_topics, generated_tweets = topic.generate_tweets_for_topic(
-        num_tweets=2, topic_label=niche.title, num_topics_from_topic_label=5
-    )
-    modeled_topics = []
-    for related_topic in related_topics:
-        # these are "psuedo" modeled topics since they
-        # aren't derived from BERTopic
-        modeled_topic = {
-            "id": uuid.uuid4(),
-            "name": related_topic,
-            "niche_id": niche_id,
-            "date": datetime.now().date(),
-        }
-        for post in generated_tweets:
-            if post["topic_label"] == related_topic:
-                post["modeled_topic_id"] = modeled_topic["id"]
-        modeled_topics.append(modeled_topic)
-
-    write_reddit_modeled_overview(modeled_topics)
-    write_generated_posts(generated_tweets)
 
 
 @shared_task
