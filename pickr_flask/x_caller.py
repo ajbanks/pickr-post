@@ -19,24 +19,21 @@ pickrsocial.com
 
 """
 
+
 class X_Caller:
 
     def __init__(self):
         self.client = self.create_client()
 
-
-
-
     def create_client(self):
-        return  tweepy.Client(
-        bearer_token=app.config["TWITTER_BEARER_TOKEN"],
-        consumer_key=app.config["TWITTER_CLIENT_ID"],
-        consumer_secret=app.config["TWITTER_CLIENT_SECRET"],
-        access_token=app.config["TWITTER_ACCESS_TOKEN"],
-        access_token_secret=app.config["TWITTER_ACCESS_TOKEN_SECRET"],
-        wait_on_rate_limit=True,
-    )
-
+        return tweepy.Client(
+            bearer_token=app.config["TWITTER_BEARER_TOKEN"],
+            consumer_key=app.config["TWITTER_CLIENT_ID"],
+            consumer_secret=app.config["TWITTER_CLIENT_SECRET"],
+            access_token=app.config["TWITTER_ACCESS_TOKEN"],
+            access_token_secret=app.config["TWITTER_ACCESS_TOKEN_SECRET"],
+            wait_on_rate_limit=True,
+        )
 
     def auto_dm(self, user_id, message):
 
@@ -67,14 +64,13 @@ class X_Caller:
 
         return tweets
 
-
     def return_twitterid(self, screen_name):
         twitterid = self.client.get_user(username=screen_name)
         return twitterid.data.id
 
-
     def is_x_bio_valid(self, bio):
-        valid_terms = ["marketing", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur", "fitness", "muscle", "course", "startup", "saas", "diet"]
+        valid_terms = ["marketing", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur",
+                       "fitness", "muscle", "course", "startup", "saas", "diet"]
 
         for term in valid_terms:
 
@@ -94,10 +90,8 @@ class X_Caller:
             self.dm_next_person_in_csv()
             time.sleep(180)
 
-
     def post_tweet(self, tweet: str):
         return self.client.create_tweet(text=tweet)
-
 
     def dm_next_person_in_csv(self):
 
@@ -117,11 +111,3 @@ class X_Caller:
                 return resp
 
         return "FALSE"
-
-
-
-
-
-
-
-

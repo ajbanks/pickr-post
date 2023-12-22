@@ -35,7 +35,7 @@ from .subscription import (handle_checkout_completed,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
-from.x_caller import X_Caller
+from .x_caller import X_Caller
 
 DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
 DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
@@ -168,7 +168,7 @@ def login():
             # validate redirect, if provided
             next_page = request.args.get("next")
             if next_page is not None and not url_has_allowed_host_and_scheme(
-                next_page, request.host
+                    next_page, request.host
             ):
                 return abort(400)
 
@@ -205,7 +205,7 @@ def signup():
             )
             x_caller = X_Caller()
 
-            #get the twitter id for this users username
+            # get the twitter id for this users username
             user_twitter_id = x_caller.return_twitterid(form.name.data)
 
             # pull tweets from their timeline excluding their retweets
@@ -248,6 +248,7 @@ def user():
         "user.html",
         title="Pickr - User Account",
     )
+
 
 @app.route("/reset", methods=["GET", "POST"])
 def reset():
@@ -300,8 +301,8 @@ def set_password(token):
     if form.validate_on_submit():
         password = form.password.data
         password_hash = generate_password_hash(
-                password, method=PASSWORD_HASH_METHOD
-            )
+            password, method=PASSWORD_HASH_METHOD
+        )
         user.password = password_hash
         db.session.add(user)
         db.session.commit()
@@ -354,9 +355,9 @@ def stripe_checkout_session():
     try:
         root_url = request.url_root.rstrip("/")
         success_url = (
-            root_url
-            + url_for("stripe_checkout_success")
-            + "?session_id={CHECKOUT_SESSION_ID}"
+                root_url
+                + url_for("stripe_checkout_success")
+                + "?session_id={CHECKOUT_SESSION_ID}"
         )
         cancel_url = root_url + url_for("stripe_checkout_cancel")
         checkout_session = stripe.checkout.Session.create(
@@ -452,6 +453,7 @@ def upgrade():
     else:
         return render_template("upgrade.html")
 
+
 """
 @app.route("/home")
 @login_required
@@ -495,6 +497,7 @@ def home():
     )
 """
 
+
 @app.route("/home", methods=["GET"])
 @login_required
 def home():
@@ -535,7 +538,7 @@ def home():
         )
 
     app.logger.info("get html of schedle")
-    #schedule_frag = weekly_post()
+    # schedule_frag = weekly_post()
 
     app.logger.info("exit home function")
     return render_template(
@@ -582,7 +585,7 @@ def weekly_post(week_day: int = None):
     days_bool = ['"false"', '"false"', '"false"', '"false"', '"false"', '"false"', '"false"']
     class_sel = ['', '', '', '', '', '', '', ]
     class_sel[week_day] = 'class="selected"'
-    #days_bool[week_day] = '"true"'
+    # days_bool[week_day] = '"true"'
     post_html_fragment = "\n".join(post_html_fragments)
     schedule_html = f"""
         <div class="tab-list" role="tablist">
@@ -602,7 +605,6 @@ def weekly_post(week_day: int = None):
     return schedule_html
 
 
-
 @app.route("/all_topics")
 @login_required
 def all_topics():
@@ -615,8 +617,8 @@ def all_topics():
     for n in niche_ids:
         max_date = ModeledTopic.query.filter(
             ModeledTopic.niche_id.in_(niche_ids),
-            ).order_by(
-                ModeledTopic.date.desc()
+        ).order_by(
+            ModeledTopic.date.desc()
         ).first().date.date()
         topics += ModeledTopic.query.filter(
             and_(
@@ -660,9 +662,9 @@ def topic(topic_id):
     generated_posts = topic.generated_posts
     posts = (
         reddit_posts_for_topic_query(topic.id)
-        .order_by(RedditPost.score)
-        .limit(20)
-        .all()
+            .order_by(RedditPost.score)
+            .limit(20)
+            .all()
     )
 
     # generated posts HTML is rendered separately
@@ -748,26 +750,26 @@ def schedule():
     '''
     scheduled_posts = (
         GeneratedPost.query.join(ScheduledPost)
-        .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
-        .filter(
+            .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
+            .filter(
             and_(ScheduledPost.user_id == current_user.id,
                  ~ScheduledPost.scheduled_for.is_(None),
                  ScheduledPost.posted_at.is_(None))
         )
-        .order_by(ScheduledPost.scheduled_for.desc())
-        .all()
+            .order_by(ScheduledPost.scheduled_for.desc())
+            .all()
     )
 
     tweeted_posts = (
         GeneratedPost.query.join(ScheduledPost)
-        .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
-        .filter(
+            .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
+            .filter(
             and_(ScheduledPost.user_id == current_user.id,
                  ~ScheduledPost.posted_at.is_(None))
         )
-        .order_by(ScheduledPost.posted_at.desc())
-        .limit(20)
-        .all()
+            .order_by(ScheduledPost.posted_at.desc())
+            .limit(20)
+            .all()
     )
 
     # TODO: load more posted tweets history
@@ -805,10 +807,10 @@ def validate_generated_post_id(post_id: str) -> UUID:
     except ValueError:
         return abort(400)
     exists = (
-        db.session.query(GeneratedPost.id)
-        .filter_by(id=decoded_id)
-        .first()
-        is not None
+            db.session.query(GeneratedPost.id)
+            .filter_by(id=decoded_id)
+            .first()
+            is not None
     )
     if not exists:
         return abort(400)
@@ -849,7 +851,7 @@ def post(post_id):
     if request.method == "PUT":
         edit_text = request.form.get("text").strip()
         if len(edit_text) == 0 or len(edit_text) > MAX_TWEET_LEN \
-           or edit_text == generated_post.text:
+                or edit_text == generated_post.text:
             return render_post_html_from_id(
                 generated_post.id,
                 current_user.id,
