@@ -105,7 +105,7 @@ class X_Caller:
             elif self.is_x_bio_valid(str(dm_df["Bio"].values[i])):
 
                 dm_df["been_messaged"].values[i] = 1
-                user_id = m_df["User Id"].values[i]
+                user_id = dm_df["User Id"].values[i]
                 resp = self.auto_dm(user_id, AUTO_DM_MESSAGE)
                 dm_df.to_csv(TWITTER_USERS_CSV)
                 return resp
