@@ -356,6 +356,36 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
 
 
 @shared_task
+def generate_niche_gpt_topics(niche_id):
+    """
+    Generate modeled topics and posts for a niche with GPT.
+    This does not use BERTopic or reddit/twitter data.
+    """
+    niche = Niche.query.get(niche_id)
+
+    logging.info(f"Generating GPT topics and posts: niche={niche.title}")
+    generated_tweets = topic.generate_tweets_for_topic(
+        num_tweets=2, topic_label=niche.title, num_topics_from_topic_label=5
+    )
+    modeled_topics = []
+    # these are "psuedo" modeled topics since they
+    # aren't derived from BERTopic
+    modeled_topic = {
+        "id": uuid.uuid4(),
+        "name": niche.title,
+        "niche_id": niche_id,
+        "date": datetime.now().date(),
+    }
+    modeled_topics.append(modeled_topic)
+
+    for post in generated_tweets:
+        post["modeled_topic_id"] = modeled_topic["id"]
+       
+    write_reddit_modeled_overview(modeled_topics)
+    write_generated_posts(generated_tweets)
+
+
+@shared_task
 def post_scheduled_tweets():
     '''
     Retrieve any scheduled tweets that need to be posted from the DB
