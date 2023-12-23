@@ -119,7 +119,7 @@ class PickrUser(UserMixin, db.Model):
     # niches the user chose
     niches = relationship("Niche", secondary=user_niche_assoc)
     stripe_subscriptions = relationship("StripeSubscription")
-
+    tweet_examples = Column(String(5000), nullable=True)
     def __repr__(self):
         return f"<PickrUser id={self.id} username={self.username}>"
 
@@ -356,10 +356,10 @@ class RedditPost(db.Model):
     title = Column(String)
     body = Column(String)
     score = Column(Integer)
-    num_comments = Column(Integer)
+    # num_comments = Column(Integer)
     created_at = Column(DateTime, nullable=True)
     url = Column(String)
-    permalink = Column(String(128))
+    # permalink = Column(String(128))
     clean_text = Column(String)  # processed title + body
     subreddit_id = Column(
         UUID(as_uuid=True),

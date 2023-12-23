@@ -3,23 +3,17 @@ import random
 import uuid
 from datetime import datetime, timedelta
 from typing import List
-
 import tweepy
 from celery import chain, shared_task
 from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
-
-from .newsapi import (
-    get_trends,
-    write_news_articles,
-    write_modeled_topic_with_news_article,
-)
-from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, RedditPost,
+from .x_caller import X_Caller
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
 from .newsapi import (get_trends, write_modeled_topic_with_news_article,
                       write_news_articles)
-from .post_schedule import (write_schedule, write_schedule_posts, 
+from .post_schedule import (write_schedule, write_schedule_posts,
                             get_simple_schedule_text)
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
@@ -29,6 +23,13 @@ from .reddit import (fetch_subreddit_posts, process_post,
 
 TOPIC_MODEL_MIN_DOCS = 20
 
+
+@shared_task
+def run_marketing_functions():
+    x_caller = X_Caller()
+
+    # send marketing dms
+    x_caller.send_marketing_dms(50)
 
 @shared_task
 def run_schedule():
@@ -90,6 +91,36 @@ def create_schedule(user_id):
         for t in topics:
             random.shuffle(t.generated_posts)
             generated_posts += t.generated_posts[:num_posts_per_topic]
+
+
+
+        # convert posts into a users tone if this hasn't already been done
+        for gp in generated_posts:
+
+            user_tweet_examples = user.tweet_examples
+
+            # only make a post edit if the user has tweet examples
+            if len(user_tweet_examples) < 200:
+                continue
+
+
+            post_edit = latest_post_edit(gp.generated_post_id, user_id)
+
+            if post_edit is None:
+
+                # a post edit hasn't been made. Which means this post needs to be tone matched
+                tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
+
+                new_edit = PostEdit(
+                    text=tone_matched_tweet,
+                    created_at=datetime.now(),
+                    user_id=user_id,
+                    generated_post_id=gp.id
+                )
+                db.session.add(new_edit)
+                db.session.commit()
+
+    # endfor
 
     schedule = write_schedule({
         "user_id": user_id,
@@ -186,7 +217,7 @@ def run_topic_pipeline(niche_id):
         generate_modeled_topic_tweets.s()
     )
     pipeline_news.apply_async(args=(niche_id,))
-    
+
     # get evergreen topics from reddit
     pipeline = chain(
         run_niche_topic_model.s(),
@@ -227,7 +258,7 @@ def run_niche_trends(niche_id) -> List[dict]:
             for n in topic_articles[i]:
                 news_article = {"id": uuid.uuid4(), "title": n["title"], "url": n["url"], "published_date": n["published_date"]}
                 news_articles.append(news_article)
-            
+
             # write to db
             write_news_articles(news_articles)
             write_modeled_topic_with_news_article(

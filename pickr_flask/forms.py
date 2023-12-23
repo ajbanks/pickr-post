@@ -15,6 +15,15 @@ class SignupForm(FlaskForm):
             DataRequired(),
         ],
     )
+    name_check = StringField(
+        "Confirm Username",
+        validators=[
+            Length(min=4, max=32),
+            DataRequired(),
+            EqualTo("name", message="usernames must match.")
+        ],
+    )
+
     email = StringField(
         "Email",
         validators=[
