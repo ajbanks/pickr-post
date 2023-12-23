@@ -43,7 +43,7 @@ def get_trends(term: str, niche: str, page_size=100, num_pages=1, min_words=4, m
             docs += [a["title"] for a in all_articles["articles"]]
             docs_dict += [{"title": a["title"], "url": a["url"], "published_date": a["publishedAt"]}  for a in all_articles["articles"]]
         except Exception as e:
-            return
+            return None, None
 
     # remove duplicate articles
     docs = list(set(docs))
