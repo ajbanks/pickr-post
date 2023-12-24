@@ -9,14 +9,14 @@ DEFAULT_TOPICS = [""]
 
 class SignupForm(FlaskForm):
     name = StringField(
-        "Username",
+        "Twitter/X Username",
         validators=[
             Length(min=4, max=32),
             DataRequired(),
         ],
     )
     name_check = StringField(
-        "Confirm Username",
+        "Confirm Twitter/X Username",
         validators=[
             Length(min=4, max=32),
             DataRequired(),

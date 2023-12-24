@@ -37,16 +37,8 @@ from .tasks import generate_niche_gpt_topics
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
 from .x_caller import X_Caller
 
-DATETIME_ISO_FMT = "%Y-%m-%dT%H:%M"
-DATETIME_FRIENDLY_FMT = "%a %b %-d, %-I:%M%p"
-
 TWITTER_STATUS_URL = "https://twitter.com/i/status"
 TWITTER_INTENTS_URL = "https://twitter.com/intent/tweet"
-
-# max length a generated post is allowed to be
-MAX_TWEET_LEN = 500
-# max days in the future a tweet can be scheduled
-MAX_FUTURE_SCHEDULE_DAYS = 90
 
 
 ###############################################################################
@@ -203,13 +195,16 @@ def signup():
             password_hash = generate_password_hash(
                 form.password.data, method=PASSWORD_HASH_METHOD
             )
-            x_caller = X_Caller()
 
-            # get the twitter id for this users username
-            user_twitter_id = x_caller.return_twitterid(form.name.data)
 
-            # pull tweets from their timeline excluding their retweets
-            tweets = x_caller.get_tweets_for_tone_matching(user_twitter_id)[:5000]
+            try:
+                # get the twitter id for this users username
+                x_caller = X_Caller()
+                user_twitter_id = x_caller.return_twitterid(form.name.data)
+                # pull tweets from their timeline excluding their retweets
+                tweets = x_caller.get_tweets_for_tone_matching(user_twitter_id)[:5000]
+            except Exception:
+                tweets = None
 
             user = PickrUser(
                 username=form.name.data,
