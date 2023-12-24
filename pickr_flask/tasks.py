@@ -32,7 +32,7 @@ def run_marketing_functions():
     x_caller.send_marketing_dms(50)
 
 @shared_task
-def run_schedule():
+def all_users_run_schedule():
     '''
     Scheduled weeky task to create post schedule for every user
     '''

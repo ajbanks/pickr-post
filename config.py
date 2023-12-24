@@ -72,8 +72,8 @@ class Config:
                 "schedule": crontab(hour=5, minute=0),
             },
             "task_run_schedule_every_week": {
-                "task": "pickr_flask.tasks.run_schedule",
-                "schedule": crontab(hour=7, minute=0),
+                "task": "pickr_flask.tasks.all_users_run_schedule",
+                "schedule": crontab(hour=14, minute=10),
             },
             "task_post_scheduled_tweets": {
                 "task": "pickr_flask.tasks.post_scheduled_tweets",
