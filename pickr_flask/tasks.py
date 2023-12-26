@@ -31,6 +31,7 @@ def run_marketing_functions():
     # send marketing dms
     x_caller.send_marketing_dms(50)
 
+
 @shared_task
 def all_users_run_schedule():
     '''

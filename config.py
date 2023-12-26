@@ -65,15 +65,15 @@ class Config:
         beat_schedule={
             "task_update_reddit_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_reddit_update",
-                "schedule": crontab(hour=3, minute=30),  # morning schedule
+                "schedule": crontab(hour=15, minute=30),  # morning schedule
             },
             "task_run_topic_model_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_run_pipeline",
-                "schedule": crontab(hour=5, minute=0),
+                "schedule": crontab(hour=16, minute=0),
             },
-            "task_run_schedule_every_week": {
+            "task_all_users_run_schedule": {
                 "task": "pickr_flask.tasks.all_users_run_schedule",
-                "schedule": crontab(hour=14, minute=10),
+                "schedule": crontab(minute='*/15'),
             },
             "task_post_scheduled_tweets": {
                 "task": "pickr_flask.tasks.post_scheduled_tweets",
