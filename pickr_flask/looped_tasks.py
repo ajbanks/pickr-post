@@ -59,6 +59,7 @@ def create_schedule(user_id):
     '''
     Generate weekly schedule of 3 posts per day.
     '''
+    f"Creating schedule for user: {user_id}"
     user = PickrUser.query.get(user_id)
     niches = user.niches
 
@@ -66,18 +67,19 @@ def create_schedule(user_id):
     total_num_posts = 7 * 3  # 3 posts for each day of the week
     total_topics = total_num_posts / num_posts_per_topic
     num_topics_per_niche = math.ceil(total_topics / len(niches))  # even number of topics for each niche
-
+    log.info(f"For user getting num_topics_per_niche:{num_topics_per_niche}")
     generated_posts = []
     for niche in niches:
         log.info(
-            f"Creating niche {niche.title} schedule for user: {user_id}"
+            f"Getting posts in schedule in niche {niche.title} schedule for user: {user_id}, with niche id {niche.id}"
         )
         # get both top trending and evergreen topics and choose a random selection of them
+
         news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                ModeledTopic.trend_type == 'trend'
+                ModeledTopic.trend_class == 'trending'
             )
         ).order_by(
             ModeledTopic.size.desc()
@@ -87,12 +89,13 @@ def create_schedule(user_id):
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                ModeledTopic.trend_type != 'trend'
+                ModeledTopic.trend_class == None
             )
         ).order_by(
             ModeledTopic.size.desc()
         ).limit(num_topics_per_niche).all()
         topics = news_topics + evergreen_topics
+        log.info(f"Got {len(topics)} topics")
         random.shuffle(topics)
         topics = topics[:num_topics_per_niche]
         for t in topics:
@@ -101,34 +104,27 @@ def create_schedule(user_id):
 
 
 
-        # convert posts into a users tone if this hasn't already been done
-        for gp in generated_posts:
+        # only make a post edit if the user has tweet examples
+        user_tweet_examples = user.tweet_examples
+        if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
+            # convert posts into a users tone if this hasn't already been done
+            for gp in generated_posts:
+                post_edit = latest_post_edit(gp.generated_post_id, user_id)
+                if post_edit is None:
+                    # a post edit hasn't been made. Which means this post needs to be tone matched
+                    tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
 
-            user_tweet_examples = user.tweet_examples
-
-            # only make a post edit if the user has tweet examples
-            if len(user_tweet_examples) < 200:
-                continue
-
-
-            post_edit = latest_post_edit(gp.generated_post_id, user_id)
-
-            if post_edit is None:
-
-                # a post edit hasn't been made. Which means this post needs to be tone matched
-                tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
-
-                new_edit = PostEdit(
-                    text=tone_matched_tweet,
-                    created_at=datetime.now(),
-                    user_id=user_id,
-                    generated_post_id=gp.id
-                )
-                db.session.add(new_edit)
-                db.session.commit()
+                    new_edit = PostEdit(
+                        text=tone_matched_tweet,
+                        created_at=datetime.now(),
+                        user_id=user_id,
+                        generated_post_id=gp.id
+                    )
+                    db.session.add(new_edit)
+                    db.session.commit()
 
     # endfor
-
+    
     schedule = write_schedule({
         "user_id": user_id,
         "week_number": datetime.now().isocalendar().week,
@@ -150,7 +146,7 @@ def create_schedule(user_id):
                 "user_id": user.id,
                 "generated_post_id": gp.id,
             })
-
+    log.info(f"Writing {len(scheduled_posts)} posts")
     write_schedule_posts(scheduled_posts)
     return schedule.id
 
@@ -161,8 +157,7 @@ def post_scheduled_tweets():
     and post them to twitter.
     '''
     while True:
-        time.sleep(10)
-        print('getting scheduled posts')
+        time.sleep(300)
         scheduled_posts = (
             ScheduledPost.query.filter(
                 and_(
@@ -175,7 +170,6 @@ def post_scheduled_tweets():
             )
             .all()
         )
-        print('got scheduled posts')
         if not scheduled_posts:
             log.info("no tweets to schedule")
             continue
