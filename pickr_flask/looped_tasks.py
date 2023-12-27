@@ -1,9 +1,9 @@
 import logging
 import random
-import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import List
 import tweepy
+import math
 from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
@@ -16,6 +16,40 @@ TOPIC_MODEL_MIN_DOCS = 20
 
 log = logging.getLogger(__name__)
 
+
+def is_time_between(begin_time, end_time, check_time=None):
+    # If check time is not given, default to current UTC time
+    check_time = check_time or datetime.utcnow().time()
+    if begin_time < end_time:
+        return check_time >= begin_time and check_time <= end_time
+    else: # crosses midnight
+        return check_time >= begin_time or check_time <= end_time
+
+
+
+
+
+def all_users_run_schedule():
+    '''
+    Scheduled weeky task to create post schedule for every user
+    '''
+
+    while True:
+
+        # datetime object containing current date and time
+        now = datetime.now()
+        print(now)
+        if now.isoweekday() == 3 and is_time_between(time(16, 59), time(17, 20), check_time=now.time()):
+
+            users = PickrUser.query.all()
+
+            for user in users:
+                logging.info(
+                    f"Creating schedule for user: {user.username}"
+                )
+                create_schedule(user.id)
+
+
 def create_schedule(user_id):
     '''
     Generate weekly schedule of 3 posts per day.
@@ -26,7 +60,7 @@ def create_schedule(user_id):
     num_posts_per_topic = 3
     total_num_posts = 7 * 3  # 3 posts for each day of the week
     total_topics = total_num_posts / num_posts_per_topic
-    num_topics_per_niche = total_topics / len(niches)  # even number of topics for each niche
+    num_topics_per_niche = math.ceil(total_topics / len(niches))  # even number of topics for each niche
 
     generated_posts = []
     for niche in niches:
