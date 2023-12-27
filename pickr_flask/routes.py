@@ -548,7 +548,7 @@ def home():
 @app.route("/weekly_post/<week_day>", methods=["GET"])
 @login_required
 def weekly_post(week_day: int = None):
-    try
+    try:
         if week_day is None or int(week_day) == -1:
             week_day = datetime.now().isocalendar().weekday - 1
         else:
