@@ -548,55 +548,58 @@ def home():
 @app.route("/weekly_post/<week_day>", methods=["GET"])
 @login_required
 def weekly_post(week_day: int = None):
-    if week_day is None or int(week_day) == -1:
-        week_day = datetime.now().isocalendar().weekday - 1
-    else:
-        week_day = int(week_day)
-    # TODO: fix bad query patterns (N+1 select)
-    schedule = Schedule.query.filter_by(
-        user_id=current_user.id,
-    ).limit(1).one()
-    if schedule is None:
-        return None
-    # show posts in this "Schedule" that are for this weekday
-    scheduled_posts = filter(
-        lambda p: p.scheduled_day == week_day,
-        schedule.scheduled_posts
-    )
-    # TODO: find a way to get the user's timezone here
-    timezone = ZoneInfo("UTC")
-    now = datetime.now(tz=timezone)
-
-    post_html_fragments = []
-    for post in scheduled_posts:
-        default_dt = now.replace(hour=post.scheduled_hour, minute=0)
-        post_html_fragments.append(
-            render_post_html_from_id(
-                post.generated_post_id,
-                current_user.id,
-                default_time=default_dt.strftime(DATETIME_ISO_FMT),
-            )
+    try
+        if week_day is None or int(week_day) == -1:
+            week_day = datetime.now().isocalendar().weekday - 1
+        else:
+            week_day = int(week_day)
+        # TODO: fix bad query patterns (N+1 select)
+        schedule = Schedule.query.filter_by(
+            user_id=current_user.id,
+        ).limit(1).one()
+        if schedule is None:
+            return None
+        # show posts in this "Schedule" that are for this weekday
+        scheduled_posts = filter(
+            lambda p: p.scheduled_day == week_day,
+            schedule.scheduled_posts
         )
-    days_bool = ['"false"', '"false"', '"false"', '"false"', '"false"', '"false"', '"false"']
-    class_sel = ['', '', '', '', '', '', '', ]
-    class_sel[week_day] = 'class="selected"'
-    # days_bool[week_day] = '"true"'
-    post_html_fragment = "\n".join(post_html_fragments)
-    schedule_html = f"""
-        <div class="tab-list" role="tablist">
-            <button hx-get="/weekly_post/0" hx-target="#tabs" role="tab" aria-selected={days_bool[0]} aria-controls="tab-content" {class_sel[0]}>Mon</button>
-            <button hx-get="/weekly_post/1" hx-target="#tabs" role="tab" aria-selected={days_bool[1]} aria-controls="tab-content" {class_sel[1]}>Tue</button>
-            <button hx-get="/weekly_post/2" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[2]}>Wed</button>
-            <button hx-get="/weekly_post/3" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[3]}>Thur</button>
-            <button hx-get="/weekly_post/4" hx-target="#tabs" role="tab" aria-selected={days_bool[4]} aria-controls="tab-content" {class_sel[4]}>Fri</button>
-            <button hx-get="/weekly_post/5" hx-target="#tabs" role="tab" aria-selected={days_bool[5]} aria-controls="tab-content" {class_sel[5]}>Sat</button>
-            <button hx-get="/weekly_post/6" hx-target="#tabs" role="tab" aria-selected={days_bool[6]} aria-controls="tab-content" {class_sel[6]}>Sun</button>
-        </div>
-        
-        <div class="container cards" id="tab-content" role="tabpanel">
-            {post_html_fragment}
-        </div>
-    """
+        # TODO: find a way to get the user's timezone here
+        timezone = ZoneInfo("UTC")
+        now = datetime.now(tz=timezone)
+
+        post_html_fragments = []
+        for post in scheduled_posts:
+            default_dt = now.replace(hour=post.scheduled_hour, minute=0)
+            post_html_fragments.append(
+                render_post_html_from_id(
+                    post.generated_post_id,
+                    current_user.id,
+                    default_time=default_dt.strftime(DATETIME_ISO_FMT),
+                )
+            )
+        days_bool = ['"false"', '"false"', '"false"', '"false"', '"false"', '"false"', '"false"']
+        class_sel = ['', '', '', '', '', '', '', ]
+        class_sel[week_day] = 'class="selected"'
+        # days_bool[week_day] = '"true"'
+        post_html_fragment = "\n".join(post_html_fragments)
+        schedule_html = f"""
+            <div class="tab-list" role="tablist">
+                <button hx-get="/weekly_post/0" hx-target="#tabs" role="tab" aria-selected={days_bool[0]} aria-controls="tab-content" {class_sel[0]}>Mon</button>
+                <button hx-get="/weekly_post/1" hx-target="#tabs" role="tab" aria-selected={days_bool[1]} aria-controls="tab-content" {class_sel[1]}>Tue</button>
+                <button hx-get="/weekly_post/2" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[2]}>Wed</button>
+                <button hx-get="/weekly_post/3" hx-target="#tabs" role="tab" aria-selected={days_bool[2]} aria-controls="tab-content" {class_sel[3]}>Thur</button>
+                <button hx-get="/weekly_post/4" hx-target="#tabs" role="tab" aria-selected={days_bool[4]} aria-controls="tab-content" {class_sel[4]}>Fri</button>
+                <button hx-get="/weekly_post/5" hx-target="#tabs" role="tab" aria-selected={days_bool[5]} aria-controls="tab-content" {class_sel[5]}>Sat</button>
+                <button hx-get="/weekly_post/6" hx-target="#tabs" role="tab" aria-selected={days_bool[6]} aria-controls="tab-content" {class_sel[6]}>Sun</button>
+            </div>
+            
+            <div class="container cards" id="tab-content" role="tabpanel">
+                {post_html_fragment}
+            </div>
+        """
+    except Exception:
+        return None
     return schedule_html
 
 
