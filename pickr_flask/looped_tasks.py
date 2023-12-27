@@ -38,8 +38,8 @@ def all_users_run_schedule():
 
         # datetime object containing current date and time
         now = datetime.now()
-        print(now)
-        if now.isoweekday() == 3 and is_time_between(time(16, 59), time(17, 20), check_time=now.time()):
+
+        if now.isoweekday() == 1 and is_time_between(time(4, 59), time(5, 00), check_time=now.time()):
 
             users = PickrUser.query.all()
 
