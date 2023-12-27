@@ -16,6 +16,7 @@ TOPIC_MODEL_MIN_DOCS = 20
 
 log = logging.getLogger(__name__)
 
+
 def create_schedule(user_id):
     '''
     Generate weekly schedule of 3 posts per day.

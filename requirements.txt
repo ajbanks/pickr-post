@@ -34,3 +34,4 @@ psycopg2
 backoff
 shortuuid
 newsapi-python
+typer
