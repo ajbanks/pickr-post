@@ -122,6 +122,8 @@ def post_scheduled_tweets():
     and post them to twitter.
     '''
     while True:
+        time.sleep(10)
+        print('getting scheduled posts')
         scheduled_posts = (
             ScheduledPost.query.filter(
                 and_(
@@ -134,6 +136,7 @@ def post_scheduled_tweets():
             )
             .all()
         )
+        print('got scheduled posts')
         if not scheduled_posts:
             log.info("no tweets to schedule")
             continue
@@ -191,5 +194,5 @@ def post_scheduled_tweets():
             log.info(
                 f"posted {num_posted} tweets for user_id={user_id}"
             )
-        time.sleep(300)
+        
         # endfor
