@@ -84,7 +84,7 @@ def create_schedule(user_id):
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                #ModeledTopic.trend_class is  None
+                #ModeledTopic.trend_class == None
             )
         ).order_by(
             ModeledTopic.size.desc()
@@ -108,7 +108,6 @@ def create_schedule(user_id):
         for t in all_topics:
             random.shuffle(t.generated_posts)
             posts = t.generated_posts[:num_posts_per_topic]
-            log.info(f"Added {len(posts)} posts")
             generated_posts += posts
 
     else:
@@ -123,19 +122,16 @@ def create_schedule(user_id):
                 posts = t_.generated_posts[:num_posts_per_topic]
                 
                 generated_posts += posts
-                log.info(f"Added {len(posts)} posts, total num posts {len(generated_posts)}")
                 if len(generated_posts) >= total_num_posts:
-                    log.info("Got all posts")
                     got_all_posts = True
                     break
 
-    log.info(f"Got {len(generated_posts)} posts")
     # do tone matching for generated posts. sonly make a post edit if the user has tweet examples
     user_tweet_examples = user.tweet_examples
     if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
         # convert posts into a users tone if this hasn't already been done
         for gp in generated_posts:
-            post_edit = latest_post_edit(gp.generated_post_id, user_id)
+            post_edit = latest_post_edit(gp.id, user_id)
             if post_edit is None:
                 # a post edit hasn't been made. Which means this post needs to be tone matched
                 tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
@@ -160,7 +156,6 @@ def create_schedule(user_id):
     #  pick 3 random posts for each day
     scheduled_posts = []
     schedule_hours = [9, 12, 17]
-    log.info(f"Retrieved {len(generated_posts)} for user")
     for day in range(7):
         for hour in schedule_hours:
             if len(generated_posts) == 0:
@@ -176,6 +171,7 @@ def create_schedule(user_id):
     log.info(f"Writing {len(scheduled_posts)} posts")
     write_schedule_posts(scheduled_posts)
     return schedule.id
+
 
 @shared_task
 def all_niches_reddit_update():
