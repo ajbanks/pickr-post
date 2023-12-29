@@ -33,7 +33,7 @@ from .subscription import (handle_checkout_completed,
                            handle_subscription_deleted,
                            handle_subscription_updated, is_user_account_valid,
                            is_user_stripe_subscription_active)
-from .tasks import generate_niche_gpt_topics
+from .tasks import generate_niche_gpt_topics, create_schedule
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
 from .x_caller import X_Caller
 
@@ -195,7 +195,6 @@ def signup():
             password_hash = generate_password_hash(
                 form.password.data, method=PASSWORD_HASH_METHOD
             )
-
 
             try:
                 # get the twitter id for this users username
@@ -449,50 +448,6 @@ def upgrade():
         return render_template("upgrade.html")
 
 
-"""
-@app.route("/home")
-@login_required
-def home():
-    log_user_activity(current_user, "home")
-
-    # prompt user to authenticate with Twitter if not already
-    oauth = oauth_session_by_user(current_user.id)
-    if oauth is None or oauth.access_token is None:
-        msg = render_template_string('''
-        <a href="{{ url_for("twitter_auth") }}">Sign in with Twitter</a>
-        to schedule tweets.
-        ''')
-        flash(Markup(msg))
-
-    if not is_user_account_valid(current_user):
-        return redirect(url_for("upgrade"))
-
-    niche_ids = [n.id for n in current_user.niches]
-    topics = top_modeled_topic_query(niche_ids).limit(3).all()
-    topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
-
-    # generated posts HTML is rendered separately to make it reusable
-    posts_html_fragments = [
-        "\n".join([
-            render_post_html_from_id(gp.id, current_user.id)
-            for gp in topic.generated_posts[:3]
-        ])
-        for topic in topics
-    ]
-
-    # TODO: Should split these between niches and also max date may
-    # be different for each niche
-    return render_template(
-        "home.html",
-        title="Pickr - Your Daily Topics & Curated Tweets",
-        date=datetime.today().strftime("%Y-%m-%d"),
-        topics=topics,
-        topic_ids=topic_ids,
-        generated_posts_fragments=posts_html_fragments,
-    )
-"""
-
-
 @app.route("/home", methods=["GET"])
 @login_required
 def home():
@@ -519,11 +474,15 @@ def home():
 
     app.logger.info("get users schedule")
     try:
+        app.logger.info(f'user id: {current_user}')
         schedule = Schedule.query.filter_by(
             user_id=current_user.id,
+        ).order_by(
+            Schedule.created_at.desc()
         ).limit(1).one()
-    except Exception:
-        app.logger.info("user doesnt have a schedule or couldnt be retrieved")
+        app.logger.info(f'schedule date {schedule.created_at}, {schedule.id}')
+    except Exception as e:
+        app.logger.info(f"user doesnt have a schedule or couldnt be retrieved {e}")
         return render_template(
             "home.html",
             schedule_text="You do not yet have a schedule",
@@ -556,6 +515,8 @@ def weekly_post(week_day: int = None):
         # TODO: fix bad query patterns (N+1 select)
         schedule = Schedule.query.filter_by(
             user_id=current_user.id,
+        ).order_by(
+            Schedule.created_at.desc()
         ).limit(1).one()
         if schedule is None:
             return None
@@ -727,6 +688,7 @@ def picker():
                 generate_niche_gpt_topics.apply_async(
                     args=(custom_niche.id,)
                 )
+                create_schedule(current_user.id)
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
     # end POST
@@ -759,13 +721,11 @@ def schedule():
     )
 
     tweeted_posts = (
-        GeneratedPost.query.join(ScheduledPost)
-            .filter(GeneratedPost.id == ScheduledPost.generated_post_id)
+        GeneratedPost.query.join(ScheduledPost).filter(GeneratedPost.id == ScheduledPost.generated_post_id)
             .filter(
             and_(ScheduledPost.user_id == current_user.id,
                  ~ScheduledPost.posted_at.is_(None))
-        )
-            .order_by(ScheduledPost.posted_at.desc())
+        ).order_by(ScheduledPost.posted_at.desc())
             .limit(20)
             .all()
     )

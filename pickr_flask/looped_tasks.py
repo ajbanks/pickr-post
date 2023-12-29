@@ -2,6 +2,8 @@ import logging
 import random
 from datetime import datetime, timedelta, time
 from typing import List
+from itertools import chain
+
 import tweepy
 import math
 from flask import current_app as app
@@ -63,16 +65,15 @@ def create_schedule(user_id):
     user = PickrUser.query.get(user_id)
     niches = user.niches
 
-    num_posts_per_topic = 3
+    
     total_num_posts = 7 * 3  # 3 posts for each day of the week
-    total_topics = total_num_posts / num_posts_per_topic
-    num_topics_per_niche = math.ceil(total_topics / len(niches))  # even number of topics for each niche
-    log.info(f"For user getting num_topics_per_niche:{num_topics_per_niche}")
-    generated_posts = []
+    log.info(f"User {user.id} has {len(niches)} niches.")
+    topic_dict = {}
+    all_topics = []
     for niche in niches:
-        log.info(
-            f"Getting posts in schedule in niche {niche.title} schedule for user: {user_id}, with niche id {niche.id}"
-        )
+        #log.info(
+        #    f"Getting posts in schedule in niche {niche.title} schedule with niche id {niche.id}"
+        #)
         # get both top trending and evergreen topics and choose a random selection of them
 
         news_topics = ModeledTopic.query.filter(
@@ -83,7 +84,7 @@ def create_schedule(user_id):
             )
         ).order_by(
             ModeledTopic.size.desc()
-        ).limit(num_topics_per_niche).all()
+        ).all()
 
         evergreen_topics = ModeledTopic.query.filter(
             and_(
@@ -93,35 +94,62 @@ def create_schedule(user_id):
             )
         ).order_by(
             ModeledTopic.size.desc()
-        ).limit(num_topics_per_niche).all()
-        topics = news_topics + evergreen_topics
-        log.info(f"Got {len(topics)} topics")
-        random.shuffle(topics)
-        topics = topics[:num_topics_per_niche]
-        for t in topics:
+        ).all()
+        topics = list(chain.from_iterable(zip(news_topics, evergreen_topics)))
+        
+        topic_dict[niche] = topics
+        all_topics += topics
+
+    log.info(f"Got {len(all_topics)} topics")
+    generated_posts = []
+    num_posts_per_topic = 3
+    if len(all_topics) == 0:
+        log.info("User has no topics")
+        return
+    
+    if len(all_topics) * num_posts_per_topic < total_num_posts:
+        # if there arent enough topics to get 3 generated posts from each topic then
+        # get more geenrated posts from each topic
+        num_posts_per_topic = total_num_posts / len(all_topics)
+        for t in all_topics:
             random.shuffle(t.generated_posts)
-            generated_posts += t.generated_posts[:num_posts_per_topic]
+            posts = t.generated_posts[:num_posts_per_topic]
+            generated_posts += posts
 
+    else:
+        got_all_posts = False
+        
+        while got_all_posts is False:
+            for n, t in topic_dict.items():
+                if len(t) == 0:
+                    continue
+                t_ = t.pop()
+                random.shuffle(t_.generated_posts)
+                posts = t_.generated_posts[:num_posts_per_topic]
+                
+                generated_posts += posts
+                if len(generated_posts) >= total_num_posts:
+                    got_all_posts = True
+                    break
 
+    # do tone matching for generated posts. sonly make a post edit if the user has tweet examples
+    user_tweet_examples = user.tweet_examples
+    if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
+        # convert posts into a users tone if this hasn't already been done
+        for gp in generated_posts:
+            post_edit = latest_post_edit(gp.generated_post_id, user_id)
+            if post_edit is None:
+                # a post edit hasn't been made. Which means this post needs to be tone matched
+                tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
 
-        # only make a post edit if the user has tweet examples
-        user_tweet_examples = user.tweet_examples
-        if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
-            # convert posts into a users tone if this hasn't already been done
-            for gp in generated_posts:
-                post_edit = latest_post_edit(gp.generated_post_id, user_id)
-                if post_edit is None:
-                    # a post edit hasn't been made. Which means this post needs to be tone matched
-                    tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
-
-                    new_edit = PostEdit(
-                        text=tone_matched_tweet,
-                        created_at=datetime.now(),
-                        user_id=user_id,
-                        generated_post_id=gp.id
-                    )
-                    db.session.add(new_edit)
-                    db.session.commit()
+                new_edit = PostEdit(
+                    text=tone_matched_tweet,
+                    created_at=datetime.now(),
+                    user_id=user_id,
+                    generated_post_id=gp.id
+                )
+                db.session.add(new_edit)
+                db.session.commit()
 
     # endfor
     
