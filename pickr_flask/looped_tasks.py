@@ -80,7 +80,7 @@ def create_schedule(user_id):
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                ModeledTopic.trend_class == 'trending'
+                #ModeledTopic.trend_class == 'trending'
             )
         ).order_by(
             ModeledTopic.size.desc()
@@ -90,7 +90,7 @@ def create_schedule(user_id):
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                ModeledTopic.trend_class == None
+                #ModeledTopic.trend_class == None
             )
         ).order_by(
             ModeledTopic.size.desc()
