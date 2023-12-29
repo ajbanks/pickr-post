@@ -137,7 +137,7 @@ def create_schedule(user_id):
     if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
         # convert posts into a users tone if this hasn't already been done
         for gp in generated_posts:
-            post_edit = latest_post_edit(gp.generated_post_id, user_id)
+            post_edit = latest_post_edit(gp.id, user_id)
             if post_edit is None:
                 # a post edit hasn't been made. Which means this post needs to be tone matched
                 tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
@@ -230,7 +230,7 @@ def post_scheduled_tweets():
 
             num_posted = 0
             for p in posts:
-                post_edit = latest_post_edit(p.id, user_id)
+                post_edit = latest_post_edit(p.generated_post_id, user_id)
                 if post_edit is None:
                     gp = GeneratedPost.query.get(p.generated_post_id)
                     post_text = gp.text
