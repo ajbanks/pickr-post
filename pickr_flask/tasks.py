@@ -422,7 +422,7 @@ def generate_niche_gpt_topics(niche_id):
     logging.info(f"Generating GPT topics and posts: niche={niche.title}")
     print(f"Generating GPT topics and posts: niche={niche.title}")
     generated_tweets = topic.generate_tweets_for_topic(
-        num_tweets=2, topic_label=niche.title, num_topics_from_topic_label=5
+        25, niche.title, niche.title, num_topics_from_topic_label=5
     )
     print(f"Got tweets")
     modeled_topics = []
