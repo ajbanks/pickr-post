@@ -64,7 +64,7 @@ class Config:
         # Set schedules for periodic tasks using celery beat
         beat_schedule={
             "task_update_reddit_every_morning": {
-                "task": "pickr_flask.tasks.all_niches_reddit_update",
+                "task": "pickr_flask.tasks.all_niches_update",
                 "schedule": crontab(hour=15, minute=30),  # morning schedule
             },
             "task_run_topic_model_every_morning": {

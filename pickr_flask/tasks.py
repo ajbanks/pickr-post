@@ -20,6 +20,9 @@ from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
                      write_modeled_topic_with_reddit_posts,
                      write_reddit_modeled_overview, write_reddit_posts)
+from .twitter import (fetch_twitter_posts, process_post,
+                     write_modeled_topic_with_twitter_posts,
+                     write_twitter_modeled_overview, write_twitter_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
 
@@ -49,6 +52,36 @@ def all_users_run_schedule():
             args=(user.id,)
         )
 
+@shared_task
+def update_niche_twitter(niche_id, posts_per_term=80):
+    """
+    Fetch new posts for each twitter term related to this niche.
+    Save the results to DB.
+    """
+
+    twitter_terms = (
+        db.session.query(TwitterTerm)
+            .filter(TwitterTerm.niche_id == niche_id)
+    )
+
+    for term in twitter_terms:
+        
+        posts = fetch_twitter_posts(
+            term,
+            num_posts=posts_per_term,
+        )
+
+        for p in posts:
+            # p["twitter_id"] = p.id
+            p["clean_text"] = process_post(p)
+
+        logging.info(f"Fetched {len(posts)} posts: term={term}")
+
+        # n_written = write_reddit_posts(posts)
+        n_written = write_twitter_posts(posts)
+        logging.info(f"Wrote {n_written} twitter posts: term={term}")
+
+    return niche_id
 
 @shared_task
 def create_schedule(user_id):
@@ -174,10 +207,10 @@ def create_schedule(user_id):
 
 
 @shared_task
-def all_niches_reddit_update():
+def all_niches_update():
     """
     Scheduled daily task to fetch recent posts for all niches
-    with subreddits and save to database.
+    with subreddits or twitter terms and save to database.
     """
     niches = (
         Niche.query.filter(and_(Niche.is_active, Niche.subreddits.any()))
@@ -186,8 +219,13 @@ def all_niches_reddit_update():
     )
 
     for niche in niches:
-        logging.info(f"Updating subreddits for niche: {niche.title}")
-        update_niche_subreddits.apply_async(args=(niche.id,))
+
+        if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
+            logging.info(f"Updating twitter posts for niche: {niche.title}")
+            update_niche_twitter.apply_async(args=(niche.id,))
+        else:
+            logging.info(f"Updating subreddits for niche: {niche.title}")
+            update_niche_subreddits.apply_async(args=(niche.id,))
 
 
 @shared_task
@@ -267,6 +305,7 @@ def run_niche_trends(niche_id) -> List[dict]:
         topic_labels, topic_articles = get_trends(term, niche.title)
 
         for i, title_desc in enumerate(topic_labels):
+
             # create modeled topic
             modeled_topic = {
                 "id": uuid.uuid4(),

@@ -62,22 +62,21 @@ def update_x_posts(posts: List[RedditPost]):
         db.session.merge(p)
     db.session.commit()
 
-
-def write_reddit_posts(posts: List[dict]) -> int:
+def write_twitter_posts(posts: List[dict]) -> int:
     num_written = 0
     for post in posts:
         record = (
-            db.session.query(RedditPost)
-            .filter(RedditPost.reddit_id == post["reddit_id"])
+            db.session.query(Tweet)
+            .filter(Tweet.id == post["id"])
             .first()
         )
         if record is None:
-            record = RedditPost(**post)
+            record = Tweet(**post)
             try:
                 db.session.add(record)
             except exc.SQLAlchemyError as e:
                 db.session.rollback()
-                logging.error(f"Error writing reddit post: {e}")
+                logging.error(f"Error writing twitter post: {e}")
             else:
                 db.session.commit()
                 num_written += 1
