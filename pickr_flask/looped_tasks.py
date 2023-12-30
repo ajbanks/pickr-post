@@ -2,7 +2,7 @@ import logging
 import random
 from datetime import datetime, timedelta, time
 from typing import List
-from itertools import chain
+import itertools
 import time as time_m
 
 import tweepy
@@ -63,13 +63,13 @@ def create_schedule(user_id):
     '''
     Generate weekly schedule of 3 posts per day.
     '''
-    f"Creating schedule for user: {user_id}"
+    log.info(f"Creating schedule for user: {user_id}")
     user = PickrUser.query.get(user_id)
     niches = user.niches
 
     
     total_num_posts = 7 * 3  # 3 posts for each day of the week
-    log.info(f"User {user.id} has {len(niches)} niches.")
+    log.info(f"User {user.id} has {len(niches)} niches. {user.niches}")
     topic_dict = {}
     all_topics = []
     for niche in niches:
@@ -97,7 +97,7 @@ def create_schedule(user_id):
         ).order_by(
             ModeledTopic.size.desc()
         ).all()
-        topics = list(chain.from_iterable(zip(news_topics, evergreen_topics)))
+        topics = list(itertools.chain.from_iterable(zip(news_topics, evergreen_topics)))
         
         topic_dict[niche] = topics
         all_topics += topics

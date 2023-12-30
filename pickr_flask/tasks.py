@@ -4,6 +4,8 @@ import uuid
 from datetime import datetime, timedelta
 from typing import List
 import tweepy
+import itertools
+
 from celery import chain, shared_task
 from flask import current_app as app
 from sqlalchemy import and_
@@ -42,7 +44,7 @@ def all_users_run_schedule():
     users = PickrUser.query.all()
 
     for user in users:
-        logging.info(
+        log.info(
             f"Creating schedule for user: {user.username}"
         )
         create_schedule(user.id).apply_async(
@@ -56,10 +58,10 @@ def create_schedule(user_id):
     Generate weekly schedule of 3 posts per day.
     '''
     log.info(f"Creating schedule for user: {user_id}")
-    print(f"Creating schedule for user: {user_id}")
     user = PickrUser.query.get(user_id)
     niches = user.niches
 
+    
     total_num_posts = 7 * 3  # 3 posts for each day of the week
     log.info(f"User {user.id} has {len(niches)} niches.")
     topic_dict = {}
@@ -73,7 +75,7 @@ def create_schedule(user_id):
         news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=20),
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
                 #ModeledTopic.trend_class == 'trending'
             )
         ).order_by(
@@ -83,13 +85,13 @@ def create_schedule(user_id):
         evergreen_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=20),
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
                 #ModeledTopic.trend_class == None
             )
         ).order_by(
             ModeledTopic.size.desc()
         ).all()
-        topics = list(chain.from_iterable(zip(news_topics, evergreen_topics)))
+        topics = list(itertools.chain.from_iterable(zip(news_topics, evergreen_topics)))
         
         topic_dict[niche] = topics
         all_topics += topics
@@ -111,8 +113,7 @@ def create_schedule(user_id):
             generated_posts += posts
 
     else:
-        got_all_posts = False
-        
+        got_all_posts = False     
         while got_all_posts is False:
             for n, t in topic_dict.items():
                 if len(t) == 0:
@@ -186,7 +187,7 @@ def all_niches_reddit_update():
     )
 
     for niche in niches:
-        logging.info(f"Updating subreddits for niche: {niche.title}")
+        log.info(f"Updating subreddits for niche: {niche.title}")
         update_niche_subreddits.apply_async(args=(niche.id,))
 
 
@@ -206,10 +207,10 @@ def update_niche_subreddits(niche_id, posts_per_subreddit=200):
         for p in posts:
             p["subreddit_id"] = subreddit.id
             p["clean_text"] = process_post(p)
-        logging.info(f"Fetched {len(posts)} posts: subredddit={subreddit.title}")
+        log.info(f"Fetched {len(posts)} posts: subredddit={subreddit.title}")
 
         n_written = write_reddit_posts(posts)
-        logging.info(f"Wrote {n_written} reddit posts: subreddit={subreddit.title}")
+        log.info(f"Wrote {n_written} reddit posts: subreddit={subreddit.title}")
 
     return niche_id
 
@@ -226,7 +227,7 @@ def all_niches_run_pipeline():
     )
 
     for niche in niches:
-        logging.info(f"Running topic model for niche: {niche.title}")
+        log.info(f"Running topic model for niche: {niche.title}")
         run_topic_pipeline(niche.id)
 
 
@@ -312,13 +313,13 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     ).all()
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
-        logging.error(f"Not enough posts for topic model: niche={niche.title}")
+        log.error(f"Not enough posts for topic model: niche={niche.title}")
         raise ValueError("Not enough posts to run topic model", niche.title)
 
     post_dicts = [_to_dict(p) for p in posts]
     texts = [p["clean_text"] for p in post_dicts]
 
-    logging.info(f"Building topic model: niche={niche.title}")
+    log.info(f"Building topic model: niche={niche.title}")
     topic_model = topic.build_subtopic_model(texts)
     topics, probs = topic_model.topics_, topic_model.probabilities_
     topic_keywords = topic_model.get_topic_info()["Representation"].tolist()
@@ -385,7 +386,7 @@ def generate_niche_topic_overviews(
         modeled_topic_ids.append(modeled_topic["id"])
         count += 1
 
-    logging.info(f"{count} modeled topics created: niche={niche_id}")
+    log.info(f"{count} modeled topics created: niche={niche_id}")
     return modeled_topic_ids
 
 
@@ -405,7 +406,7 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
             tweet["modeled_topic_id"] = mt_id
 
         num_tweets = len(generated_tweets)
-        logging.info(
+        log.info(
             f"generated {num_tweets} tweets for modeled topic: {modeled_topic.name}"
         )
         write_generated_posts(generated_tweets)
@@ -419,7 +420,7 @@ def generate_niche_gpt_topics(niche_id):
     """
     niche = Niche.query.get(niche_id)
 
-    logging.info(f"Generating GPT topics and posts: niche={niche.title}")
+    log.info(f"Generating GPT topics and posts: niche={niche.title}")
     print(f"Generating GPT topics and posts: niche={niche.title}")
     generated_tweets = topic.generate_tweets_for_topic(
         25, niche.title, niche.title, num_topics_from_topic_label=5
@@ -463,7 +464,7 @@ def post_scheduled_tweets():
         .all()
     )
     if not scheduled_posts:
-        logging.info("no tweets to schedule")
+        log.info("no tweets to schedule")
         return
 
     # post the tweets grouped by user
@@ -478,7 +479,7 @@ def post_scheduled_tweets():
         oauth_sess = oauth_session_by_user(user_id)
         if oauth_sess is None or oauth_sess.access_token is None \
            or oauth_sess.access_token_secret is None:
-            logging.error(
+            log.error(
                 f"no twitter credentials found for user: user_id={user_id}"
             )
             continue
@@ -503,7 +504,7 @@ def post_scheduled_tweets():
             try:
                 resp = client.create_tweet(text=post_text)
             except (tweepy.errors.BadRequest, tweepy.errors.Unauthorized) as e:
-                logging.error(
+                log.error(
                     f"error posting tweet for user_id={user_id}: {e}"
                 )
                 break
@@ -515,7 +516,7 @@ def post_scheduled_tweets():
             num_posted += 1
         # endfor
 
-        logging.info(
+        log.info(
             f"posted {num_posted} tweets for user_id={user_id}"
         )
     # endfor
