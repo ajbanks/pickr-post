@@ -9,6 +9,8 @@ TOPIC_TEXT_SUFFIX = """
 The posts in the scehdule are able to be edited, or posted at a different time by clicking on the Edit and Schedule button.
 
 Go ahead and edit the posts in the schedule if they are not quite to your liking!
+
+Note: If you edit a post, please refresh the page to then schedule the post
 """
 
 

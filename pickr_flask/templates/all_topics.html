@@ -13,8 +13,7 @@
     <div class="content content_large">
         <div class="container">
             <h1>All Trending Topics</h1>
-            <h2>{{date}}</h2>
-            <p>All trending topics in the last 14 days... Click on a topic to view your generated tweets</p>
+            <p>All trending topics in your audience for the last 14 days... Click on a topic to view more details & generated tweets</p>
             {% for topic in topics %}
 
             <div class="topic clickable" onclick="location.href='topic/{{ topic_ids[ loop.index-1 ]}}'">

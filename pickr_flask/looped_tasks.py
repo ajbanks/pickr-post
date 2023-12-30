@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timedelta, time
 from typing import List
 from itertools import chain
+import time as time_m
 
 import tweepy
 import math
@@ -40,6 +41,7 @@ def all_users_run_schedule_debug():
             f"Creating schedule for user: {user.username}"
         )
         create_schedule(user.id)
+
 
 def all_users_run_schedule():
     '''
@@ -117,8 +119,7 @@ def create_schedule(user_id):
             generated_posts += posts
 
     else:
-        got_all_posts = False
-        
+        got_all_posts = False     
         while got_all_posts is False:
             for n, t in topic_dict.items():
                 if len(t) == 0:
@@ -137,7 +138,7 @@ def create_schedule(user_id):
     if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
         # convert posts into a users tone if this hasn't already been done
         for gp in generated_posts:
-            post_edit = latest_post_edit(gp.generated_post_id, user_id)
+            post_edit = latest_post_edit(gp.id, user_id)
             if post_edit is None:
                 # a post edit hasn't been made. Which means this post needs to be tone matched
                 tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
@@ -185,7 +186,7 @@ def post_scheduled_tweets():
     and post them to twitter.
     '''
     while True:
-        time.sleep(300)
+        time_m.sleep(300)
         scheduled_posts = (
             ScheduledPost.query.filter(
                 and_(

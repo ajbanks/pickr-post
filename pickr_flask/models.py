@@ -336,6 +336,23 @@ class NewsAPITerm(db.Model):
 
     def __repr__(self):
         return f"<NewsAPITerm term={self.term}>"
+    
+
+class TwitterTerm(db.Model):
+    """
+    Table associating ids with the subreddit names
+    """
+
+    __tablename__: str = "twitter_term"
+    __table_args__: str = {"schema": DEFAULT_SCHEMA}
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    niche_id = Column(
+        UUID(as_uuid=True), ForeignKey(f"{DEFAULT_SCHEMA}.niche.id"), nullable=True
+    )
+    term = Column(String(255), nullable=True)
+
+    def __repr__(self):
+        return f"<TwitterTerm term={self.term}>"
 
 
 class RedditPost(db.Model):
