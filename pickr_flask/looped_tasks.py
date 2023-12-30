@@ -186,7 +186,7 @@ def post_scheduled_tweets():
     and post them to twitter.
     '''
     while True:
-        time_m.time.sleep(300)
+        time_m.sleep(300)
         scheduled_posts = (
             ScheduledPost.query.filter(
                 and_(
