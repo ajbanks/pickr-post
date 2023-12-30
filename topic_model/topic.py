@@ -35,7 +35,7 @@ with open('long_tweet_examples.txt', mode='r', encoding="utf-8") as read_file:
     TWEET_EXAMPLES = read_file.read()
     
 
-def build_subtopic_model(texts: List[str], reduce_topics=False):
+def build_subtopic_model(texts: List[str], min_samples=1, min_cluster_size=3, reduce_topics=False):
     '''
     Take a list of document text and returns trained BERTopic model.
     '''
@@ -49,8 +49,8 @@ def build_subtopic_model(texts: List[str], reduce_topics=False):
     sentence_model = SentenceTransformer("all-MiniLM-L6-v2")
     representation_model = KeyBERTInspired()
     hdbscan_model = HDBSCAN(
-        min_cluster_size=3,
-        min_samples=1,
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
         metric='euclidean',
         cluster_selection_method='eom',
         prediction_data=True

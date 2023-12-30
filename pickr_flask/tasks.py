@@ -343,14 +343,26 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     """
     niche = Niche.query.get(niche_id)
     sub_ids = [sub.id for sub in niche.subreddits]
+    source = "reddit"
 
     # what data do we want to use here?
-    posts = RedditPost.query.filter(
-        and_(
-            RedditPost.created_at > datetime.now() - timedelta(days=18),
-            RedditPost.subreddit_id.in_(sub_ids),
-        )
-    ).all()
+
+    if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
+        posts = Tweet.query.filter(
+            and_(
+                Tweet.created_at > datetime.now() - timedelta(days=7)
+            )
+        ).all()
+        source = "X"
+
+    else:
+        posts = RedditPost.query.filter(
+            and_(
+                RedditPost.created_at > datetime.now() - timedelta(days=18),
+                RedditPost.subreddit_id.in_(sub_ids),
+            )
+        ).all()
+        source = "reddit"
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
         logging.error(f"Not enough posts for topic model: niche={niche.title}")
@@ -360,7 +372,11 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     texts = [p["clean_text"] for p in post_dicts]
 
     logging.info(f"Building topic model: niche={niche.title}")
-    topic_model = topic.build_subtopic_model(texts)
+    if source == "reddit":
+        topic_model = topic.build_subtopic_model(texts)
+    else:
+        topic_model = topic.build_subtopic_model(texts, min_samples=5, min_cluster_size=5)
+
     topics, probs = topic_model.topics_, topic_model.probabilities_
     topic_keywords = topic_model.get_topic_info()["Representation"].tolist()
 
@@ -373,11 +389,11 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         topic_keywords,
         topic_rep_docs,
         post_dicts,
-        "reddit",
+        source,
         trend_prev_days=14,
     )
-    return topic_dicts
 
+    return topic_dicts
 
 @shared_task
 def generate_niche_topic_overviews(
