@@ -688,7 +688,8 @@ def picker():
                 generate_niche_gpt_topics.apply_async(
                     args=(custom_niche.id,)
                 )
-                create_schedule(current_user.id)
+                
+        create_schedule(current_user.id)
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
     # end POST

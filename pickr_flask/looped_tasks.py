@@ -41,6 +41,7 @@ def all_users_run_schedule_debug():
         )
         create_schedule(user.id)
 
+
 def all_users_run_schedule():
     '''
     Scheduled weeky task to create post schedule for every user
@@ -117,8 +118,7 @@ def create_schedule(user_id):
             generated_posts += posts
 
     else:
-        got_all_posts = False
-        
+        got_all_posts = False     
         while got_all_posts is False:
             for n, t in topic_dict.items():
                 if len(t) == 0:
