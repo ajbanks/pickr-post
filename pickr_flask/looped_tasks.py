@@ -3,6 +3,7 @@ import random
 from datetime import datetime, timedelta, time
 from typing import List
 from itertools import chain
+import time as time_m
 
 import tweepy
 import math
@@ -185,7 +186,7 @@ def post_scheduled_tweets():
     and post them to twitter.
     '''
     while True:
-        time.sleep(300)
+        time_m.time.sleep(300)
         scheduled_posts = (
             ScheduledPost.query.filter(
                 and_(
