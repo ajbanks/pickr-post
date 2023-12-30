@@ -9,7 +9,7 @@ from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
 from .x_caller import X_Caller
-from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, RedditPost,
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, TwitterTerm, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
 from .newsapi import (get_trends, write_modeled_topic_with_news_article,
                       write_news_articles)
@@ -20,7 +20,7 @@ from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
                      write_modeled_topic_with_reddit_posts,
                      write_reddit_modeled_overview, write_reddit_posts)
-from .twitter import (fetch_twitter_posts, process_post,
+from .twitter import (get_posts_from_term, clean_tweet,
                      write_modeled_topic_with_twitter_posts,
                      write_twitter_modeled_overview, write_twitter_posts)
 
@@ -64,22 +64,24 @@ def update_niche_twitter(niche_id, posts_per_term=80):
             .filter(TwitterTerm.niche_id == niche_id)
     )
 
-    for term in twitter_terms:
-        
-        posts = fetch_twitter_posts(
-            term,
+    for twitter_term in twitter_terms:
+
+        posts = get_posts_from_term(
+            twitter_term.term,
             num_posts=posts_per_term,
         )
 
         for p in posts:
-            # p["twitter_id"] = p.id
-            p["clean_text"] = process_post(p)
 
-        logging.info(f"Fetched {len(posts)} posts: term={term}")
+            p["clean_text"] = clean_tweet(p['text'])
+            #we are not currently storing tweets
+            p["username"] = "unknown"
+
+        logging.info(f"Fetched {len(posts)} posts: term={twitter_term}")
 
         # n_written = write_reddit_posts(posts)
         n_written = write_twitter_posts(posts)
-        logging.info(f"Wrote {n_written} twitter posts: term={term}")
+        logging.info(f"Wrote {n_written} twitter posts: term={twitter_term}")
 
     return niche_id
 

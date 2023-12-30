@@ -93,6 +93,21 @@ class X_Caller:
     def post_tweet(self, tweet: str):
         return self.client.create_tweet(text=tweet)
 
+
+    def search_tweets(self, search_term, max_results=100):
+        """Search tweets on twitter from the last 7 days using search term """
+
+        # This endpoint/method returns Tweets from the last seven days
+        response = self.client.search_recent_tweets(search_term, tweet_fields=['created_at'], max_results=max_results)
+        # The method returns a Response object, a named tuple with data, includes,
+        # errors, and meta fields
+
+        # In this case, the data field of the Response returned is a list of Tweet
+        # objects
+        tweets = response.data
+
+        return tweets
+
     def dm_next_person_in_csv(self):
 
         dm_df = pd.read_csv(TWITTER_USERS_CSV, header=0)

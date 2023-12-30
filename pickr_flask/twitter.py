@@ -2,17 +2,19 @@ import logging
 from datetime import datetime, timedelta
 from os import environ
 from typing import Union, List
-
+from .x_caller import X_Caller
 import pandas as pd
 import praw
+import emoji
+import nltk
 from sqlalchemy import exc, insert
-
+import re
 from topic_model.util import normalise_tweet, parse_html
 
 from .models import (
     db,
     Niche, ModeledTopic, GeneratedPost,
-    XPost,
+    Tweet,TwitterTerm,
     tweet_modeled_topic_assoc
 )
 
@@ -40,24 +42,32 @@ def _to_dict(post: praw.models.Submission) -> dict:
         "permalink": post.permalink,
     }
 
-
-def process_post(p: dict) -> str:
-    return normalise_tweet(
-        parse_html(p["title"] + "\n" + p["body"])
-    )
+def clean_tweet(tweet: str) -> str:
+    words = set(nltk.corpus.words.words())
+    tweet = re.sub("@[A-Za-z0-9]+","",tweet) #Remove @ sign
+    tweet = re.sub(r"(?:\@|http?\://|https?\://|www)\S+", "", tweet) #Remove http links
+    tweet = " ".join(tweet.split())
+    tweet = emoji.replace_emoji(tweet, replace='')
+    tweet = tweet.replace("#", "").replace("_", " ") #Remove hashtag sign but keep the text
+    tweet = " ".join(w for w in nltk.wordpunct_tokenize(tweet) \
+         if w.lower() in words or not w.isalpha())
+    return tweet
 
 
 def get_posts_from_term(
-        search_term,time_filter="week"
-) -> List[dict]:
-    output_rows = []
-    results = tweepy.search()
-    for submission in results:
-        output_rows.append(_to_dict(submission))
-    return output_rows
+        search_term: str, num_posts) -> List[dict]:
+    x_caller = X_Caller()
+    print(search_term)
+    tweet_dicts = [tweet.data for tweet in x_caller.search_tweets(search_term, max_results=num_posts)]
+    [tweet_dict.pop('edit_history_tweet_ids') for tweet_dict in tweet_dicts]
+    return tweet_dicts
+    # # for submission in results:
+    # #     output_rows.append(_to_dict(submission))
+    # #
+    # return output_rows
 
 
-def update_x_posts(posts: List[RedditPost]):
+def update_x_posts(posts: List[Tweet]):
     for p in posts:
         db.session.merge(p)
     db.session.commit()
@@ -97,12 +107,12 @@ def write_generated_posts(generated_posts: List[dict]) -> None:
             db.session.commit()
 
 
-def write_modeled_topic_with_reddit_posts(
+def write_modeled_topic_with_twitter_posts(
         topic: dict,
         post_ids: List[int]
 ) -> None:
     '''
-    Save a modeled topic to the database and associate reddit IDs
+    Save a modeled topic to the database and associate twitter IDs
     with the topic.
     '''
     modeled_topic = ModeledTopic(**topic)
@@ -118,7 +128,7 @@ def write_modeled_topic_with_reddit_posts(
         db.session.execute(
             insert(reddit_modeled_topic_assoc),
             [
-                {"reddit_id": pid, "modeled_topic_id": modeled_topic.id}
+                {"twitter_id": pid, "modeled_topic_id": modeled_topic.id}
                 for pid in post_ids
             ],
         )
@@ -129,7 +139,7 @@ def write_modeled_topic_with_reddit_posts(
         db.session.commit()
 
 
-def write_reddit_modeled_overview(topic_overviews: List[dict]) -> None:
+def write_twitter_modeled_overview(topic_overviews: List[dict]) -> None:
     """
     """
     for topic in topic_overviews:
