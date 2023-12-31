@@ -9,7 +9,7 @@ from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
 from .x_caller import X_Caller
-from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, TwitterTerm, RedditPost,
+from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Tweet, TwitterTerm, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
 from .newsapi import (get_trends, write_modeled_topic_with_news_article,
                       write_news_articles)

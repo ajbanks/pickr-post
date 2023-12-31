@@ -54,18 +54,10 @@ def clean_tweet(tweet: str) -> str:
     return tweet
 
 
-def get_posts_from_term(
-        search_term: str, num_posts) -> List[dict]:
+def get_posts_from_term(search_term: str, num_posts) -> List[dict]:
     x_caller = X_Caller()
-    print(search_term)
-    tweet_dicts = [tweet.data for tweet in x_caller.search_tweets(search_term, max_results=num_posts)]
-    [tweet_dict.pop('edit_history_tweet_ids') for tweet_dict in tweet_dicts]
+    tweet_dicts = x_caller.search_tweets(search_term, max_results=num_posts)
     return tweet_dicts
-    # # for submission in results:
-    # #     output_rows.append(_to_dict(submission))
-    # #
-    # return output_rows
-
 
 def update_x_posts(posts: List[Tweet]):
     for p in posts:

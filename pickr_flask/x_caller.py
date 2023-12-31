@@ -93,18 +93,46 @@ class X_Caller:
     def post_tweet(self, tweet: str):
         return self.client.create_tweet(text=tweet)
 
+    def clean_tweet_response(self, response):
+        """
+        Converts a tweepy search tweets repsonse into a list of dictionaries formatted to be compatible with our db
+
+        :param response:
+        :return: tweet_dicts : List
+        """
+        tweet_dicts = []
+
+        for tweet_object in response.data:
+            post_dict = {}
+            post_dict["id"] = tweet_object['id']
+            post_dict["text"] = tweet_object['text']
+            post_dict["created_at"] = tweet_object['created_at']
+            post_dict["author_id"] = tweet_object['author_id']
+            post_dict["retweets"] = tweet_object.public_metrics['retweet_count']
+            post_dict["likes"] = tweet_object.public_metrics['like_count']
+
+            tweet_dicts.append(post_dict)
+
+
+        return tweet_dicts
 
     def search_tweets(self, search_term, max_results=100):
         """Search tweets on twitter from the last 7 days using search term """
 
+        """
+        [attachments,author_id,card_uri,context_annotations,conversation_id,created_at,
+        edit_controls,edit_history_tweet_ids,entities,geo,id,in_reply_to_user_id,lang,
+        non_public_metrics,note_tweet,organic_metrics,possibly_sensitive,promoted_metrics,
+        public_metrics,referenced_tweets,reply_settings,source,text,withheld]
+        """
+
         # This endpoint/method returns Tweets from the last seven days
-        response = self.client.search_recent_tweets(search_term, tweet_fields=['created_at'], max_results=max_results)
+        response = self.client.search_recent_tweets(search_term, tweet_fields=['created_at', 'public_metrics', 'author_id'], max_results=max_results)
         # The method returns a Response object, a named tuple with data, includes,
         # errors, and meta fields
 
-        # In this case, the data field of the Response returned is a list of Tweet
-        # objects
-        tweets = response.data
+        # The data field of the Response returned is a list of Tweets that need to be reformatted
+        tweets = self.clean_tweet_response(response)
 
         return tweets
 
