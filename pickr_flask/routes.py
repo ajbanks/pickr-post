@@ -693,7 +693,7 @@ def picker():
                 custom_niche = Niche(title=n, is_active=False, is_custom=True)
                 current_user.niches.append(custom_niche)
                 custom_niches.append(custom_niche)
-                #db.session.commit()
+                db.session.commit()
 
                 generate_niche_gpt_topics(custom_niche.id).apply_async(
                     args=(custom_niche.id,)
