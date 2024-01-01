@@ -353,7 +353,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
                 Tweet.created_at > datetime.now() - timedelta(days=7)
             )
         ).all()
-        source = "X"
+        source = "twitter"
 
     else:
         posts = RedditPost.query.filter(
