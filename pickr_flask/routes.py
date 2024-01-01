@@ -573,25 +573,31 @@ def all_topics():
 
     niche_ids = [n.id for n in current_user.niches]
     topics = []
-    for n in niche_ids:
-        max_date = ModeledTopic.query.filter(
-            ModeledTopic.niche_id.in_(niche_ids),
-        ).order_by(
-            ModeledTopic.date.desc()
-        ).first().date.date()
-        topics += ModeledTopic.query.filter(
-            and_(
-                ModeledTopic.niche_id.in_([n]),
-                cast(ModeledTopic.date, Date) == max_date
-            )
-        ).order_by(
-            ModeledTopic.size.desc()
-        ).all()
+    topic_ids = []
+    try:
 
-    for t in topics:
-        random.shuffle(t.generated_posts)
-    topics = sorted(topics, key=lambda t: t.size, reverse=True)
-    topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
+        for n in niche_ids:
+            max_date = ModeledTopic.query.filter(
+                ModeledTopic.niche_id.in_(niche_ids),
+            ).order_by(
+                ModeledTopic.date.desc()
+            ).first().date.date()
+            topics += ModeledTopic.query.filter(
+                and_(
+                    ModeledTopic.niche_id.in_([n]),
+                    cast(ModeledTopic.date, Date) == max_date
+                )
+            ).order_by(
+                ModeledTopic.size.desc()
+            ).all()
+
+        for t in topics:
+            random.shuffle(t.generated_posts)
+        topics = sorted(topics, key=lambda t: t.size, reverse=True)
+        topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
+    except Exception as e:
+        print(e)
+        pass
     return render_template(
         "all_topics.html",
         title="Pickr - Topics & Generated Tweets",
