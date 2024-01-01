@@ -71,10 +71,10 @@ class Config:
                 "task": "pickr_flask.tasks.all_niches_run_pipeline",
                 "schedule": crontab(hour=16, minute=0),
             },
-            "task_all_users_run_schedule": {
-                "task": "pickr_flask.tasks.all_users_run_schedule",
-                "schedule": crontab(minute='*/15'),
-            },
+            #"task_all_users_run_schedule": {
+            #    "task": "pickr_flask.tasks.all_users_run_schedule",
+            #    "schedule": crontab(minute='*/15'),
+            #},
             "task_post_scheduled_tweets": {
                 "task": "pickr_flask.tasks.post_scheduled_tweets",
                 "schedule": crontab(minute="*/5"),  # every 5 min

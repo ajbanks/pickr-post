@@ -657,12 +657,22 @@ def picker():
     ).all()
 
     form = TopicForm()
+    marketing_choice, entrep_choice, pers_dev_choice = [("", "")], [("", "")], [("", "")] 
+    for tt in all_topics:
+        if tt.title == 'Marketing':
+            marketing_choice = (tt.id, tt.title)
+        elif tt.title == 'Entrepreneurship':
+            entrep_choice =(tt.id, tt.title)
+        elif tt.title == 'Personal Development':
+            pers_dev_choice = (tt.id, tt.title)
+
     choices = [("", "")] + [(t.id, t.title) for t in all_topics]
-    form.topic_1.choices = choices
-    form.topic_2.choices = choices
-    form.topic_3.choices = choices
+    form.topic_1.choices = [marketing_choice] + choices
+    form.topic_2.choices = [entrep_choice] + choices
+    form.topic_3.choices = [pers_dev_choice] + choices
 
     if form.validate_on_submit():
+        app.logger.info('Pressed submit button on niche selection page')
         topic_ids = [t.data for t in [form.topic_1, form.topic_2, form.topic_3]]
         try:
             ids = [UUID(tid) for tid in topic_ids if tid != ""]
@@ -685,10 +695,14 @@ def picker():
                 custom_niches.append(custom_niche)
                 db.session.commit()
 
-                generate_niche_gpt_topics.apply_async(
+                generate_niche_gpt_topics(custom_niche.id).apply_async(
                     args=(custom_niche.id,)
                 )
-        print('create schedule')
+                #generate_niche_gpt_topics.apply_async(
+                #    args=(custom_niche.id,)
+                #)
+        db.session.commit()
+        app.logger.info('Creating schedule')
         create_schedule(current_user.id)
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
