@@ -695,10 +695,10 @@ def picker():
                 custom_niches.append(custom_niche)
                 db.session.commit()
 
-                generate_niche_gpt_topics(custom_niche.id)
-                #generate_niche_gpt_topics.apply_async(
-                #    args=(custom_niche.id,)
-                #)
+                #generate_niche_gpt_topics(custom_niche.id)
+                generate_niche_gpt_topics.apply_async(
+                    args=(custom_niche.id,)
+                )
         db.session.commit()
         app.logger.info('Creating schedule')
         create_schedule(current_user.id)
