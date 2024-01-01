@@ -153,10 +153,7 @@ def generate_topic_overview(
     ])
     # if not is_valid_topic_gpt(body):
     #     return "", ""
-    #print('topic_keywords', topic_keywords, 'topic_documents', topic_documents)
-    print('getting label and desc')
     topic_label, topic_desc = get_label_and_description(topic_documents, topic_keywords)
-    print('checking if top is relevant')
     if not is_topic_relevant_gpt(niche_title, topic_desc):
         return "", ""
     return topic_label, topic_desc
@@ -205,16 +202,13 @@ def is_topic_informational_gpt(text) -> bool:
 
 @backoff.on_exception(backoff.expo, OpenAIError)
 def get_label_and_description(topic_documents, topic_keywords):
-    print('getting label')
     topic_label = send_chat_gpt_message(create_label_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
         topic_label = topic_label.split('topic:')[1].strip(STRIP_CHARS)
     except Exception:
         pass
-    print('getting desc')
     topic_desc = send_chat_gpt_message(create_summary_prompt(topic_documents, topic_keywords), temperature=0.2)
     try:
-        print('refining desc)')
         topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
         #topic_desc = send_chat_gpt_message(create_summarise_topic_summary_prompt(topic_desc), temperature=0.2)
         #topic_desc = topic_desc.split('topic:')[1].strip(STRIP_CHARS)
@@ -356,7 +350,7 @@ def generate_tweets_for_topic(
 
     generated_tweets = []
     
-    for i in range(num_tweets):
+    for i in range(math.ceil(num_tweets/2)):
         tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_label))
         if is_topic_informational_gpt(tweet):
             generated_tweets.append({
@@ -364,7 +358,6 @@ def generate_tweets_for_topic(
                 "information_type": "informative",
                 "text": tweet,
             })
-
         tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_summary))
         if is_topic_informational_gpt(tweet):
             generated_tweets.append({

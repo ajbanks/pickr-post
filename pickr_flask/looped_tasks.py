@@ -112,7 +112,7 @@ def create_schedule(user_id):
     if len(all_topics) * num_posts_per_topic < total_num_posts:
         # if there arent enough topics to get 3 generated posts from each topic then
         # get more geenrated posts from each topic
-        num_posts_per_topic = total_num_posts / len(all_topics)
+        num_posts_per_topic = math.ceil(total_num_posts / len(all_topics))
         for t in all_topics:
             random.shuffle(t.generated_posts)
             posts = t.generated_posts[:num_posts_per_topic]

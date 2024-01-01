@@ -1,10 +1,11 @@
 import logging
 import random
 import uuid
-from datetime import datetime, timedelta
-from typing import List
+import math
 import tweepy
 import itertools
+from datetime import datetime, timedelta
+from typing import List
 
 from celery import chain, shared_task
 from flask import current_app as app
@@ -106,7 +107,7 @@ def create_schedule(user_id):
     if len(all_topics) * num_posts_per_topic < total_num_posts:
         # if there arent enough topics to get 3 generated posts from each topic then
         # get more geenrated posts from each topic
-        num_posts_per_topic = total_num_posts / len(all_topics)
+        num_posts_per_topic = math.ceil(total_num_posts / len(all_topics))
         for t in all_topics:
             random.shuffle(t.generated_posts)
             posts = t.generated_posts[:num_posts_per_topic]
@@ -399,7 +400,7 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
         generated_tweets = topic.generate_tweets_for_topic(
-            5, modeled_topic.name, modeled_topic.description, 3
+            10, modeled_topic.name, modeled_topic.description, 3
         )
 
         for tweet in generated_tweets:
@@ -421,11 +422,11 @@ def generate_niche_gpt_topics(niche_id):
     niche = Niche.query.get(niche_id)
 
     log.info(f"Generating GPT topics and posts: niche={niche.title}")
-    print(f"Generating GPT topics and posts: niche={niche.title}")
+    log.info(f"Generating GPT topics and posts: niche={niche.title}")
     generated_tweets = topic.generate_tweets_for_topic(
-        25, niche.title, niche.title, num_topics_from_topic_label=5
+        21, niche.title, niche.title, num_topics_from_topic_label=5
     )
-    print(f"Got tweets")
+    log.info(f"Got tweets")
     modeled_topics = []
     # these are "psuedo" modeled topics since they
     # aren't derived from BERTopic
@@ -439,10 +440,10 @@ def generate_niche_gpt_topics(niche_id):
 
     for post in generated_tweets:
         post["modeled_topic_id"] = modeled_topic["id"]
-    print(f"Created topic and post dicts")   
+    log.info(f"Created topic and post dicts")   
     write_reddit_modeled_overview(modeled_topics)
     write_generated_posts(generated_tweets)
-    print(f"Written topic and post dicts to db")   
+    log.info(f"Written topic and post dicts to db")   
 
 
 @shared_task
