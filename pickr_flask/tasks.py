@@ -10,7 +10,7 @@ from celery import chain, shared_task
 from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
-from .x_caller import X_Caller
+from .twitter import X_Caller
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Tweet, TwitterTerm, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
 from .newsapi import (get_trends, write_modeled_topic_with_news_article,
@@ -22,7 +22,7 @@ from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
                      write_modeled_topic_with_reddit_posts,
                      write_reddit_modeled_overview, write_reddit_posts)
-from .twitter import (get_posts_from_term, clean_tweet,
+from .twitter import (get_twitter_posts_from_term, clean_tweet,
                       write_modeled_topic_with_twitter_posts,
                       write_twitter_modeled_overview, write_twitter_posts)
 
@@ -69,15 +69,16 @@ def update_niche_twitter(niche_id, posts_per_term=80):
 
     for twitter_term in twitter_terms:
 
-        posts = get_posts_from_term(
+        posts = get_twitter_posts_from_term(
             twitter_term.term,
             num_posts=posts_per_term,
         )
 
         for p in posts:
             p["clean_text"] = clean_tweet(p['text'])
-            # we are not currently storing tweets
-            p["username"] = "unknown"
+            p["niche_id"] = niche_id
+
+
 
         logging.info(f"Fetched {len(posts)} posts: term={twitter_term}")
 
@@ -346,13 +347,13 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     """
     niche = Niche.query.get(niche_id)
     sub_ids = [sub.id for sub in niche.subreddits]
-    source = "reddit"
 
     # what data do we want to use here?
 
     if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
         posts = Tweet.query.filter(
             and_(
+                Tweet.niche_id == niche.id,
                 Tweet.created_at > datetime.now() - timedelta(days=7)
             )
         ).all()
@@ -420,9 +421,16 @@ def generate_niche_topic_overviews(
             break
         # query the text of the representative posts for this topic
         post_ids = topic_dict["post_ids"]
-        posts_query = db.session.query(RedditPost.clean_text).filter(
-            RedditPost.id.in_(post_ids[:4])
-        )
+
+        if topic_dict["source"] == "twitter":
+            posts_query = db.session.query(Tweet.clean_text).filter(
+                Tweet.id.in_(post_ids[:4])
+            )
+        else:
+            posts_query = db.session.query(RedditPost.clean_text).filter(
+                RedditPost.id.in_(post_ids[:4])
+            )
+
         texts = [t for (t,) in posts_query.all()]
 
         topic_label, topic_desc = topic.generate_topic_overview(

@@ -442,7 +442,7 @@ class Tweet(db.Model):
     # same as twitter's ID
     id = Column(BigInteger, primary_key=True)
     url = Column(String(255), nullable=True)
-    username = Column(String(255), nullable=False)
+    username = Column(String(255), nullable=True)
     text = Column(String, nullable=True)
     clean_text = Column(String, nullable=True)
     created_at = Column(DateTime, nullable=True)
@@ -451,6 +451,9 @@ class Tweet(db.Model):
     likes = Column(Integer, nullable=True)
     retweet_id = Column(Integer, nullable=True)
     updated_at = Column(DateTime, nullable=True, server_default=func.now())
+    niche_id = Column(
+        UUID(as_uuid=True), ForeignKey(f"{DEFAULT_SCHEMA}.niche.id"), nullable=False
+    )
 
     def __repr__(self):
         return f"<Tweet id={self.id}>"

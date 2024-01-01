@@ -35,7 +35,7 @@ from .subscription import (handle_checkout_completed,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics, create_schedule
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
-from .x_caller import X_Caller
+from .twitter import X_Caller
 
 TWITTER_STATUS_URL = "https://twitter.com/i/status"
 TWITTER_INTENTS_URL = "https://twitter.com/intent/tweet"
