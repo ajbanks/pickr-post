@@ -485,7 +485,7 @@ def home():
         app.logger.info(f"user doesnt have a schedule or couldnt be retrieved {e}")
         return render_template(
             "home.html",
-            schedule_text="You do not yet have a schedule",
+            schedule_text="Your schedule is being created. Refresh inb 5 minutes",
             week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
             topics=topics,
             topic_ids=topic_ids
