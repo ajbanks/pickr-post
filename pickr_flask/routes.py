@@ -707,6 +707,7 @@ def picker():
                 )
         db.session.commit()
         app.logger.info('Creating schedule')
+        print('Creating schedule')
         create_schedule(current_user.id)
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
