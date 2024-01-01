@@ -21,8 +21,8 @@ from .reddit import (fetch_subreddit_posts, process_post,
                      write_modeled_topic_with_reddit_posts,
                      write_reddit_modeled_overview, write_reddit_posts)
 from .twitter import (get_posts_from_term, clean_tweet,
-                     write_modeled_topic_with_twitter_posts,
-                     write_twitter_modeled_overview, write_twitter_posts)
+                      write_modeled_topic_with_twitter_posts,
+                      write_twitter_modeled_overview, write_twitter_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
 
@@ -52,6 +52,7 @@ def all_users_run_schedule():
             args=(user.id,)
         )
 
+
 @shared_task
 def update_niche_twitter(niche_id, posts_per_term=80):
     """
@@ -72,9 +73,8 @@ def update_niche_twitter(niche_id, posts_per_term=80):
         )
 
         for p in posts:
-
             p["clean_text"] = clean_tweet(p['text'])
-            #we are not currently storing tweets
+            # we are not currently storing tweets
             p["username"] = "unknown"
 
         logging.info(f"Fetched {len(posts)} posts: term={twitter_term}")
@@ -84,6 +84,7 @@ def update_niche_twitter(niche_id, posts_per_term=80):
         logging.info(f"Wrote {n_written} twitter posts: term={twitter_term}")
 
     return niche_id
+
 
 @shared_task
 def create_schedule(user_id):
@@ -100,16 +101,16 @@ def create_schedule(user_id):
     topic_dict = {}
     all_topics = []
     for niche in niches:
-        #log.info(
+        # log.info(
         #    f"Getting posts in schedule in niche {niche.title} schedule with niche id {niche.id}"
-        #)
+        # )
         # get both top trending and evergreen topics and choose a random selection of them
 
         news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=20),
-                #ModeledTopic.trend_class == 'trending'
+                # ModeledTopic.trend_class == 'trending'
             )
         ).order_by(
             ModeledTopic.size.desc()
@@ -119,13 +120,13 @@ def create_schedule(user_id):
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=20),
-                #ModeledTopic.trend_class == None
+                # ModeledTopic.trend_class == None
             )
         ).order_by(
             ModeledTopic.size.desc()
         ).all()
         topics = list(chain.from_iterable(zip(news_topics, evergreen_topics)))
-        
+
         topic_dict[niche] = topics
         all_topics += topics
 
@@ -135,7 +136,7 @@ def create_schedule(user_id):
     if len(all_topics) == 0:
         log.info("User has no topics")
         return
-    
+
     if len(all_topics) * num_posts_per_topic < total_num_posts:
         # if there arent enough topics to get 3 generated posts from each topic then
         # get more geenrated posts from each topic
@@ -147,7 +148,7 @@ def create_schedule(user_id):
 
     else:
         got_all_posts = False
-        
+
         while got_all_posts is False:
             for n, t in topic_dict.items():
                 if len(t) == 0:
@@ -155,7 +156,7 @@ def create_schedule(user_id):
                 t_ = t.pop()
                 random.shuffle(t_.generated_posts)
                 posts = t_.generated_posts[:num_posts_per_topic]
-                
+
                 generated_posts += posts
                 if len(generated_posts) >= total_num_posts:
                     got_all_posts = True
@@ -181,7 +182,7 @@ def create_schedule(user_id):
                 db.session.commit()
 
     # endfor
-    
+
     schedule = write_schedule({
         "user_id": user_id,
         "week_number": datetime.now().isocalendar().week,
@@ -216,8 +217,8 @@ def all_niches_update():
     """
     niches = (
         Niche.query.filter(and_(Niche.is_active, Niche.subreddits.any()))
-        .order_by(Niche.title)
-        .all()
+            .order_by(Niche.title)
+            .all()
     )
 
     for niche in niches:
@@ -261,8 +262,8 @@ def all_niches_run_pipeline():
     """
     niches = (
         Niche.query.filter(and_(Niche.is_active, Niche.subreddits.any()))
-        .order_by(Niche.title)
-        .all()
+            .order_by(Niche.title)
+            .all()
     )
 
     for niche in niches:
@@ -322,7 +323,8 @@ def run_niche_trends(niche_id) -> List[dict]:
             # create news articles
             news_articles = []
             for n in topic_articles[i]:
-                news_article = {"id": uuid.uuid4(), "title": n["title"], "url": n["url"], "published_date": n["published_date"]}
+                news_article = {"id": uuid.uuid4(), "title": n["title"], "url": n["url"],
+                                "published_date": n["published_date"]}
                 news_articles.append(news_article)
 
             # write to db
@@ -395,11 +397,12 @@ def run_niche_topic_model(niche_id) -> List[dict]:
 
     return topic_dicts
 
+
 @shared_task
 def generate_niche_topic_overviews(
-    topic_dicts: List[dict],
-    niche_id: uuid.UUID,
-    max_modeled_topics=5,
+        topic_dicts: List[dict],
+        niche_id: uuid.UUID,
+        max_modeled_topics=5,
 ) -> List[uuid.UUID]:
     """
     Second step of topic pipeline:
@@ -495,10 +498,10 @@ def generate_niche_gpt_topics(niche_id):
 
     for post in generated_tweets:
         post["modeled_topic_id"] = modeled_topic["id"]
-    print(f"Created topic and post dicts")   
+    print(f"Created topic and post dicts")
     write_reddit_modeled_overview(modeled_topics)
     write_generated_posts(generated_tweets)
-    print(f"Written topic and post dicts to db")   
+    print(f"Written topic and post dicts to db")
 
 
 @shared_task
@@ -514,10 +517,10 @@ def post_scheduled_tweets():
                 ScheduledPost.scheduled_for < datetime.now()
             )
         )
-        .order_by(
+            .order_by(
             ScheduledPost.user_id, ScheduledPost.scheduled_for
         )
-        .all()
+            .all()
     )
     if not scheduled_posts:
         logging.info("no tweets to schedule")
@@ -534,7 +537,7 @@ def post_scheduled_tweets():
     for user_id, posts in uid_to_posts.items():
         oauth_sess = oauth_session_by_user(user_id)
         if oauth_sess is None or oauth_sess.access_token is None \
-           or oauth_sess.access_token_secret is None:
+                or oauth_sess.access_token_secret is None:
             logging.error(
                 f"no twitter credentials found for user: user_id={user_id}"
             )
