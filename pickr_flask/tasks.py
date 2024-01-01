@@ -351,12 +351,19 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     # what data do we want to use here?
 
     if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
-        posts = Tweet.query.filter(
+        twitter_posts = Tweet.query.filter(
             and_(
                 Tweet.niche_id == niche.id,
                 Tweet.created_at > datetime.now() - timedelta(days=7)
             )
         ).all()
+        reddit_posts = RedditPost.query.filter(
+            and_(
+                RedditPost.created_at > datetime.now() - timedelta(days=18),
+                RedditPost.subreddit_id.in_(sub_ids),
+            )
+        ).all()
+        posts = twitter_posts + reddit_posts
         source = "twitter"
 
     else:
