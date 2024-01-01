@@ -339,41 +339,7 @@ def run_niche_trends(niche_id) -> List[dict]:
     return [t["id"] for t in all_topics]
 
 
-@shared_task
-def run_niche_topic_model(niche_id) -> List[dict]:
-    """
-    First step of topic pipeline:
-    read recent posts for the niche and run the BERTopic model.
-    """
-    niche = Niche.query.get(niche_id)
-    sub_ids = [sub.id for sub in niche.subreddits]
-
-    # what data do we want to use here?
-
-    if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
-        twitter_posts = Tweet.query.filter(
-            and_(
-                Tweet.niche_id == niche.id,
-                Tweet.created_at > datetime.now() - timedelta(days=7)
-            )
-        ).all()
-        reddit_posts = RedditPost.query.filter(
-            and_(
-                RedditPost.created_at > datetime.now() - timedelta(days=18),
-                RedditPost.subreddit_id.in_(sub_ids),
-            )
-        ).all()
-        posts = twitter_posts + reddit_posts
-        source = "twitter"
-
-    else:
-        posts = RedditPost.query.filter(
-            and_(
-                RedditPost.created_at > datetime.now() - timedelta(days=18),
-                RedditPost.subreddit_id.in_(sub_ids),
-            )
-        ).all()
-        source = "reddit"
+def create_topic_dicts(posts, source):
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
         log.error(f"Not enough posts for topic model: niche={niche.title}")
@@ -403,6 +369,38 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         source,
         trend_prev_days=14,
     )
+
+    return topic_dicts
+
+@shared_task
+def run_niche_topic_model(niche_id) -> List[dict]:
+    """
+    First step of topic pipeline:
+    read recent posts for the niche and run the BERTopic model.
+    """
+    niche = Niche.query.get(niche_id)
+    sub_ids = [sub.id for sub in niche.subreddits]
+    topic_dicts = []
+    # what data do we want to use here?
+
+    if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
+        twitter_posts = Tweet.query.filter(
+            and_(
+                Tweet.niche_id == niche.id,
+                Tweet.created_at > datetime.now() - timedelta(days=7)
+            )
+        ).all()
+
+        topic_dicts = create_topic_dicts(twitter_posts, "twitter")
+
+    reddit_posts = RedditPost.query.filter(
+        and_(
+            RedditPost.created_at > datetime.now() - timedelta(days=18),
+            RedditPost.subreddit_id.in_(sub_ids),
+        )
+    ).all()
+
+    topic_dicts = topic_dicts + create_topic_dicts(reddit_posts, "reddit")
 
     return topic_dicts
 
