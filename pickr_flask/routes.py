@@ -679,6 +679,7 @@ def picker():
 
     if form.validate_on_submit():
         app.logger.info('Pressed submit button on niche selection page')
+        print('Pressed submit button on niche selection page')
         topic_ids = [t.data for t in [form.topic_1, form.topic_2, form.topic_3]]
         try:
             ids = [UUID(tid) for tid in topic_ids if tid != ""]
@@ -690,17 +691,21 @@ def picker():
         # TODO: form.custom_niche.data needs to be sanitized/processed
         custom_niches = []
         if form.custom_niche.data != "":
+            print("user has custom niches")
             custom_niche_names = [
                 cn.strip().title() for cn in
                 form.custom_niche.data.split(",")
             ]
+            print('processing custom niches')
             for n in custom_niche_names:
                 # Save niche and start task to generate GPT topics for it
+                print('add custom niche')
                 custom_niche = Niche(title=n, is_active=False, is_custom=True)
                 current_user.niches.append(custom_niche)
                 custom_niches.append(custom_niche)
                 db.session.commit()
 
+                print('Generate gpt topics for custom niche', custom_niche.title)
                 #generate_niche_gpt_topics(custom_niche.id)
                 generate_niche_gpt_topics.apply_async(
                     args=(custom_niche.id,)
