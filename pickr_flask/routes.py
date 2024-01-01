@@ -959,3 +959,7 @@ def unschedule_post(post_id):
         ).delete()
         db.session.commit()
     return render_post_html_from_id(generated_post.id, current_user.id)
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
