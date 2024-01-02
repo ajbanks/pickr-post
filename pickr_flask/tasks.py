@@ -20,8 +20,7 @@ from .post_schedule import (write_schedule, write_schedule_posts,
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
-                     write_modeled_topic_with_reddit_posts,
-                     write_reddit_modeled_overview, write_reddit_posts)
+                     write_modeled_topic_with_reddit_posts,write_reddit_posts)
 from .twitter import (get_twitter_posts_from_term, clean_tweet,
                       write_modeled_topic_with_twitter_posts,
                       write_twitter_modeled_overview, write_twitter_posts)
@@ -513,10 +512,22 @@ def generate_niche_gpt_topics(niche_id):
     for post in generated_tweets:
         post["modeled_topic_id"] = modeled_topic["id"]
     print(f"Created topic and post dicts")
-    write_reddit_modeled_overview(modeled_topics)
+    write_modeled_overview(modeled_topics)
     write_generated_posts(generated_tweets)
     print(f"Written topic and post dicts to db")
 
+def write_modeled_overview(topic_overviews: List[dict]) -> None:
+    """
+    """
+    for topic in topic_overviews:
+        try:
+            db.session.add(ModeledTopic(**topic))
+        except exc.SQLAlchemyError as e:
+            db.session.rollback()
+            logging.error(f"Database error occurred: {e}")
+        else:
+            db.session.commit()
+    logging.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
 
 @shared_task
 def post_scheduled_tweets():

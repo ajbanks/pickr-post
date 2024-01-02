@@ -173,19 +173,6 @@ def write_modeled_topic_with_reddit_posts(
         db.session.commit()
 
 
-def write_reddit_modeled_overview(topic_overviews: List[dict]) -> None:
-    """
-    """
-    for topic in topic_overviews:
-        try:
-            db.session.add(ModeledTopic(**topic))
-        except exc.SQLAlchemyError as e:
-            db.session.rollback()
-            logging.error(f"Database error occurred: {e}")
-        else:
-            db.session.commit()
-    logging.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
-
 
 def retrieve_reddit_niche() -> Union[pd.DataFrame, str]:
     """
