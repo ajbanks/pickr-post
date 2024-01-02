@@ -96,8 +96,6 @@ def create_schedule(user_id):
     log.info(f"Creating schedule for user: {user_id}")
     user = PickrUser.query.get(user_id)
     niches = user.niches
-
-
     total_num_posts = 7 * 3  # 3 posts for each day of the week
     log.info(f"User {user.id} has {len(niches)} niches.")
     topic_dict = {}
