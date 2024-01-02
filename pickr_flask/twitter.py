@@ -224,7 +224,7 @@ def write_modeled_topic_with_twitter_posts(
 
     try:
         db.session.execute(
-            insert(reddit_modeled_topic_assoc),
+            insert(tweet_modeled_topic_assoc),
             [
                 {"twitter_id": pid, "modeled_topic_id": modeled_topic.id}
                 for pid in post_ids
