@@ -485,7 +485,7 @@ def home():
         app.logger.info(f"user doesnt have a schedule or couldnt be retrieved {e}")
         return render_template(
             "home.html",
-            schedule_text="You do not yet have a schedule",
+            schedule_text="Your schedule is being created. Refresh inb 5 minutes",
             week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
             topics=topics,
             topic_ids=topic_ids
@@ -573,25 +573,31 @@ def all_topics():
 
     niche_ids = [n.id for n in current_user.niches]
     topics = []
-    for n in niche_ids:
-        max_date = ModeledTopic.query.filter(
-            ModeledTopic.niche_id.in_(niche_ids),
-        ).order_by(
-            ModeledTopic.date.desc()
-        ).first().date.date()
-        topics += ModeledTopic.query.filter(
-            and_(
-                ModeledTopic.niche_id.in_([n]),
-                cast(ModeledTopic.date, Date) == max_date
-            )
-        ).order_by(
-            ModeledTopic.size.desc()
-        ).all()
+    topic_ids = []
+    try:
 
-    for t in topics:
-        random.shuffle(t.generated_posts)
-    topics = sorted(topics, key=lambda t: t.size, reverse=True)
-    topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
+        for n in niche_ids:
+            max_date = ModeledTopic.query.filter(
+                ModeledTopic.niche_id.in_(niche_ids),
+            ).order_by(
+                ModeledTopic.date.desc()
+            ).first().date.date()
+            topics += ModeledTopic.query.filter(
+                and_(
+                    ModeledTopic.niche_id.in_([n]),
+                    cast(ModeledTopic.date, Date) == max_date
+                )
+            ).order_by(
+                ModeledTopic.size.desc()
+            ).all()
+
+        for t in topics:
+            random.shuffle(t.generated_posts)
+        topics = sorted(topics, key=lambda t: t.size, reverse=True)
+        topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
+    except Exception as e:
+        print(e)
+        pass
     return render_template(
         "all_topics.html",
         title="Pickr - Topics & Generated Tweets",
@@ -673,6 +679,7 @@ def picker():
 
     if form.validate_on_submit():
         app.logger.info('Pressed submit button on niche selection page')
+        print('Pressed submit button on niche selection page')
         topic_ids = [t.data for t in [form.topic_1, form.topic_2, form.topic_3]]
         try:
             ids = [UUID(tid) for tid in topic_ids if tid != ""]
@@ -684,25 +691,28 @@ def picker():
         # TODO: form.custom_niche.data needs to be sanitized/processed
         custom_niches = []
         if form.custom_niche.data != "":
+            print("user has custom niches")
             custom_niche_names = [
                 cn.strip().title() for cn in
                 form.custom_niche.data.split(",")
             ]
+            print('processing custom niches')
             for n in custom_niche_names:
                 # Save niche and start task to generate GPT topics for it
+                print('add custom niche')
                 custom_niche = Niche(title=n, is_active=False, is_custom=True)
                 current_user.niches.append(custom_niche)
                 custom_niches.append(custom_niche)
                 db.session.commit()
 
-                generate_niche_gpt_topics(custom_niche.id).apply_async(
+                print('Generate gpt topics for custom niche', custom_niche.title)
+                #generate_niche_gpt_topics(custom_niche.id)
+                generate_niche_gpt_topics.apply_async(
                     args=(custom_niche.id,)
                 )
-                #generate_niche_gpt_topics.apply_async(
-                #    args=(custom_niche.id,)
-                #)
         db.session.commit()
         app.logger.info('Creating schedule')
+        print('Creating schedule')
         create_schedule(current_user.id)
         log_user_activity(current_user, "completed_signup_step_2")
         return redirect(url_for("home"))
@@ -955,3 +965,7 @@ def unschedule_post(post_id):
         ).delete()
         db.session.commit()
     return render_post_html_from_id(generated_post.id, current_user.id)
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404

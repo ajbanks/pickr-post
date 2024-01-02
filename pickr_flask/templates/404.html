@@ -1,0 +1,17 @@
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet" type="text/css">
+<link href="{{ url_for('static', filename='css/login.css') }}" rel="stylesheet" type="text/css">
+{% endblock %}
+
+{% block content %}
+  <div class="form-wrapper">
+    <div class="logo">pickr</div>
+
+    <h1>404 Error</h1>
+    <p>This page does not exist or there was an unexpected error.</p>
+    <br/>
+    <p>Email nathan.francis@pickrsocial.com if you require assistance</p>
+  </div>
+{% endblock %}
+
