@@ -9,7 +9,7 @@ from typing import List
 
 from celery import chain, shared_task
 from flask import current_app as app
-from sqlalchemy import and_
+from sqlalchemy import exc, insert, and_
 from topic_model import topic
 from .twitter import X_Caller
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Tweet, TwitterTerm, RedditPost,
@@ -343,7 +343,7 @@ def run_niche_trends(niche_id) -> List[dict]:
     return [t["id"] for t in all_topics]
 
 
-def create_topic_dicts(posts, source):
+def create_topic_dicts(posts, source, niche):
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
         log.error(f"Not enough posts for topic model: niche={niche.title}")
@@ -395,7 +395,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
             )
         ).all()
 
-        topic_dicts = create_topic_dicts(twitter_posts, "twitter")
+        topic_dicts = create_topic_dicts(twitter_posts, "twitter", niche)
 
     reddit_posts = RedditPost.query.filter(
         and_(
@@ -404,7 +404,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         )
     ).all()
 
-    topic_dicts = topic_dicts + create_topic_dicts(reddit_posts, "reddit")
+    topic_dicts = topic_dicts + create_topic_dicts(reddit_posts, "reddit", niche)
 
     return topic_dicts
 
