@@ -57,12 +57,14 @@ class LoginForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Log In")
 
+
 class ResetForm(FlaskForm):
     email = StringField(
         "Email",
         validators=[DataRequired(), Email(message="Enter your email.")],
     )
     submit = SubmitField("Reset password")
+
 
 class SetPasswordForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
@@ -88,7 +90,7 @@ class TopicForm(FlaskForm):
             self.topic_1.data,
             self.topic_2.data,
             self.topic_3.data,
-            self.custom_niche.data,
+            #self.custom_niche.data,
         ]
 
     def nonempty_inputs(self):
@@ -108,7 +110,7 @@ class TopicForm(FlaskForm):
         inputs = self.all_inputs()
         all_empty = all(t == "" for t in inputs)
         if all_empty:
-            self.submit.errors.append("Please select at least one topic.")
+            self.submit.errors.append("Please select at least one topic from the drop downs.")
             return False
 
         if not all_different(self.nonempty_inputs()):
@@ -116,4 +118,5 @@ class TopicForm(FlaskForm):
                 "Please select distinct topics for each field.",
             )
             return False
+        
         return True

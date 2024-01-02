@@ -260,7 +260,9 @@ def write_twitter_modeled_overview(topic_overviews: List[dict]) -> None:
             db.session.commit()
     log.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
 
+
 def get_twitter_posts_from_term(search_term: str, num_posts) -> List[dict]:
     x_caller = X_Caller()
     tweet_dicts = x_caller.search_tweets(search_term, max_results=num_posts)
     return tweet_dicts
+

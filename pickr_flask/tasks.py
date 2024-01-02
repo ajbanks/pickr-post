@@ -56,40 +56,6 @@ def all_users_run_schedule():
 
 
 @shared_task
-def update_niche_twitter(niche_id, posts_per_term=80):
-    """
-    Fetch new posts for each twitter term related to this niche.
-    Save the results to DB.
-    """
-
-    twitter_terms = (
-        db.session.query(TwitterTerm)
-            .filter(TwitterTerm.niche_id == niche_id)
-    )
-
-    for twitter_term in twitter_terms:
-
-        posts = get_twitter_posts_from_term(
-            twitter_term.term,
-            num_posts=posts_per_term,
-        )
-
-        for p in posts:
-            p["clean_text"] = clean_tweet(p['text'])
-            p["niche_id"] = niche_id
-
-
-
-        log.info(f"Fetched {len(posts)} posts: term={twitter_term}")
-
-        # n_written = write_reddit_posts(posts)
-        n_written = write_twitter_posts(posts)
-        log.info(f"Wrote {n_written} twitter posts: term={twitter_term}")
-
-    return niche_id
-
-
-@shared_task
 def create_schedule(user_id):
     '''
     Generate weekly schedule of 3 posts per day.
@@ -114,7 +80,17 @@ def create_schedule(user_id):
             and_(
                 ModeledTopic.niche_id == niche.id,
                 ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                #ModeledTopic.trend_class == 'trending'
+                ModeledTopic.trend_class == 'trending'
+            )
+        ).order_by(
+            ModeledTopic.size.desc()
+        ).all()
+
+        twitter_topics = ModeledTopic.query.filter(
+            and_(
+                ModeledTopic.niche_id == niche.id,
+                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.trend_class == 'twitter'
             )
         ).order_by(
             ModeledTopic.size.desc()
@@ -129,7 +105,8 @@ def create_schedule(user_id):
         ).order_by(
             ModeledTopic.size.desc()
         ).all()
-        topics = list(itertools.chain.from_iterable(zip(news_topics, evergreen_topics)))
+        topics = list(itertools.chain.from_iterable(zip(news_topics, twitter_topics)))
+        topics += evergreen_topics
         
         topic_dict[niche] = topics
         all_topics += topics
@@ -232,9 +209,36 @@ def all_niches_update():
         if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
             log.info(f"Updating twitter posts for niche: {niche.title}")
             update_niche_twitter.apply_async(args=(niche.id,))
-        else:
-            log.info(f"Updating subreddits for niche: {niche.title}")
-            update_niche_subreddits.apply_async(args=(niche.id,))
+        
+        log.info(f"Updating subreddits for niche: {niche.title}")
+        update_niche_subreddits.apply_async(args=(niche.id,))
+
+
+@shared_task
+def update_niche_twitter(niche_id, posts_per_term=80):
+    """
+    Fetch new posts for each twitter term related to this niche.
+    Save the results to DB.
+    """
+
+    twitter_terms = db.session.query(TwitterTerm).filter(TwitterTerm.niche_id == niche_id)
+
+    for twitter_term in twitter_terms:
+
+        posts = get_twitter_posts_from_term(
+            twitter_term.term,
+            num_posts=posts_per_term,
+        )
+
+        for p in posts:
+            p["clean_text"] = clean_tweet(p['text'])
+            p["niche_id"] = niche_id
+
+        log.info(f"Fetched {len(posts)} posts: term={twitter_term}")
+        n_written = write_twitter_posts(posts)
+        log.info(f"Wrote {n_written} twitter posts: term={twitter_term}")
+
+    return niche_id
 
 
 @shared_task
@@ -459,7 +463,11 @@ def generate_niche_topic_overviews(
             "date": datetime.now(),
             "size": topic_dict["rank"],
         }
-        write_modeled_topic_with_reddit_posts(modeled_topic, post_ids)
+        if topic_dict["source"] == "twitter":
+            modeled_topic["trend_class"] = "twitter"
+            write_modeled_topic_with_twitter_posts(modeled_topic, post_ids)
+        else:
+            write_modeled_topic_with_reddit_posts(modeled_topic, post_ids)
         modeled_topic_ids.append(modeled_topic["id"])
         count += 1
 
@@ -498,7 +506,7 @@ def generate_niche_gpt_topics(niche_id):
     niche = Niche.query.get(niche_id)
 
     log.info(f"Generating GPT topics and posts: niche={niche.title}")
-    print('Creating schedule')(f"Generating GPT topics and posts: niche={niche.title}")
+    print(f"Generating GPT topics and posts: niche={niche.title}")
     generated_tweets = topic.generate_tweets_for_topic(
         21, niche.title, niche.title, num_topics_from_topic_label=5
     )
@@ -535,6 +543,7 @@ def write_modeled_overview(topic_overviews: List[dict]) -> None:
         else:
             db.session.commit()
     log.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
+
 
 @shared_task
 def post_scheduled_tweets():
