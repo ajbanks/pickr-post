@@ -1,4 +1,5 @@
 import pandas as pd
+import logging
 from datetime import datetime
 import tweepy
 import time
@@ -16,6 +17,7 @@ from .models import (
     tweet_modeled_topic_assoc
 )
 
+log = logging.getLogger(__name__)
 TWITTER_USERS_CSV = "data/all_competitor_followers.csv"
 AUTO_DM_MESSAGE = """Hi!. I can see you're building your X following.
 
@@ -182,7 +184,7 @@ def write_twitter_posts(posts: List[dict]) -> int:
                 db.session.add(record)
             except exc.SQLAlchemyError as e:
                 db.session.rollback()
-                logging.error(f"Error writing twitter post: {e}")
+                log.error(f"Error writing twitter post: {e}")
             else:
                 db.session.commit()
                 num_written += 1
@@ -198,7 +200,7 @@ def write_generated_posts(generated_posts: List[dict]) -> None:
             db.session.add(record)
         except exc.SQLAlchemyError as e:
             db.session.rollback()
-            logging.error(f"Database error occurred: {e}")
+            log.error(f"Database error occurred: {e}")
         else:
             db.session.commit()
 
@@ -216,7 +218,7 @@ def write_modeled_topic_with_twitter_posts(
         db.session.add(modeled_topic)
     except exc.SQLAlchemyError as e:
         db.session.rollback()
-        logging.error(f"Database error occured: {e}")
+        log.error(f"Database error occured: {e}")
     else:
         db.session.commit()
 
@@ -230,7 +232,7 @@ def write_modeled_topic_with_twitter_posts(
         )
     except exc.SQLAlchemyError as e:
         db.session.rollback()
-        logging.error(f"Database error occured: {e}")
+        log.error(f"Database error occured: {e}")
     else:
         db.session.commit()
 
@@ -253,10 +255,10 @@ def write_twitter_modeled_overview(topic_overviews: List[dict]) -> None:
             db.session.add(ModeledTopic(**topic))
         except exc.SQLAlchemyError as e:
             db.session.rollback()
-            logging.error(f"Database error occurred: {e}")
+            log.error(f"Database error occurred: {e}")
         else:
             db.session.commit()
-    logging.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
+    log.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
 
 def get_twitter_posts_from_term(search_term: str, num_posts) -> List[dict]:
     x_caller = X_Caller()
