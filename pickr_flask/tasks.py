@@ -79,11 +79,11 @@ def update_niche_twitter(niche_id, posts_per_term=80):
 
 
 
-        logging.info(f"Fetched {len(posts)} posts: term={twitter_term}")
+        log.info(f"Fetched {len(posts)} posts: term={twitter_term}")
 
         # n_written = write_reddit_posts(posts)
         n_written = write_twitter_posts(posts)
-        logging.info(f"Wrote {n_written} twitter posts: term={twitter_term}")
+        log.info(f"Wrote {n_written} twitter posts: term={twitter_term}")
 
     return niche_id
 
@@ -509,10 +509,11 @@ def generate_niche_gpt_topics(niche_id):
 
     for post in generated_tweets:
         post["modeled_topic_id"] = modeled_topic["id"]
-    print(f"Created topic and post dicts")
+
+    log.info(f"Created topic and post dicts")
     write_modeled_overview(modeled_topics)
     write_generated_posts(generated_tweets)
-    print(f"Written topic and post dicts to db")
+    log.info(f"Written topic and post dicts to db")
 
 def write_modeled_overview(topic_overviews: List[dict]) -> None:
     """
@@ -522,10 +523,10 @@ def write_modeled_overview(topic_overviews: List[dict]) -> None:
             db.session.add(ModeledTopic(**topic))
         except exc.SQLAlchemyError as e:
             db.session.rollback()
-            logging.error(f"Database error occurred: {e}")
+            log.error(f"Database error occurred: {e}")
         else:
             db.session.commit()
-    logging.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
+    log.info(f"wrote overview for {len(topic_overviews)} modeled topics.")
 
 @shared_task
 def post_scheduled_tweets():
@@ -546,7 +547,7 @@ def post_scheduled_tweets():
             .all()
     )
     if not scheduled_posts:
-        logging.info("no tweets to schedule")
+        log.info("no tweets to schedule")
         return
 
     # post the tweets grouped by user
