@@ -1,10 +1,11 @@
 import logging
 import random
 import uuid
-from datetime import datetime, timedelta
-from typing import List
+import math
 import tweepy
 import itertools
+from datetime import datetime, timedelta
+from typing import List
 
 from celery import chain, shared_task
 from flask import current_app as app
@@ -94,10 +95,13 @@ def create_schedule(user_id):
     Generate weekly schedule of 3 posts per day.
     '''
     log.info(f"Creating schedule for user: {user_id}")
+    print(f"Creating schedule for user: {user_id}")
     user = PickrUser.query.get(user_id)
     niches = user.niches
+    
     total_num_posts = 7 * 3  # 3 posts for each day of the week
     log.info(f"User {user.id} has {len(niches)} niches.")
+    print(f"User {user.id} has {len(niches)} niches.")
     topic_dict = {}
     all_topics = []
     for niche in niches:
@@ -131,16 +135,18 @@ def create_schedule(user_id):
         all_topics += topics
 
     log.info(f"Got {len(all_topics)} topics")
+    print(f"Got {len(all_topics)} topics")
     generated_posts = []
     num_posts_per_topic = 3
     if len(all_topics) == 0:
         log.info("User has no topics")
+        print("User has no topics")
         return
 
     if len(all_topics) * num_posts_per_topic < total_num_posts:
         # if there arent enough topics to get 3 generated posts from each topic then
         # get more geenrated posts from each topic
-        num_posts_per_topic = total_num_posts / len(all_topics)
+        num_posts_per_topic = math.ceil(total_num_posts / len(all_topics))
         for t in all_topics:
             random.shuffle(t.generated_posts)
             posts = t.generated_posts[:num_posts_per_topic]
@@ -204,6 +210,7 @@ def create_schedule(user_id):
                 "generated_post_id": gp.id,
             })
     log.info(f"Writing {len(scheduled_posts)} posts")
+    print(f"Writing {len(scheduled_posts)} posts")
     write_schedule_posts(scheduled_posts)
     return schedule.id
 
@@ -469,7 +476,7 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
         generated_tweets = topic.generate_tweets_for_topic(
-            5, modeled_topic.name, modeled_topic.description, 3
+            10, modeled_topic.name, modeled_topic.description, 3
         )
 
         for tweet in generated_tweets:
@@ -491,11 +498,12 @@ def generate_niche_gpt_topics(niche_id):
     niche = Niche.query.get(niche_id)
 
     log.info(f"Generating GPT topics and posts: niche={niche.title}")
-    print(f"Generating GPT topics and posts: niche={niche.title}")
+    print('Creating schedule')(f"Generating GPT topics and posts: niche={niche.title}")
     generated_tweets = topic.generate_tweets_for_topic(
-        25, niche.title, niche.title, num_topics_from_topic_label=5
+        21, niche.title, niche.title, num_topics_from_topic_label=5
     )
-    print(f"Got tweets")
+    print("Got tweets")
+    log.info("Got tweets")
     modeled_topics = []
     # these are "psuedo" modeled topics since they
     # aren't derived from BERTopic
