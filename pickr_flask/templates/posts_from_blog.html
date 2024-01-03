@@ -13,7 +13,7 @@
     <div class="content content_large">
         <form method="POST" action="/posts_from_blog">
             {{ form.csrf_token }}<br/>
-            <p>{{ form.blog_input.label }}</p><br/><br/>
+            <h1>{{ form.blog_input.label }}</h1><br/><br/>
             <p>{{ form.blog_input(placeholder='Paste content here (up to 6000 characters)')}}</p> <br/>
             {% if form.blog_input.errors %}
               <ul class="errors">
