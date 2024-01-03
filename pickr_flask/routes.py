@@ -16,11 +16,11 @@ from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFError
 from sqlalchemy import Date, and_, cast, exc
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from topic_model.topic import generate_informative_tweets_from_long_content
 from .auth import PASSWORD_HASH_METHOD, get_reset_token, verify_reset_token
 from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
                         MAX_FUTURE_SCHEDULE_DAYS, MAX_TWEET_LEN)
-from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm
+from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
                      PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost,
@@ -243,6 +243,19 @@ def user():
         title="Pickr - User Account",
     )
 
+@app.route("/posts_from_blog", methods=["GET", "POST"])
+@login_required
+def posts_from_blog():
+    # send email
+    form = BlogForm()
+    if form.validate_on_submit():
+        print(form.blog_input.data)
+        public_statements = generate_informative_tweets_from_long_content(form.blog_input.data)
+        print("\n\n\n\n\n")
+        print(public_statements)
+        return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, name=public_statements)
+
+    return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, name="*created content will appear here*")
 
 @app.route("/reset", methods=["GET", "POST"])
 def reset():

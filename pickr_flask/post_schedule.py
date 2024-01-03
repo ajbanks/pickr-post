@@ -30,7 +30,7 @@ def create_schedule_text_no_trends(topics: List[ModeledTopic]):
         text += f"• {topic.name}\n"
     text += "\n"
     
-    text += f"""All {len(topics)} topics are  evergreen topics. They are recently popular topics that always perform well when you post about them consistently.\n\n"""
+    text += f"""All {len(topics)} topics are evergreen topics. They are recently popular topics that always perform well when you post about them consistently.\n\n"""
     
     return text + TOPIC_TEXT_SUFFIX
 
