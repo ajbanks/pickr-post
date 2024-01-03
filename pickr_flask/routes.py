@@ -250,7 +250,7 @@ def posts_from_blog():
     form = BlogForm()
     if form.validate_on_submit():
 
-        public_statements = "Here are your generated posts: \n\n\n\n" + generate_informative_tweets_from_long_content(form.blog_input.data)
+        public_statements = "Here are a collection of posts created from the text you entered above: \n\n\n\n" + generate_informative_tweets_from_long_content(form.blog_input.data)
 
         return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, name=public_statements)
 
