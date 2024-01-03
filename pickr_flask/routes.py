@@ -249,10 +249,9 @@ def posts_from_blog():
     # send email
     form = BlogForm()
     if form.validate_on_submit():
-        print(form.blog_input.data)
+
         public_statements = generate_informative_tweets_from_long_content(form.blog_input.data)
-        print("\n\n\n\n\n")
-        print(public_statements)
+
         return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, name=public_statements)
 
     return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, name="*created content will appear here*")
