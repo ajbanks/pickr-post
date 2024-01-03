@@ -14,7 +14,7 @@
         <form method="POST" action="/posts_from_blog">
             {{ form.csrf_token }}<br/>
             <p>{{ form.blog_input.label }}</p><br/><br/>
-            <p>{{ form.blog_input(placeholder='Paste content here (up to 6000 characters')}}</p> <br/>
+            <p>{{ form.blog_input(placeholder='Paste content here (up to 6000 characters)')}}</p> <br/>
             {% if form.blog_input.errors %}
               <ul class="errors">
                 {% for error in form.blog_input.errors %}
