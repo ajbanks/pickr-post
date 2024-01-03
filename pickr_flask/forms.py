@@ -66,19 +66,11 @@ class ResetForm(FlaskForm):
     submit = SubmitField("Reset password")
 
 class BlogForm(FlaskForm):
-    blog_input = TextAreaField('Create Content From Blog', render_kw={"rows": 30, "cols": 100},validators=[
-            Length(min=300),
+    blog_input = TextAreaField('Create Content From Long Form Text', render_kw={"rows": 30, "cols": 100},validators=[
+            Length(min=300, max=5000),
             DataRequired(),
         ])
-    # blog_input = StringField(
-    #     "blog_input",
-    #     widget=TextArea(),
-    #     validators=[
-    #         Length(min=300),
-    #         DataRequired(),
-    #     ],
-    # )
-    submit = SubmitField("Create Content")
+    submit = SubmitField("Create Posts From Content")
 
 class SetPasswordForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])

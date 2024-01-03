@@ -12,16 +12,16 @@
     </div>
     <div class="content content_large">
         <form method="POST" action="/posts_from_blog">
-            {{ form.csrf_token }}
-            {{ form.blog_input.label }}<br/><br/><br/>
-            {{ form.blog_input}} <br/>
+            {{ form.csrf_token }}<br/>
+            <p>{{ form.blog_input.label }}</p><br/><br/>
+            <p>{{ form.blog_input(placeholder='Paste content here')}}</p> <br/>
             {% if form.blog_input.errors %}
               <ul class="errors">
                 {% for error in form.blog_input.errors %}
                   <li>{{ error }}</li>{% endfor %}
               </ul>
-            {% endif %} <br/><br/>
-            <div class="submit-button">{{ form.submit }}</div>
+            {% endif %}
+            <p>{{ form.submit }}</p><
         </form>
 
         <div>
@@ -29,6 +29,10 @@
               <textarea id="blog_output" name="blog_output" rows="30" cols="100" readonly>{{name}}</textarea>
               <br>
          </div>
+
+        <br/>
+        <br/>
+        <br/>
 
     </div>
 
