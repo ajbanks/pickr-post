@@ -497,7 +497,7 @@ def home():
         app.logger.info(f"user doesnt have a schedule or couldnt be retrieved {e}")
         return render_template(
             "home.html",
-            schedule_text="Your schedule is being created. Refresh inb 5 minutes",
+            schedule_text="Your schedule is being created. Please refresh in 5 minutes",
             week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
             topics=topics,
             topic_ids=topic_ids
@@ -718,10 +718,13 @@ def picker():
                 db.session.commit()
 
                 print('Generate gpt topics for custom niche', custom_niche.title)
-                #generate_niche_gpt_topics(custom_niche.id)
-                generate_niche_gpt_topics.apply_async(
-                    args=(custom_niche.id,)
-                )
+                try:
+                    #generate_niche_gpt_topics(custom_niche.id)
+                    generate_niche_gpt_topics.apply_async(
+                        args=(custom_niche.id,)
+                    )
+                except Exception as e:
+                    print(e)
         db.session.commit()
         app.logger.info('Creating schedule')
         print('Creating schedule')
