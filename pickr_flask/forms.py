@@ -67,7 +67,7 @@ class ResetForm(FlaskForm):
 
 class BlogForm(FlaskForm):
     blog_input = TextAreaField('Create Content From Long Form Text', render_kw={"rows": 30, "cols": 100},validators=[
-            Length(min=300, max=5000),
+            Length(min=300, max=6000),
             DataRequired(),
         ])
     submit = SubmitField("Create Posts From Content")

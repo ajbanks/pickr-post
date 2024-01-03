@@ -480,7 +480,17 @@ def generate_informative_tweet_for_topic(topic):
     return send_chat_gpt_message(message).strip(STRIP_CHARS)
 
 def generate_informative_tweets_from_long_content(content):
-    create_statements_message = f"I want you to act as a social media manager. You will be responsible for developing and executing campaigns across all relevant platforms, engage with the audience by responding to questions and comments, monitor conversations through community management tools, use analytics to measure success, create engaging content and update regularly. You manage social media profiles and have been asked to come up with a series of brief public statements that your client should post based on some of their long form content.Don't mention any personal stories or situations from the past. Don't introduce the topic at the beginning of the tweet with words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources. You aren't selling anything Don't include any emoji's. Here are some statement examples you can use as inspiration (don't directly copy the styles/formats: {TWEET_EXAMPLES}. Create some brief public statements from the following blog post{content[:5000]}. "
+    create_statements_message = f"I want you to act as a social media manager. You will be responsible for developing and " \
+                                f"executing campaigns across all relevant platforms, engage with the audience by responding" \
+                                f" to questions and comments, monitor conversations through community management tools, use" \
+                                f" analytics to measure success, create engaging content and update regularly. You manage" \
+                                f" social media profiles and have been asked to come up with a series of brief public statements" \
+                                f" that your client should post based on some of their long form content.Don't mention any personal" \
+                                f" stories or situations from the past. Don't introduce the topic at the beginning of the tweet with" \
+                                f" words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources." \
+                                f" You aren't selling anything Don't include any emoji's. Here are some statement examples you can use as inspiration" \
+                                f" (don't directly copy the styles/formats: {TWEET_EXAMPLES}. Create some brief public statements from" \
+                                f" the following blog post{content[:6000]}. "
     informative_tweets = send_chat_gpt_message(create_statements_message).strip(STRIP_CHARS)
     return informative_tweets
 
