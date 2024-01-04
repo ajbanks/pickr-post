@@ -35,3 +35,4 @@ backoff
 shortuuid
 newsapi-python
 typer
+tqdm
