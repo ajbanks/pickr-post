@@ -7,6 +7,7 @@ import time as time_m
 
 import tweepy
 import math
+from tqdm import tqdm
 from flask import current_app as app
 from sqlalchemy import and_
 from topic_model import topic
@@ -44,7 +45,7 @@ def all_niches_update_schedule():
     while True:
         # datetime object containing current date and time
         now = datetime.now()
-        if is_time_between(time(4, 59), time(5, 00), check_time=now.time()):
+        if is_time_between(time(0, 59), time(1, 00), check_time=now.time()):
             all_niches_update()
             
 def all_niches_update():
@@ -58,7 +59,7 @@ def all_niches_update():
             .all()
     )
 
-    for niche in niches:
+    for niche in tqdm(niches):
 
         if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
             log.info(f"Updating twitter posts for niche: {niche.title}")
@@ -73,7 +74,7 @@ def all_niches_run_pipeline_schedule():
     Scheduled daily task to run topic pipeline for each niche
     """
     now = datetime.now()
-    if is_time_between(time(4, 59), time(5, 00), check_time=now.time()):
+    if is_time_between(time(1,59), time(2, 00), check_time=now.time()):
         all_niches_run_pipeline()        
 
 
@@ -87,7 +88,7 @@ def all_niches_run_pipeline():
             .all()
     )
 
-    for niche in niches:
+    for niche in tqdm(niches):
         log.info(f"Running topic model for niche: {niche.title}")
         run_topic_pipeline(niche.id)
 
@@ -117,13 +118,14 @@ def all_users_run_schedule_schdule():
         now = datetime.now()
         if now.isoweekday() == 1 and is_time_between(time(4, 59), time(5, 00), check_time=now.time()):
             all_users_run_schedule()
-                
+
+
 def all_users_run_schedule():
     '''
     Scheduled weeky task to create post schedule for every user
     '''
     users = PickrUser.query.all()
-    for user in users:
+    for user in tqdm(users):
         logging.info(
             f"Creating schedule for user: {user.username}"
         )
@@ -231,7 +233,7 @@ def create_schedule(user_id):
         "schedule_text": get_simple_schedule_text()
     })
 
-    #  pick 3 random posts for each day
+    # pick 3 random posts for each day
     scheduled_posts = []
     schedule_hours = [9, 12, 17]
     for day in range(7):
