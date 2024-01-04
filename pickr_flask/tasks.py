@@ -304,7 +304,7 @@ def run_topic_pipeline(niche_id):
 
 
 @shared_task
-def run_niche_trends(niche_id) -> List[dict]:
+def run_niche_trends(niche_id) -> List[uuid.UUID]:
     """
     First step of topic pipeline:
     read recent posts for the niche and run the BERTopic model.
@@ -417,7 +417,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
 def generate_niche_topic_overviews(
         topic_dicts: List[dict],
         niche_id: uuid.UUID,
-        max_modeled_topics=5,
+        max_modeled_topics=13,
 ) -> List[uuid.UUID]:
     """
     Second step of topic pipeline:
