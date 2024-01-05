@@ -118,7 +118,7 @@ class X_Caller:
             post_dict = {}
             post_dict["id"] = tweet_object['id']
             post_dict["text"] = tweet_object['text']
-            post_dict["created_at"] = tweet_object['created_at']
+            post_dict["published_at"] = tweet_object['created_at']
             post_dict["author_id"] = tweet_object['author_id']
             post_dict["retweets"] = tweet_object.public_metrics['retweet_count']
             post_dict["likes"] = tweet_object.public_metrics['like_count']
