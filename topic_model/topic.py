@@ -488,11 +488,11 @@ def generate_informative_tweets_from_long_content(content):
                                 f" that your client should post based on some of their long form content.Don't mention any personal" \
                                 f" stories or situations from the past. Don't introduce the topic at the beginning of the tweet with" \
                                 f" words like 'exploring', 'diving', or 'unlock'. Don't mention any specific twitter users, or tools/resources." \
-                                f" You aren't selling anything Don't include any emoji's. Here are some statement examples you can use as inspiration" \
+                                f" You aren't selling anything Don't include any emoji's. Return nothing but the public statements separated by the phrase 'NEXT STATEMENT' Here are some statement examples you can use as inspiration" \
                                 f" (don't directly copy the styles/formats: {TWEET_EXAMPLES}. Create some brief public statements from" \
                                 f" the following blog post{content[:6000]}. "
     informative_tweets = send_chat_gpt_message(create_statements_message).strip(STRIP_CHARS)
-    return informative_tweets
+    return informative_tweets.split("NEXT STATEMENT")
 
 def generate_funny_tweet_for_topic(topic):
     message = f"You are a satirical Twitter account. You post funny tweets about various different topics. Create a tweet about {topic}. Don't mention any specific twitter users or tools. Don't include any emoji's. write concisely."

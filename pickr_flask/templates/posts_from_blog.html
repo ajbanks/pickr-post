@@ -25,9 +25,12 @@
         </form>
 
         <div>
-              <p><label for="blog_output">Your social posts will appear in the text box below</label></p>
-              <textarea id="blog_output" name="blog_output" rows="30" cols="100" readonly>{{name}}</textarea>
-              <br>
+
+            <h2>Generated Tweets</h2>
+            <div class="container cards">
+                {{ generated_posts_fragment | safe}}
+            </div>
+
          </div>
 
         <br/>
