@@ -445,7 +445,7 @@ class Tweet(db.Model):
     username = Column(String(255), nullable=True)
     text = Column(String, nullable=True)
     clean_text = Column(String, nullable=True)
-    created_at = Column(DateTime, nullable=True)
+    published_at = Column(DateTime, nullable=True)
     author_id = Column(BigInteger, nullable=True)
     retweets = Column(Integer, nullable=True)
     likes = Column(Integer, nullable=True)
