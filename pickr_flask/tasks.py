@@ -316,7 +316,8 @@ def run_niche_trends(niche_id) -> List[uuid.UUID]:
     all_topics = []
     for term in terms:
         topic_labels, topic_articles = get_trends(term, niche.title)
-
+        if topic_labels is None:
+            continue
         for i, title_desc in enumerate(topic_labels):
 
             # create modeled topic
