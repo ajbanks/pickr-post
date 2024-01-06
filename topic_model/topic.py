@@ -22,7 +22,7 @@ RANDOM_STATE = 42
 
 openai_key = app.config["OPENAI_API_KEY"]
 openai.api_key = openai_key
-OPEN_AI_MODEL = "gpt-4"
+OPEN_AI_MODEL = "gpt-4-1106-preview"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
     "Playful and Youthful",
