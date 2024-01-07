@@ -278,6 +278,7 @@ def all_niches_run_pipeline():
 
     for niche in niches:
         log.info(f"Running topic model for niche: {niche.title}")
+        print(f"Running topic model for niche: {niche.title}")
         run_topic_pipeline(niche.id)
 
 
@@ -348,7 +349,7 @@ def run_niche_trends(niche_id) -> List[uuid.UUID]:
     return [t["id"] for t in all_topics]
 
 
-def create_topic_dicts(posts, source, niche):
+def build_topic_dicts(posts, source, niche):
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
         log.error(f"Not enough posts for topic model: niche={niche.title}")
@@ -386,6 +387,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     First step of topic pipeline:
     read recent posts for the niche and run the BERTopic model.
     """
+    print('building topics')
     niche = Niche.query.get(niche_id)
     sub_ids = [sub.id for sub in niche.subreddits]
     topic_dicts = []
@@ -399,7 +401,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
             )
         ).all()
 
-        topic_dicts = create_topic_dicts(twitter_posts, "twitter", niche)
+        topic_dicts = build_topic_dicts(twitter_posts, "twitter", niche)
 
     reddit_posts = RedditPost.query.filter(
         and_(
@@ -408,7 +410,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         )
     ).all()
 
-    topic_dicts = topic_dicts + create_topic_dicts(reddit_posts, "reddit", niche)
+    topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
 
     return topic_dicts
 
@@ -426,6 +428,7 @@ def generate_niche_topic_overviews(
 
     Returns list of modeled topic IDs that were created.
     """
+    print('generating topic overview')
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0

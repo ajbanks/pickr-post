@@ -16,7 +16,7 @@ from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Re
 from .post_schedule import (write_schedule, write_schedule_posts,
                             get_simple_schedule_text)
 from .queries import latest_post_edit, oauth_session_by_user
-from .tasks import create_schedule, update_niche_twitter, update_niche_subreddits, run_niche_trends, create_topic_dicts, run_niche_topic_model, generate_niche_topic_overviews, generate_modeled_topic_tweets
+from .tasks import create_schedule, update_niche_twitter, update_niche_subreddits, run_niche_trends, build_topic_dicts, run_niche_topic_model, generate_niche_topic_overviews, generate_modeled_topic_tweets
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
                      write_modeled_topic_with_reddit_posts,write_reddit_posts)
