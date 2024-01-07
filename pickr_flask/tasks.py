@@ -362,7 +362,6 @@ def create_topic_dicts(posts, source, niche):
         topic_model = topic.build_subtopic_model(texts)
     else:
         topic_model = topic.build_subtopic_model(texts, min_samples=5, min_cluster_size=5)
-    log.info()
     topics, probs = topic_model.topics_, topic_model.probabilities_
     topic_keywords = topic_model.get_topic_info()["Representation"].tolist()
 
