@@ -146,7 +146,7 @@ def create_schedule(user_id):
 
     # do tone matching for generated posts. sonly make a post edit if the user has tweet examples
     user_tweet_examples = user.tweet_examples
-    if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
+    if user_tweet_examples is not None and len(user_tweet_examples) >= 1000:
         # convert posts into a users tone if this hasn't already been done
         for gp in generated_posts:
             post_edit = latest_post_edit(gp.id, user_id)
@@ -362,7 +362,7 @@ def create_topic_dicts(posts, source, niche):
         topic_model = topic.build_subtopic_model(texts)
     else:
         topic_model = topic.build_subtopic_model(texts, min_samples=5, min_cluster_size=5)
-
+    log.info()
     topics, probs = topic_model.topics_, topic_model.probabilities_
     topic_keywords = topic_model.get_topic_info()["Representation"].tolist()
 
