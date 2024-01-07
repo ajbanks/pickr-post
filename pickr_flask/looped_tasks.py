@@ -16,7 +16,7 @@ from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Re
 from .post_schedule import (write_schedule, write_schedule_posts,
                             get_simple_schedule_text)
 from .queries import latest_post_edit, oauth_session_by_user
-from .tasks import update_niche_twitter, update_niche_subreddits, run_niche_trends, create_topic_dicts, run_niche_topic_model, generate_niche_topic_overviews, generate_modeled_topic_tweets
+from .tasks import create_schedule, update_niche_twitter, update_niche_subreddits, run_niche_trends, create_topic_dicts, run_niche_topic_model, generate_niche_topic_overviews, generate_modeled_topic_tweets
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
                      write_modeled_topic_with_reddit_posts,write_reddit_posts)
@@ -130,127 +130,6 @@ def all_users_run_schedule():
             f"Creating schedule for user: {user.username}"
         )
         create_schedule(user.id)
-
-
-def create_schedule(user_id):
-    '''
-    Generate weekly schedule of 3 posts per day.
-    '''
-    log.info(f"Creating schedule for user: {user_id}")
-    user = PickrUser.query.get(user_id)
-    niches = user.niches
-
-    
-    total_num_posts = 7 * 3  # 3 posts for each day of the week
-    log.info(f"User {user.id} has {len(niches)} niches. {user.niches}")
-    topic_dict = {}
-    all_topics = []
-    for niche in niches:
-        #log.info(
-        #    f"Getting posts in schedule in niche {niche.title} schedule with niche id {niche.id}"
-        #)
-        # get both top trending and evergreen topics and choose a random selection of them
-
-        news_topics = ModeledTopic.query.filter(
-            and_(
-                ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                #ModeledTopic.trend_class == 'trending'
-            )
-        ).order_by(
-            ModeledTopic.size.desc()
-        ).all()
-
-        evergreen_topics = ModeledTopic.query.filter(
-            and_(
-                ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
-                #ModeledTopic.trend_class == None
-            )
-        ).order_by(
-            ModeledTopic.size.desc()
-        ).all()
-        topics = list(itertools.chain.from_iterable(zip(news_topics, evergreen_topics)))
-        
-        topic_dict[niche] = topics
-        all_topics += topics
-
-    log.info(f"Got {len(all_topics)} topics")
-    generated_posts = []
-    num_posts_per_topic = 3
-    if len(all_topics) == 0:
-        log.info("User has no topics")
-        return
-    
-    if len(all_topics) * num_posts_per_topic < total_num_posts:
-        # if there arent enough topics to get 3 generated posts from each topic then
-        # get more geenrated posts from each topic
-        num_posts_per_topic = math.ceil(total_num_posts / len(all_topics))
-        for t in all_topics:
-            random.shuffle(t.generated_posts)
-            posts = t.generated_posts[:num_posts_per_topic]
-            generated_posts += posts
-
-    else:
-        got_all_posts = False     
-        while got_all_posts is False:
-            for n, t in topic_dict.items():
-                if len(t) == 0:
-                    continue
-                t_ = t.pop()
-                random.shuffle(t_.generated_posts)
-                posts = t_.generated_posts[:num_posts_per_topic]
-                
-                generated_posts += posts
-                if len(generated_posts) >= total_num_posts:
-                    got_all_posts = True
-                    break
-
-    # do tone matching for generated posts. sonly make a post edit if the user has tweet examples
-    user_tweet_examples = user.tweet_examples
-    if user_tweet_examples is not None and len(user_tweet_examples) >= 200:
-        # convert posts into a users tone if this hasn't already been done
-        for gp in generated_posts:
-            post_edit = latest_post_edit(gp.id, user_id)
-            if post_edit is None:
-                # a post edit hasn't been made. Which means this post needs to be tone matched
-                tone_matched_tweet = topic.rewrite_tweet_in_users_tone(gp.text, user_tweet_examples)
-
-                new_edit = PostEdit(
-                    text=tone_matched_tweet,
-                    created_at=datetime.now(),
-                    user_id=user_id,
-                    generated_post_id=gp.id
-                )
-                db.session.add(new_edit)
-                db.session.commit()
-
-    # endfor
-    
-    schedule = write_schedule({
-        "user_id": user_id,
-        "week_number": datetime.now().isocalendar().week,
-        "schedule_text": get_simple_schedule_text()
-    })
-
-    # pick 3 random posts for each day
-    scheduled_posts = []
-    schedule_hours = [9, 12, 17]
-    for day in range(7):
-        for hour in schedule_hours:
-            if len(generated_posts) == 0:
-                break
-            gp = generated_posts.pop()
-            scheduled_posts.append({
-                "schedule_id": schedule.id,
-                "scheduled_day": day,
-                "scheduled_hour": hour,
-                "user_id": user.id,
-                "generated_post_id": gp.id,
-            })
-    log.info(f"Writing {len(scheduled_posts)} posts")
-    write_schedule_posts(scheduled_posts)
-    return schedule.id
 
 
 def post_scheduled_tweets():

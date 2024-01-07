@@ -22,7 +22,7 @@ RANDOM_STATE = 42
 
 openai_key = app.config["OPENAI_API_KEY"]
 openai.api_key = openai_key
-OPEN_AI_MODEL = "gpt-4"
+OPEN_AI_MODEL = "gpt-4-1106-preview"
 STRIP_CHARS = "'" + '"' + " \t\n"
 BRAND_VOICES = [
     "Playful and Youthful",
@@ -351,20 +351,18 @@ def generate_tweets_for_topic(
     generated_tweets = []
     
     for i in range(math.ceil(num_tweets/2)):
-        tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_label)).lower().split("public statement:")[-1]
-        if is_topic_informational_gpt(tweet):
-            generated_tweets.append({
-                "topic_label": topic_label,
-                "information_type": "informative",
-                "text": tweet,
-            })
-        tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_summary)).lower().split("public statement:")[-1]
-        if is_topic_informational_gpt(tweet):
-            generated_tweets.append({
-                "topic_label": topic_label,
-                "information_type": "funny",
-                "text": tweet,
-            })
+        tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_label))
+        generated_tweets.append({
+            "topic_label": topic_label,
+            "information_type": "informative",
+            "text": tweet,
+        })
+        tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_summary))
+        generated_tweets.append({
+            "topic_label": topic_label,
+            "information_type": "funny",
+            "text": tweet,
+        })
 
     return generated_tweets
 
