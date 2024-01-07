@@ -16,15 +16,16 @@ from flask_mail import Mail, Message
 from flask_wtf.csrf import CSRFError
 from sqlalchemy import Date, and_, cast, exc
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from topic_model.topic import generate_informative_tweets_from_long_content
 from .auth import PASSWORD_HASH_METHOD, get_reset_token, verify_reset_token
 from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
                         MAX_FUTURE_SCHEDULE_DAYS, MAX_TWEET_LEN)
-from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm
+from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
                      PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost,
                      db)
+from .reddit import write_generated_posts
 from .queries import (get_scheduled_post, latest_post_edit,
                       oauth_session_by_token, oauth_session_by_user,
                       reddit_posts_for_topic_query, top_modeled_topic_query,
@@ -243,6 +244,40 @@ def user():
         title="Pickr - User Account",
     )
 
+@app.route("/posts_from_blog", methods=["GET", "POST"])
+@login_required
+def posts_from_blog():
+
+    form = BlogForm()
+
+    generated_posts = []
+
+
+    if form.validate_on_submit():
+
+        public_statements = generate_informative_tweets_from_long_content(form.blog_input.data)
+        generated_post_dicts = [{
+                "topic_label": "post_from_content",
+                "information_type": "informative",
+                "text": statement,
+            } for statement in public_statements]
+
+        generated_posts = write_generated_posts(generated_post_dicts)
+
+        # generated posts HTML is rendered separately
+        posts_html_fragment = "\n".join([
+            render_post_html_from_id(p.id, current_user.id)
+            for p in generated_posts
+        ])
+        print(posts_html_fragment)
+        return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, generated_posts_fragment=posts_html_fragment)
+
+    # generated posts HTML is rendered separately
+    posts_html_fragment = "\n".join([
+        render_post_html_from_id(p.id, current_user.id)
+        for p in generated_posts
+    ])
+    return render_template("posts_from_blog.html", title="Pickr - blog to social posts", form=form, generated_posts_fragment=posts_html_fragment)
 
 @app.route("/reset", methods=["GET", "POST"])
 def reset():

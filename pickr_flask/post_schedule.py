@@ -17,6 +17,15 @@ Note: If you edit a post, please refresh the page to then schedule the post
 def get_simple_schedule_text():
     return """Your post schedule for the week is below. The posts are based on topics trending in your niche right now on social media. Use the edit & schedule buttons to post on X/Twitter."""
 
+def create_schedule_text_with_topic_name(topics: List[ModeledTopic]):
+    intro_text = "Your post schedule for the week is below. The posts are based on topics trending in your niche right " \
+                 "now on social media. Here are the topics you should post about this week:"
+    ending_text = "Use the edit & schedule buttons to post on X/Twitter."
+
+    for topic in topics:
+        intro_text += f"• {topic.name}\n"
+
+    return intro_text + ending_text
 
 def create_schedule_text(topics: List[ModeledTopic]):
     return None
@@ -30,7 +39,7 @@ def create_schedule_text_no_trends(topics: List[ModeledTopic]):
         text += f"• {topic.name}\n"
     text += "\n"
     
-    text += f"""All {len(topics)} topics are  evergreen topics. They are recently popular topics that always perform well when you post about them consistently.\n\n"""
+    text += f"""All {len(topics)} topics are evergreen topics. They are recently popular topics that always perform well when you post about them consistently.\n\n"""
     
     return text + TOPIC_TEXT_SUFFIX
 

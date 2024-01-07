@@ -221,7 +221,7 @@ class GeneratedPost(db.Model):
     # This is different from ModeledTopic.name
     topic_label = Column(String, nullable=True)
     modeled_topic_id = Column(
-        UUID(as_uuid=True), ForeignKey(f"{DEFAULT_SCHEMA}.modeled_topic.id"), index=True
+        UUID(as_uuid=True), ForeignKey(f"{DEFAULT_SCHEMA}.modeled_topic.id"), index=True, nullable=True
     )
 
 

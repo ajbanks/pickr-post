@@ -1,0 +1,47 @@
+{% extends 'layout.html' %}
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="body">
+    <div class="sidebar sidebar_small">
+        {% include 'navigation.html' %}
+    </div>
+    <div class="content content_large">
+        <form method="POST" action="/posts_from_blog">
+            {{ form.csrf_token }}<br/>
+            <h1>{{ form.blog_input.label }}</h1><br/><br/>
+            <p>{{ form.blog_input(placeholder='Paste content here (up to 6000 characters)')}}</p> <br/>
+            {% if form.blog_input.errors %}
+              <ul class="errors">
+                {% for error in form.blog_input.errors %}
+                  <li>{{ error }}</li>{% endfor %}
+              </ul>
+            {% endif %}
+            <p>{{ form.submit }}</p>
+        </form>
+
+        <div>
+
+            <h2>Generated Tweets</h2>
+            <div class="container cards">
+                {{ generated_posts_fragment | safe}}
+            </div>
+
+         </div>
+
+        <br/>
+        <br/>
+        <br/>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}

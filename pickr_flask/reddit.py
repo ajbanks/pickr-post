@@ -130,8 +130,10 @@ def write_reddit_posts(posts: List[dict]) -> int:
 def write_generated_posts(generated_posts: List[dict]) -> None:
     """
     """
+    records = []
     for post in generated_posts:
         record = GeneratedPost(**post)
+        records.append(record)
         try:
             db.session.add(record)
         except exc.SQLAlchemyError as e:
@@ -139,6 +141,8 @@ def write_generated_posts(generated_posts: List[dict]) -> None:
             logging.error(f"Database error occurred: {e}")
         else:
             db.session.commit()
+
+    return records
 
 
 def write_modeled_topic_with_reddit_posts(

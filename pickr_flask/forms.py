@@ -1,7 +1,7 @@
 from itertools import combinations
 
 from flask_wtf import FlaskForm
-from wtforms import PasswordField, SelectField, StringField, SubmitField
+from wtforms import PasswordField, SelectField, StringField, SubmitField, TextAreaField
 from wtforms.validators import DataRequired, Email, EqualTo, Length
 
 DEFAULT_TOPICS = [""]
@@ -65,6 +65,12 @@ class ResetForm(FlaskForm):
     )
     submit = SubmitField("Reset password")
 
+class BlogForm(FlaskForm):
+    blog_input = TextAreaField('Create Content From Long Form Text', render_kw={"rows": 30, "cols": 100},validators=[
+            Length(min=300, max=6000),
+            DataRequired(),
+        ])
+    submit = SubmitField("Create Posts From Content")
 
 class SetPasswordForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
@@ -118,5 +124,5 @@ class TopicForm(FlaskForm):
                 "Please select distinct topics for each field.",
             )
             return False
-        
+
         return True
