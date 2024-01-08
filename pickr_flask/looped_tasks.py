@@ -104,8 +104,8 @@ def run_topic_pipeline(niche_id):
     generate_modeled_topic_tweets(modeled_topic_ids)
 
     # get evergreen topics from reddit
-    topic_dicts = run_niche_topic_model(niche_id),
-    modeled_topic_ids = generate_niche_topic_overviews(topic_dicts, niche_id),
+    topic_dicts = run_niche_topic_model(niche_id)
+    modeled_topic_ids = generate_niche_topic_overviews(topic_dicts, niche_id)
     generate_modeled_topic_tweets(modeled_topic_ids)
 
 

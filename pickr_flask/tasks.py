@@ -412,7 +412,6 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     ).all()
 
     topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
-    print('type of topic_dicts', type(topic_dicts))
     return topic_dicts
 
 
@@ -430,14 +429,12 @@ def generate_niche_topic_overviews(
     Returns list of modeled topic IDs that were created.
     """
     print('generating topic overview')
-    print('niche_id', type(niche_id))
     print('type of topic_dicts', type(topic_dicts))
-    print('item 0 of topic_dicts', topic_dicts[0])
 
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0
-    for topic_dict in topic_dicts[0]:
+    for topic_dict in topic_dicts:
         if count >= max_modeled_topics:
             break
         # query the text of the representative posts for this topic
@@ -489,6 +486,7 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     Third step of topic pipeline:
     generate tweets for each modeled topic
     """
+    print('type of modeled_topic_ids', type(modeled_topic_ids))
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
         generated_tweets = topic.generate_tweets_for_topic(
