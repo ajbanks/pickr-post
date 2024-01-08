@@ -381,6 +381,7 @@ def build_topic_dicts(posts, source, niche):
 
     return topic_dicts
 
+
 @shared_task
 def run_niche_topic_model(niche_id) -> List[dict]:
     """
@@ -441,6 +442,7 @@ def generate_niche_topic_overviews(
         post_ids = topic_dict["post_ids"]
 
         if topic_dict["source"] == "twitter":
+            print('twitter post_ids[:4]', post_ids[:4])
             posts_query = db.session.query(Tweet.clean_text).filter(
                 Tweet.id.in_(post_ids[:4])
             )
@@ -470,6 +472,7 @@ def generate_niche_topic_overviews(
         }
         if topic_dict["source"] == "twitter":
             modeled_topic["trend_class"] = "twitter"
+            print('twitter post_ids', post_ids)
             write_modeled_topic_with_twitter_posts(modeled_topic, post_ids)
         else:
             write_modeled_topic_with_reddit_posts(modeled_topic, post_ids)
