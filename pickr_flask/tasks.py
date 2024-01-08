@@ -402,6 +402,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         ).all()
 
         topic_dicts = build_topic_dicts(twitter_posts, "twitter", niche)
+        print(' in twitter, type of topic dict', type(topic_dicts))
 
     reddit_posts = RedditPost.query.filter(
         and_(
@@ -411,7 +412,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     ).all()
 
     topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
-
+    print('type of topic_dicts', type(topic_dicts), topic_dicts)
     return topic_dicts
 
 
@@ -432,8 +433,6 @@ def generate_niche_topic_overviews(
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0
-    print('type topic_dicts', type(topic_dicts))
-    print('topic_dicts', topic_dicts)
     for topic_dict in topic_dicts:
         if count >= max_modeled_topics:
             break
