@@ -412,6 +412,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     ).all()
 
     topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
+    print('type of topic_dicts', type(topic_dicts))
     return topic_dicts
 
 
@@ -436,7 +437,7 @@ def generate_niche_topic_overviews(
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0
-    for topic_dict in topic_dicts:
+    for topic_dict in topic_dicts[0]:
         if count >= max_modeled_topics:
             break
         # query the text of the representative posts for this topic
