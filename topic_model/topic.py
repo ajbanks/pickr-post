@@ -128,6 +128,7 @@ def analyze_topics(
             "likes": num_likes,
             "rank": rank,
             "post_ids": post_ids,
+            "source": source
         })
 
     # sort topics by trend rank then by number of likes
