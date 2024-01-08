@@ -432,10 +432,14 @@ def generate_niche_topic_overviews(
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0
+    print('type topic_dicts', type(topic_dicts))
+    print('topic_dicts', topic_dicts)
     for topic_dict in topic_dicts:
         if count >= max_modeled_topics:
             break
         # query the text of the representative posts for this topic
+        print('type topic_dict', type(topic_dict))
+        print('topic_dict', topic_dict)
         post_ids = topic_dict["post_ids"]
 
         if topic_dict["source"] == "twitter":
