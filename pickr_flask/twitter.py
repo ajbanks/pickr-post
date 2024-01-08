@@ -231,6 +231,7 @@ def write_modeled_topic_with_twitter_posts(
     else:
         db.session.commit()
 
+
 def clean_tweet(tweet: str) -> str:
     words = set(nltk.corpus.words.words())
     tweet = re.sub("@[A-Za-z0-9]+","",tweet) #Remove @ sign
@@ -241,6 +242,7 @@ def clean_tweet(tweet: str) -> str:
     tweet = " ".join(w for w in nltk.wordpunct_tokenize(tweet) \
          if w.lower() in words or not w.isalpha())
     return tweet
+
 
 def write_twitter_modeled_overview(topic_overviews: List[dict]) -> None:
     """

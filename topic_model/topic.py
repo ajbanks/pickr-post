@@ -92,7 +92,8 @@ def analyze_topics(
     valid_topics = filter_topics(topics, probs)
 
     posts_df = pd.DataFrame(posts)
-    posts_df["date"] = posts_df["created_at"].apply(lambda x: x.date())
+    date_key = "created_at" if "created_at" in posts_df.columns else "published_at"
+    posts_df["date"] = posts_df[date_key].apply(lambda x: x.date())
     posts_df["probs"] = probs
 
     topics_list = []
