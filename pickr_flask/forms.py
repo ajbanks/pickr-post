@@ -73,7 +73,7 @@ class BlogForm(FlaskForm):
     submit = SubmitField("Create Posts From Content")
 
 class PostForm(FlaskForm):
-    post_input = TextAreaField('Create a post', render_kw={"rows": 5, "cols": 100},validators=[
+    post_input = TextAreaField('Create a post', render_kw={"rows": 7, "cols": 70},validators=[
             Length(min=2, max=280),
             DataRequired(),
         ])
