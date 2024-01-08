@@ -430,6 +430,7 @@ def generate_niche_topic_overviews(
     Returns list of modeled topic IDs that were created.
     """
     print('generating topic overview')
+    print('niche_id', type(niche_id))
     print('type of topic_dicts', type(topic_dicts))
     print('item 0 of topic_dicts', topic_dicts[0])
 
