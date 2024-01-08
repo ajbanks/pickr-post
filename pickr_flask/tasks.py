@@ -397,7 +397,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         twitter_posts = Tweet.query.filter(
             and_(
                 Tweet.niche_id == niche.id,
-                Tweet.created_at > datetime.now() - timedelta(days=7)
+                Tweet.published_at > datetime.now() - timedelta(days=7)
             )
         ).all()
 
