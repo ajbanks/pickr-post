@@ -431,7 +431,6 @@ def generate_niche_topic_overviews(
     """
     print('generating topic overview')
     print('type of topic_dicts', type(topic_dicts))
-    print('item 1 of topic_dicts', topic_dicts[1])
     print('item 0 of topic_dicts', topic_dicts[0])
 
     niche = Niche.query.get(niche_id)
