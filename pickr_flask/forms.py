@@ -72,6 +72,13 @@ class BlogForm(FlaskForm):
         ])
     submit = SubmitField("Create Posts From Content")
 
+class PostForm(FlaskForm):
+    post_input = TextAreaField('Create a post', render_kw={"rows": 5, "cols": 100},validators=[
+            Length(min=2, max=280),
+            DataRequired(),
+        ])
+    submit = SubmitField("Create post and schedule")
+
 class SetPasswordForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Set Password")
