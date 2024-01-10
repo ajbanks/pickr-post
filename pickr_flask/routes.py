@@ -20,7 +20,7 @@ from topic_model.topic import generate_informative_tweets_from_long_content
 from .auth import PASSWORD_HASH_METHOD, get_reset_token, verify_reset_token
 from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
                         MAX_FUTURE_SCHEDULE_DAYS, MAX_TWEET_LEN)
-from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm
+from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm, PostForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
                      PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost,
@@ -243,6 +243,41 @@ def user():
         "user.html",
         title="Pickr - User Account",
     )
+
+@app.route("/post_creation", methods=["GET", "POST"])
+@login_required
+def post_creation():
+
+    form = PostForm()
+
+    generated_posts = []
+
+
+    if form.validate_on_submit():
+
+        post_input = form.post_input.data
+        generated_post_dicts = [{
+                "topic_label": "manual_post",
+                "information_type": "informative",
+                "text": post_input,
+            }]
+
+        generated_posts = write_generated_posts(generated_post_dicts)
+
+        # generated posts HTML is rendered separately
+        posts_html_fragment = "\n".join([
+            render_post_html_from_id(p.id, current_user.id)
+            for p in generated_posts
+        ])
+        return render_template("post_creation.html", title="Pickr - Create a post", form=form, generated_posts_fragment=posts_html_fragment)
+
+    # generated posts HTML is rendered separately
+    posts_html_fragment = "\n".join([
+        render_post_html_from_id(p.id, current_user.id)
+        for p in generated_posts
+    ])
+    return render_template("post_creation.html", title="Pickr - Create a post", form=form, generated_posts_fragment=posts_html_fragment)
+
 
 @app.route("/posts_from_blog", methods=["GET", "POST"])
 @login_required
