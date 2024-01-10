@@ -1,0 +1,51 @@
+{% extends 'layout.html' %}
+
+{% block css %}
+<link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+<link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="body">
+    <div class="sidebar sidebar_small">
+        {% include 'navigation.html' %}
+    </div>
+    <div class="content content_large">
+        <form method="POST" action="/post_creation">
+            {{ form.csrf_token }}<br/>
+
+            <h1>{{ form.post_input.label }}</h1><br/><br/>
+            <p>Enter a post below and hit the 'Preview Post' button to post it to X/Twitter.</p>
+            <p>{{ form.post_input(placeholder='Write your post here (up to 280 characters)')}}</p> <br/>
+            {% if form.post_input.errors %}
+              <ul class="errors">
+                {% for error in form.post_input.errors %}
+                  <li>{{ error }}</li>{% endfor %}
+              </ul>
+            {% endif %}
+            {{ form.submit(class="button") }}
+        </form>
+        </br>
+        </br>
+        </br>
+        </br>
+        <div>
+
+            <div class="container cards">
+                {{ generated_posts_fragment | safe}}
+            </div>
+
+         </div>
+
+        <br/>
+        <br/>
+        <br/>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block js %}
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
