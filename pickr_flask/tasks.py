@@ -27,6 +27,9 @@ from .twitter import (get_twitter_posts_from_term, clean_tweet,
                       write_twitter_modeled_overview, write_twitter_posts)
 
 TOPIC_MODEL_MIN_DOCS = 20
+MAX_MONTHLY_TWITTER_POSTS = 9500
+MAX_DAILY_TWITTER_POSTS = MAX_MONTHLY_TWITTER_POSTS / 30
+TWITTER_NICHES = ["Entrepreneurship", "Marketing", "Personal Development"]
 
 log = logging.getLogger(__name__)
 
@@ -204,25 +207,27 @@ def all_niches_update():
             .all()
     )
 
+    num_twitter_posts_per_niche = MAX_DAILY_TWITTER_POSTS / len(TWITTER_NICHES)
+    
     for niche in niches:
 
-        if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
+        if niche.title in TWITTER_NICHES:
             log.info(f"Updating twitter posts for niche: {niche.title}")
-            update_niche_twitter.apply_async(args=(niche.id,))
+            update_niche_twitter.apply_async(args=(niche.id,num_twitter_posts_per_niche,))
         
         log.info(f"Updating subreddits for niche: {niche.title}")
         update_niche_subreddits.apply_async(args=(niche.id,))
 
 
 @shared_task
-def update_niche_twitter(niche_id, posts_per_term=80):
+def update_niche_twitter(niche_id, total_posts):
     """
     Fetch new posts for each twitter term related to this niche.
     Save the results to DB.
     """
 
     twitter_terms = db.session.query(TwitterTerm).filter(TwitterTerm.niche_id == niche_id)
-
+    posts_per_term = total_posts / len(twitter_terms)
     for twitter_term in twitter_terms:
 
         posts = get_twitter_posts_from_term(
@@ -442,7 +447,6 @@ def generate_niche_topic_overviews(
         post_ids = topic_dict["post_ids"]
 
         if topic_dict["source"] == "twitter":
-            print('twitter post_ids[:4]', post_ids[:4])
             posts_query = db.session.query(Tweet.clean_text).filter(
                 Tweet.id.in_(post_ids[:4])
             )
@@ -472,7 +476,6 @@ def generate_niche_topic_overviews(
         }
         if topic_dict["source"] == "twitter":
             modeled_topic["trend_class"] = "twitter"
-            print('twitter post_ids', post_ids)
             write_modeled_topic_with_twitter_posts(modeled_topic, post_ids)
         else:
             write_modeled_topic_with_reddit_posts(modeled_topic, post_ids)
