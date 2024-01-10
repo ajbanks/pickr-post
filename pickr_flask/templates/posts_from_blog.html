@@ -13,12 +13,10 @@
         <form method="POST" action="/posts_from_blog">
             {{ form.csrf_token }}<br/>
             <h1 style="color:blue;">{{ form.blog_input.label }}</h1><br/><br/>
-
             <p>
                 Do you have a blog post or article? Turn any text content into social posts here.</br>
                 Paste content below and hit the 'create posts' button for AI generated posts.</br>
             </p>
-
             <p>{{ form.blog_input(placeholder='Paste a blog post or article here to create posts from it (up to 6000 characters)')}}</p> <br/>
             {% if form.blog_input.errors %}
               <ul class="errors">
@@ -30,21 +28,26 @@
         </form>
         </br>
         </br>
-        </br>
-        </br>
-        <div>
+        <div class="container cards">
+            {{ generated_posts_fragment | safe}}
+        </div>
 
-            <div class="container cards">
-                {{ generated_posts_fragment | safe}}
-            </div>
 
-         </div>
 
         <br/>
         <br/>
         <br/>
 
     </div>
+
+
+    <script>
+        function scrollToBottom() {
+            window.scrollTo(0, document.body.scrollHeight);
+        }
+        history.scrollRestoration = "manual";
+        window.onload = scrollToBottom;
+    </script>
 
 </div>
 {% endblock %}
