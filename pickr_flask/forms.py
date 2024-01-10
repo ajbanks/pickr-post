@@ -70,14 +70,14 @@ class BlogForm(FlaskForm):
             Length(min=200, max=6000, message="Content must be longer than 200, and shorter than 6000 cahracters"),
             DataRequired(),
         ])
-    submit = SubmitField("Create Posts From Content")
+    submit = SubmitField("Preview Posts From Content and Schedule")
 
 class PostForm(FlaskForm):
-    post_input = TextAreaField('Create a post', render_kw={"rows": 7, "cols": 70},validators=[
+    post_input = TextAreaField('Create a Post', render_kw={"rows": 7, "cols": 70},validators=[
             Length(min=1, max=280, message="Post must be shorter than 280 cahracters"),
             DataRequired(),
         ])
-    submit = SubmitField("Create post and schedule")
+    submit = SubmitField("Preview and Schedule")
 
 class SetPasswordForm(FlaskForm):
     password = PasswordField("Password", validators=[DataRequired()])

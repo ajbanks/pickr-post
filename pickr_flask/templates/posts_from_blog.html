@@ -3,6 +3,7 @@
 {% block css %}
 <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
+
 {% endblock %}
 {% block content %}
 <div class="body">
@@ -12,10 +13,10 @@
     <div class="content content_large">
         <form method="POST" action="/posts_from_blog">
             {{ form.csrf_token }}<br/>
-            <h1 style="color:blue;">{{ form.blog_input.label }}</h1><br/><br/>
+            <h1>{{ form.blog_input.label }}</h1><br/><br/>
             <p>
                 Do you have a blog post or article? Turn any text content into social posts here.</br>
-                Paste content below and hit the 'create posts' button for AI generated posts.</br>
+                Paste content below and hit the 'Preview Posts' button for AI generated posts.</br>
             </p>
             <p>{{ form.blog_input(placeholder='Paste a blog post or article here to create posts from it (up to 6000 characters)')}}</p> <br/>
             {% if form.blog_input.errors %}

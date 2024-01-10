@@ -3,7 +3,6 @@
 {% block css %}
 <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
 <link href="{{ url_for('static', filename='css/home.css') }}" rel="stylesheet">
-
 {% endblock %}
 
 {% block content %}
@@ -15,8 +14,8 @@
         <form method="POST" action="/post_creation">
             {{ form.csrf_token }}<br/>
 
-            <h1 style="color:blue;">{{ form.post_input.label }}</h1><br/><br/>
-            <p>Enter a post below and hit the 'create post' button to post it to X/Twitter.</p>
+            <h1>{{ form.post_input.label }}</h1><br/><br/>
+            <p>Enter a post below and hit the 'Preview Post' button to post it to X/Twitter.</p>
             <p>{{ form.post_input(placeholder='Write your post here (up to 280 characters)')}}</p> <br/>
             {% if form.post_input.errors %}
               <ul class="errors">
