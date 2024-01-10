@@ -62,7 +62,8 @@ class Config:
             "pickr_flask.tasks.run_niche_topic_model": {"queue": "model_runner"}
         },
         # Set schedules for periodic tasks using celery beat
-        beat_schedule={
+        
+        '''beat_schedule={
             "task_update_reddit_every_morning": {
                 "task": "pickr_flask.tasks.all_niches_update",
                 "schedule": crontab(hour=15, minute=30),  # morning schedule
@@ -79,7 +80,8 @@ class Config:
                 "task": "pickr_flask.tasks.post_scheduled_tweets",
                 "schedule": crontab(minute="*/5"),  # every 5 min
             }
-        }
+        }'''
+        
     )
 
     # SMTP settings
