@@ -67,14 +67,14 @@ class ResetForm(FlaskForm):
 
 class BlogForm(FlaskForm):
     blog_input = TextAreaField('Create Content From Long Form Text', render_kw={"rows": 23, "cols": 100},validators=[
-            Length(min=300, max=6000, message="Content must be shorter than 280 cahracters"),
+            Length(min=150, max=6000, message="Content must be longer than 150, and shorter than 6000 cahracters"),
             DataRequired(),
         ])
     submit = SubmitField("Create Posts From Content")
 
 class PostForm(FlaskForm):
     post_input = TextAreaField('Create a post', render_kw={"rows": 7, "cols": 70},validators=[
-            Length(min=2, max=280, message="Post must be shorter than 280 cahracters"),
+            Length(min=1, max=280, message="Post must be shorter than 280 cahracters"),
             DataRequired(),
         ])
     submit = SubmitField("Create post and schedule")
