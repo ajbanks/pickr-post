@@ -278,6 +278,7 @@ def all_niches_run_pipeline():
 
     for niche in niches:
         log.info(f"Running topic model for niche: {niche.title}")
+        print(f"Running topic model for niche: {niche.title}")
         run_topic_pipeline(niche.id)
 
 
@@ -348,7 +349,7 @@ def run_niche_trends(niche_id) -> List[uuid.UUID]:
     return [t["id"] for t in all_topics]
 
 
-def create_topic_dicts(posts, source, niche):
+def build_topic_dicts(posts, source, niche):
 
     if len(posts) < TOPIC_MODEL_MIN_DOCS:
         log.error(f"Not enough posts for topic model: niche={niche.title}")
@@ -380,12 +381,14 @@ def create_topic_dicts(posts, source, niche):
 
     return topic_dicts
 
+
 @shared_task
 def run_niche_topic_model(niche_id) -> List[dict]:
     """
     First step of topic pipeline:
     read recent posts for the niche and run the BERTopic model.
     """
+    print('building topics')
     niche = Niche.query.get(niche_id)
     sub_ids = [sub.id for sub in niche.subreddits]
     topic_dicts = []
@@ -395,11 +398,12 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         twitter_posts = Tweet.query.filter(
             and_(
                 Tweet.niche_id == niche.id,
-                Tweet.created_at > datetime.now() - timedelta(days=7)
+                Tweet.published_at > datetime.now() - timedelta(days=7)
             )
         ).all()
 
-        topic_dicts = create_topic_dicts(twitter_posts, "twitter", niche)
+        topic_dicts = build_topic_dicts(twitter_posts, "twitter", niche)
+        print(' in twitter, type of topic dict', type(topic_dicts))
 
     reddit_posts = RedditPost.query.filter(
         and_(
@@ -408,8 +412,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
         )
     ).all()
 
-    topic_dicts = topic_dicts + create_topic_dicts(reddit_posts, "reddit", niche)
-
+    topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
     return topic_dicts
 
 
@@ -426,6 +429,9 @@ def generate_niche_topic_overviews(
 
     Returns list of modeled topic IDs that were created.
     """
+    print('generating topic overview')
+    print('type of topic_dicts', type(topic_dicts))
+
     niche = Niche.query.get(niche_id)
     modeled_topic_ids = []
     count = 0
@@ -436,6 +442,7 @@ def generate_niche_topic_overviews(
         post_ids = topic_dict["post_ids"]
 
         if topic_dict["source"] == "twitter":
+            print('twitter post_ids[:4]', post_ids[:4])
             posts_query = db.session.query(Tweet.clean_text).filter(
                 Tweet.id.in_(post_ids[:4])
             )
@@ -465,6 +472,7 @@ def generate_niche_topic_overviews(
         }
         if topic_dict["source"] == "twitter":
             modeled_topic["trend_class"] = "twitter"
+            print('twitter post_ids', post_ids)
             write_modeled_topic_with_twitter_posts(modeled_topic, post_ids)
         else:
             write_modeled_topic_with_reddit_posts(modeled_topic, post_ids)
@@ -481,6 +489,7 @@ def generate_modeled_topic_tweets(modeled_topic_ids):
     Third step of topic pipeline:
     generate tweets for each modeled topic
     """
+    print('type of modeled_topic_ids', type(modeled_topic_ids))
     for mt_id in modeled_topic_ids:
         modeled_topic = ModeledTopic.query.get(mt_id)
         generated_tweets = topic.generate_tweets_for_topic(
