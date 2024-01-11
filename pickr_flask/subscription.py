@@ -7,6 +7,9 @@ from sqlalchemy.orm.exc import NoResultFound
 from .models import PickrUser, StripeSubscription, StripeSubscriptionStatus, db
 
 
+unlimited_access_pickr_users = ['alexander.joseph9141@gmail.com', 'nathan111', 'testmail', 'pickr_social', 'pickrsocial', 'testuser555']
+
+
 def is_user_stripe_subscription_active(pickr_user):
     stripe_subscription = StripeSubscriptionStatus(
         get_stripe_subscription_status(pickr_user.id))
@@ -19,11 +22,12 @@ def is_user_stripe_subscription_active(pickr_user):
 
 def is_user_account_valid(pickr_user):
     "check if a user is allowed to use pickr features"
+    if pickr_user.username in unlimited_access_pickr_users:
+        return True
+    
     valid = True
-
-    # if is_users_trial_valid(pickr_user) \
-    #    and not is_user_stripe_subscription_active(pickr_user):
-    #     valid = False
+    if is_users_trial_valid(pickr_user) and not is_user_stripe_subscription_active(pickr_user):
+        valid = False
 
     return valid
 

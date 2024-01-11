@@ -51,6 +51,7 @@ def all_niches_update_schedule():
         if is_time_between(time(0, 59), time(1, 00), check_time=now.time()):
             all_niches_update()
             
+            
 def all_niches_update():
     """
     Scheduled daily task to fetch recent posts for all niches

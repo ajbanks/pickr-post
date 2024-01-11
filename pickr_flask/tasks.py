@@ -227,7 +227,7 @@ def update_niche_twitter(niche_id, total_posts):
     """
 
     twitter_terms = db.session.query(TwitterTerm).filter(TwitterTerm.niche_id == niche_id).all()
-    print('retrieved twitter terms',len(twitter_terms))
+    print('retrieved twitter terms', len(twitter_terms))
     posts_per_term = int(total_posts / len(twitter_terms))
     for twitter_term in twitter_terms:
         print('term', twitter_term)
