@@ -218,6 +218,7 @@ def write_modeled_topic_with_twitter_posts(
         db.session.commit()
 
     try:
+        print('pids to execute: ', post_ids)
         db.session.execute(
             insert(tweet_modeled_topic_assoc),
             [

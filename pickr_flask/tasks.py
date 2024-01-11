@@ -213,7 +213,7 @@ def all_niches_update():
 
         if niche.title in TWITTER_NICHES:
             log.info(f"Updating twitter posts for niche: {niche.title}")
-            update_niche_twitter.apply_async(args=(niche.id,num_twitter_posts_per_niche,))
+            update_niche_twitter.apply_async(args=(niche.id, num_twitter_posts_per_niche,))
         
         log.info(f"Updating subreddits for niche: {niche.title}")
         update_niche_subreddits.apply_async(args=(niche.id,))
@@ -412,7 +412,7 @@ def run_niche_topic_model(niche_id) -> List[dict]:
 
     reddit_posts = RedditPost.query.filter(
         and_(
-            RedditPost.created_at > datetime.now() - timedelta(days=18),
+            RedditPost.created_at > datetime.now() - timedelta(days=7),
             RedditPost.subreddit_id.in_(sub_ids),
         )
     ).all()
