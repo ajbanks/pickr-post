@@ -226,10 +226,11 @@ def update_niche_twitter(niche_id, total_posts):
     Save the results to DB.
     """
 
-    twitter_terms = db.session.query(TwitterTerm).filter(TwitterTerm.niche_id == niche_id)
-    posts_per_term = total_posts / len(twitter_terms)
+    twitter_terms = db.session.query(TwitterTerm).filter(TwitterTerm.niche_id == niche_id).all()
+    print('retrieved twitter terms',len(twitter_terms))
+    posts_per_term = int(total_posts / len(twitter_terms))
     for twitter_term in twitter_terms:
-
+        print('term', twitter_term)
         posts = get_twitter_posts_from_term(
             twitter_term.term,
             num_posts=posts_per_term,

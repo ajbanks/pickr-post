@@ -69,7 +69,7 @@ def all_niches_update():
         if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
             log.info(f"Updating twitter posts for niche: {niche.title}")
             update_niche_twitter(niche.id, num_twitter_posts_per_niche)
-        
+
         log.info(f"Updating subreddits for niche: {niche.title}")
         update_niche_subreddits(niche.id)
 
