@@ -250,6 +250,30 @@ def twitter_posts_for_topic_query(topic_id) -> Query:
         )
     )
 
+def twitter_posts_for_niches_query(niches: List) -> Query:
+    '''
+    Return a query object that looks up reddit posts
+    associated to a topic
+    '''
+    today = datetime.date.today()
+    week_ago = today - DT.timedelta(days=7)
+    niche_ids = [niche.id for niche in niches]
+    return (
+        TwitterPost.query
+        .filter(
+            and_(
+                TwitterPost.niche_id.in_(niche_ids),
+                TwitterPost.published_at >= week_ago
+            )
+        )
+    )
+
+def get_top_twitter_posts_for_niches(niches, num_posts=200):
+
+    top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(TwitterPost.likes).limit(num_posts).all()
+    return top_twitter_posts
+
+
 def clean_tweet(tweet: str) -> str:
     words = set(nltk.corpus.words.words())
     tweet = re.sub("@[A-Za-z0-9]+","",tweet) #Remove @ sign

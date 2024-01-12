@@ -176,6 +176,31 @@ def write_modeled_topic_with_reddit_posts(
     else:
         db.session.commit()
 
+def reddit_posts_for_niches_query(niches: List) -> Query:
+    '''
+    Return a query object that looks up reddit posts
+    associated to a topic
+    '''
+    today = datetime.date.today()
+    week_ago = today - DT.timedelta(days=7)
+    niche_ids = [niche.id for niche in niches]
+    subreddit_table = retrieve_subreddit()
+    niche_subreddit_table = subreddit_table.loc[subreddit_table['niche_id'] in niche_ids]
+    subreddit_ids = [row["id"] for id, row in niche_subreddit_table.iterrows()]
+    return (
+        RedditPost.query
+        .filter(
+            and_(
+                RedditPost.subreddit_id.in_(subreddit_ids),
+                RedditPost.created_at >= week_ago
+            )
+        )
+    )
+
+def get_top_reddit_posts_for_niches(niches, num_posts=200):
+
+    top_reddit_posts = reddit_posts_for_niches_query(niches).order_by(RedditPost.score).limit(num_posts).all()
+    return top_reddit_posts
 
 
 def retrieve_reddit_niche() -> Union[pd.DataFrame, str]:

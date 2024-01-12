@@ -36,7 +36,7 @@ from .subscription import (handle_checkout_completed,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics, create_schedule
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
-from .twitter import X_Caller
+from .twitter import X_Caller, get_top_twitter_posts_for_niches, twitter_posts_for_topic_query
 
 TWITTER_STATUS_URL = "https://twitter.com/i/status"
 TWITTER_INTENTS_URL = "https://twitter.com/intent/tweet"
@@ -711,6 +711,9 @@ def topic(topic_id):
             .all()
     )
 
+    # only get first 20 posts
+    posts = posts[:20]
+
     # generated posts HTML is rendered separately
     posts_html_fragment = "\n".join([
         render_post_html_from_id(p.id, current_user.id)
@@ -725,6 +728,25 @@ def topic(topic_id):
         generated_posts_fragment=posts_html_fragment
     )
 
+@app.route("/top_posts")
+@login_required
+def top_posts():
+    log_user_activity(current_user, f"top_posts")
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
+
+    top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:20]
+    top_user_reddit_niche_posts = get_top_reddit_posts_for_niches(current_user.niches)[:20]
+    posts = top_user_twitter_niche_posts + top_user_reddit_niche_posts
+    # only get first 20 posts
+    posts = posts[:25]
+
+    return render_template(
+        "top_posts.html",
+        title="Pickr - Curated Tweets",
+        posts=posts
+    )
 
 @app.route("/picker", methods=["GET", "POST"])
 @login_required
