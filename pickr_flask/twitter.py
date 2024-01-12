@@ -134,7 +134,7 @@ class X_Caller:
         """
 
         # This endpoint/method returns Tweets from the last seven days
-        max_results = max(100, max_results)
+        max_results = min(100, max_results)
         response = self.client.search_recent_tweets(search_term, tweet_fields=['created_at', 'public_metrics', 'author_id'], max_results=max_results)
         # The method returns a Response object, a named tuple with data, includes,
         # errors, and meta fields
@@ -262,7 +262,7 @@ def write_twitter_modeled_overview(topic_overviews: List[dict]) -> None:
 
 def get_twitter_posts_from_term(search_term: str, num_posts) -> List[dict]:
     x_caller = X_Caller()
-    num_posts = max(100, num_posts)
+    num_posts = min(100, num_posts)
     tweet_dicts = x_caller.search_tweets(search_term, max_results=num_posts)
     return tweet_dicts
 
