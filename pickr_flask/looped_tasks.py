@@ -111,7 +111,7 @@ def run_topic_pipeline(niche_id, date_from=None, date_to=None):
 
     # get evergreen topics from reddit
     topic_dicts = run_niche_topic_model(niche_id, date_from, date_to)
-    modeled_topic_ids = generate_niche_topic_overviews(topic_dicts, niche_id, date_to)
+    modeled_topic_ids = generate_niche_topic_overviews(topic_dicts, niche_id, topic_date=date_to)
     generate_modeled_topic_tweets(modeled_topic_ids)
 
 
