@@ -389,7 +389,7 @@ def build_topic_dicts(posts, source, niche):
 
 
 @shared_task
-def run_niche_topic_model(niche_id) -> List[dict]:
+def run_niche_topic_model(niche_id, date_from=None, date_to=None) -> List[dict]:
     """
     First step of topic pipeline:
     read recent posts for the niche and run the BERTopic model.
@@ -401,22 +401,40 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     # what data do we want to use here?
 
     if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
-        twitter_posts = Tweet.query.filter(
-            and_(
-                Tweet.niche_id == niche.id,
-                Tweet.published_at > datetime.now() - timedelta(days=7)
-            )
-        ).all()
+        if date_from is not None and date_to is not None:
+            twitter_posts = Tweet.query.filter(
+                and_(
+                    Tweet.niche_id == niche.id,
+                    Tweet.published_at >= date_from,
+                    Tweet.published_at <= date_to
+                )
+            ).all()
+        else:
+            twitter_posts = Tweet.query.filter(
+                and_(
+                    Tweet.niche_id == niche.id,
+                    Tweet.published_at > datetime.now() - timedelta(days=7)
+                )
+            ).all()
 
         topic_dicts = build_topic_dicts(twitter_posts, "twitter", niche)
         print(' in twitter, type of topic dict', type(topic_dicts))
 
-    reddit_posts = RedditPost.query.filter(
-        and_(
-            RedditPost.created_at > datetime.now() - timedelta(days=7),
-            RedditPost.subreddit_id.in_(sub_ids),
-        )
-    ).all()
+    if date_from is not None and date_to is not None:
+        reddit_posts = RedditPost.query.filter(
+            and_(
+                RedditPost.created_at >= date_from,
+                RedditPost.created_at <= date_to,
+                RedditPost.subreddit_id.in_(sub_ids),
+            )
+        ).all()
+    else:
+        reddit_posts = RedditPost.query.filter(
+            and_(
+                RedditPost.created_at > datetime.now() - timedelta(days=7),
+                RedditPost.subreddit_id.in_(sub_ids),
+            )
+        ).all()
 
     topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
     return topic_dicts

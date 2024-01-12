@@ -134,6 +134,7 @@ class X_Caller:
         """
 
         # This endpoint/method returns Tweets from the last seven days
+        max_results = max(100, max_results)
         response = self.client.search_recent_tweets(search_term, tweet_fields=['created_at', 'public_metrics', 'author_id'], max_results=max_results)
         # The method returns a Response object, a named tuple with data, includes,
         # errors, and meta fields
