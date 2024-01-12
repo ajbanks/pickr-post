@@ -112,6 +112,7 @@ class X_Caller:
         for tweet_object in response.data:
             post_dict = {}
             post_dict["id"] = tweet_object['id']
+            post_dict["url"] = f"https://twitter.com/unknown/status/{tweet_object['id']}"
             post_dict["text"] = tweet_object['text']
             post_dict["published_at"] = tweet_object['created_at']
             post_dict["author_id"] = tweet_object['author_id']
