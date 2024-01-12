@@ -25,7 +25,7 @@ from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
                      PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost,
                      db)
-from .reddit import write_generated_posts
+from .reddit import write_generated_posts, get_top_reddit_posts_for_niches
 from .queries import (get_scheduled_post, latest_post_edit,
                       oauth_session_by_token, oauth_session_by_user,
                       reddit_posts_for_topic_query, top_modeled_topic_query,
@@ -731,20 +731,23 @@ def topic(topic_id):
 @app.route("/top_posts")
 @login_required
 def top_posts():
-    log_user_activity(current_user, f"top_posts")
+    log_user_activity(current_user, "top_posts")
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
-    top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:20]
     top_user_reddit_niche_posts = get_top_reddit_posts_for_niches(current_user.niches)[:20]
+    top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:20]
+
     posts = top_user_twitter_niche_posts + top_user_reddit_niche_posts
-    # only get first 20 posts
-    posts = posts[:25]
+
+    # only get first 50 posts
+    posts = posts[:50]
+    print(posts)
 
     return render_template(
         "top_posts.html",
-        title="Pickr - Curated Tweets",
+        title="Pickr - Top Posts",
         posts=posts
     )
 

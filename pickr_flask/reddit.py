@@ -5,8 +5,8 @@ from typing import Union, List
 
 import pandas as pd
 import praw
-from sqlalchemy import exc, insert
-
+from sqlalchemy import exc, insert, and_
+from sqlalchemy.orm import Query
 from topic_model.util import normalise_tweet, parse_html
 
 from .models import (
@@ -181,11 +181,11 @@ def reddit_posts_for_niches_query(niches: List) -> Query:
     Return a query object that looks up reddit posts
     associated to a topic
     '''
-    today = datetime.date.today()
-    week_ago = today - DT.timedelta(days=7)
+
+    week_ago = (datetime.now() - timedelta(days=7)).date()
     niche_ids = [niche.id for niche in niches]
     subreddit_table = retrieve_subreddit()
-    niche_subreddit_table = subreddit_table.loc[subreddit_table['niche_id'] in niche_ids]
+    niche_subreddit_table = subreddit_table.loc[subreddit_table['niche_id'].isin(niche_ids)]
     subreddit_ids = [row["id"] for id, row in niche_subreddit_table.iterrows()]
     return (
         RedditPost.query

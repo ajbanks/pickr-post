@@ -1,13 +1,14 @@
 import pandas as pd
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import tweepy
 import time
 from flask import current_app as app
 from typing import Union, List
 import emoji
 import nltk
-from sqlalchemy import exc, insert
+from sqlalchemy.orm import Query
+from sqlalchemy import exc, insert, and_
 import re
 from topic_model.util import normalise_tweet, parse_html
 from .models import (
@@ -114,7 +115,7 @@ class X_Caller:
             post_dict["id"] = tweet_object['id']
             post_dict["url"] = f"https://twitter.com/unknown/status/{tweet_object['id']}"
             post_dict["text"] = tweet_object['text']
-            post_dict["published_at"] = tweet_object['created_at']
+            post_dict["created_at"] = tweet_object['created_at']
             post_dict["author_id"] = tweet_object['author_id']
             post_dict["retweets"] = tweet_object.public_metrics['retweet_count']
             post_dict["likes"] = tweet_object.public_metrics['like_count']
@@ -239,12 +240,12 @@ def twitter_posts_for_topic_query(topic_id) -> Query:
     associated to a topic
     '''
     return (
-        TwitterPost.query
+        Tweet.query
         .join(tweet_modeled_topic_assoc)
         .join(ModeledTopic)
         .filter(
             and_(
-                TwitterPost.twitter_id == tweet_modeled_topic_assoc.c.twitter_id,
+                Tweet.id == tweet_modeled_topic_assoc.c.twitter_id,
                 ModeledTopic.id == topic_id
             )
         )
@@ -255,34 +256,29 @@ def twitter_posts_for_niches_query(niches: List) -> Query:
     Return a query object that looks up reddit posts
     associated to a topic
     '''
-    today = datetime.date.today()
-    week_ago = today - DT.timedelta(days=7)
+    week_ago = (datetime.now() - timedelta(days=7)).date()
     niche_ids = [niche.id for niche in niches]
     return (
-        TwitterPost.query
+        Tweet.query
         .filter(
             and_(
-                TwitterPost.niche_id.in_(niche_ids),
-                TwitterPost.published_at >= week_ago
+                Tweet.niche_id.in_(niche_ids),
+                # Tweet.published_at >= week_ago
             )
         )
     )
 
 def get_top_twitter_posts_for_niches(niches, num_posts=200):
 
-    top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(TwitterPost.likes).limit(num_posts).all()
+    top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(Tweet.likes).limit(num_posts).all()
     return top_twitter_posts
 
 
 def clean_tweet(tweet: str) -> str:
-    words = set(nltk.corpus.words.words())
     tweet = re.sub("@[A-Za-z0-9]+","",tweet) #Remove @ sign
     tweet = re.sub(r"(?:\@|http?\://|https?\://|www)\S+", "", tweet) #Remove http links
     tweet = " ".join(tweet.split())
     tweet = emoji.replace_emoji(tweet, replace='')
-    tweet = tweet.replace("#", "").replace("_", " ") #Remove hashtag sign but keep the text
-    tweet = " ".join(w for w in nltk.wordpunct_tokenize(tweet) \
-         if w.lower() in words or not w.isalpha())
     return tweet
 
 
