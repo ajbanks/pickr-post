@@ -233,6 +233,22 @@ def write_modeled_topic_with_twitter_posts(
     else:
         db.session.commit()
 
+def twitter_posts_for_topic_query(topic_id) -> Query:
+    '''
+    Return a query object that looks up reddit posts
+    associated to a topic
+    '''
+    return (
+        TwitterPost.query
+        .join(tweet_modeled_topic_assoc)
+        .join(ModeledTopic)
+        .filter(
+            and_(
+                TwitterPost.twitter_id == tweet_modeled_topic_assoc.c.twitter_id,
+                ModeledTopic.id == topic_id
+            )
+        )
+    )
 
 def clean_tweet(tweet: str) -> str:
     words = set(nltk.corpus.words.words())

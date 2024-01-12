@@ -695,7 +695,16 @@ def topic(topic_id):
         return abort(404)
 
     generated_posts = topic.generated_posts
+
     posts = (
+
+        twitter_posts_for_topic_query(topic.id)
+            .order_by(TwitterPost.likes)
+            .limit(20)
+            .all()
+    )
+
+    posts += (
         reddit_posts_for_topic_query(topic.id)
             .order_by(RedditPost.score)
             .limit(20)
