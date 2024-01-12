@@ -245,7 +245,7 @@ def twitter_posts_for_topic_query(topic_id) -> Query:
         .join(ModeledTopic)
         .filter(
             and_(
-                Tweet.id == tweet_modeled_topic_assoc.c.twitter_id,
+                Tweet.id == tweet_modeled_topic_assoc.c.tweet_id,
                 ModeledTopic.id == topic_id
             )
         )

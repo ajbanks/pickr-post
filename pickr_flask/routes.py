@@ -23,7 +23,7 @@ from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
 from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm, PostForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
-                     PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost,
+                     PickrUser, PostEdit, Tweet, RedditPost, Schedule, ScheduledPost,
                      db)
 from .reddit import write_generated_posts, get_top_reddit_posts_for_niches
 from .queries import (get_scheduled_post, latest_post_edit,
@@ -699,7 +699,7 @@ def topic(topic_id):
     posts = (
 
         twitter_posts_for_topic_query(topic.id)
-            .order_by(TwitterPost.likes)
+            .order_by(Tweet.likes)
             .limit(20)
             .all()
     )
