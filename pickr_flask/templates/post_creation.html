@@ -15,7 +15,7 @@
             {{ form.csrf_token }}<br/>
 
             <h1>{{ form.post_input.label }}</h1><br/><br/>
-            <p>Enter a post below and hit the 'Preview Post' button to post it to X/Twitter.</p>
+            <p>Enter a post below and hit 'Preview and Schedule' to preview it before posting to X.</p>
             <p>{{ form.post_input(placeholder='Write your post here (up to 280 characters)')}}</p> <br/>
             {% if form.post_input.errors %}
               <ul class="errors">
