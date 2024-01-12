@@ -445,6 +445,7 @@ def generate_niche_topic_overviews(
         topic_dicts: List[dict],
         niche_id: uuid.UUID,
         max_modeled_topics=13,
+        topic_date=None
 ) -> List[uuid.UUID]:
     """
     Second step of topic pipeline:
@@ -484,13 +485,15 @@ def generate_niche_topic_overviews(
         )
         if topic_label == "" or topic_desc == "":
             continue  # discard this topic
-
+        
+        if topic_date is None:
+            topic_date = datetime.now()
         modeled_topic = {
             "id": uuid.uuid4(),
             "niche_id": niche_id,
             "name": topic_label,
             "description": topic_desc,
-            "date": datetime.now(),
+            "date": topic_date,
             "size": topic_dict["rank"],
         }
         if topic_dict["source"] == "twitter":
