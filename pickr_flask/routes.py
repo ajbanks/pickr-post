@@ -147,7 +147,6 @@ def login():
     GET requests serve Log-in page.
     POST requests validate and redirect user to home.
     """
-
     form = LoginForm()
     if form.validate_on_submit():
         user = PickrUser.query.filter_by(

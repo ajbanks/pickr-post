@@ -15,8 +15,10 @@ def is_user_stripe_subscription_active(pickr_user):
         get_stripe_subscription_status(pickr_user.id))
     if stripe_subscription != StripeSubscriptionStatus.active \
        and stripe_subscription != StripeSubscriptionStatus.trialing:
+        print('stripe sub is not valid')
         return False
     else:
+        print('stripe sub is valid')
         return True
 
 
@@ -25,6 +27,7 @@ def is_user_account_valid(pickr_user):
     if pickr_user.username in unlimited_access_pickr_users:
         return True
     
+    print('checking if users account is valid')
     valid = True
     if is_users_trial_valid(pickr_user) and not is_user_stripe_subscription_active(pickr_user):
         valid = False
@@ -36,10 +39,10 @@ def is_users_trial_valid(pickr_user, n_trial_days=14):
     """Check if a users account is older than trial period"""
     trial_over = False
     delta = datetime.today() - pickr_user.created_at
-
+    
     if delta.days >= n_trial_days:
         trial_over = True
-
+    print('is trial over?', trial_over, pickr_user.created_at, delta)
     return trial_over
 
 

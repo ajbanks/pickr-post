@@ -82,7 +82,7 @@ def create_schedule(user_id):
         news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.date >= datetime.now().date() - timedelta(days=7),
                 ModeledTopic.trend_class == 'trending'
             )
         ).order_by(
@@ -92,7 +92,7 @@ def create_schedule(user_id):
         twitter_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.date >= datetime.now().date() - timedelta(days=2),
                 ModeledTopic.trend_class == 'twitter'
             )
         ).order_by(
@@ -102,7 +102,7 @@ def create_schedule(user_id):
         evergreen_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.date >= datetime.now().date() - timedelta(days=2),
                 #ModeledTopic.trend_class == None
             )
         ).order_by(
@@ -413,7 +413,7 @@ def run_niche_topic_model(niche_id, date_from=None, date_to=None) -> List[dict]:
             twitter_posts = Tweet.query.filter(
                 and_(
                     Tweet.niche_id == niche.id,
-                    Tweet.published_at > datetime.now() - timedelta(days=7)
+                    Tweet.published_at > datetime.now().date() - timedelta(days=7)
                 )
             ).all()
 
@@ -431,7 +431,7 @@ def run_niche_topic_model(niche_id, date_from=None, date_to=None) -> List[dict]:
     else:
         reddit_posts = RedditPost.query.filter(
             and_(
-                RedditPost.created_at > datetime.now() - timedelta(days=7),
+                RedditPost.created_at > datetime.now().date() - timedelta(days=7),
                 RedditPost.subreddit_id.in_(sub_ids),
             )
         ).all()
