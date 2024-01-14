@@ -40,6 +40,16 @@ def is_time_between(begin_time, end_time, check_time=None):
         return check_time >= begin_time or check_time <= end_time
 
 
+def send_marketing_dms():
+    """
+    Scheduled daily task to send marketing dms.
+    """
+    while True:
+        # datetime object containing current date and time
+        now = datetime.now()
+        if is_time_between(time(0, 59), time(1, 00), check_time=now.time()):
+            run_marketing_functions()
+
 def all_niches_update_schedule():
     """
     Scheduled daily task to fetch recent posts for all niches

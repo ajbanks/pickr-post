@@ -38,6 +38,14 @@ def get_posts_run():
         from pickr_flask.looped_tasks import all_niches_update
         all_niches_update()
 
+@app.command()
+def send_marketing_dms():
+    from pickr_flask import init_app
+    app = init_app()
+    with app.app_context():
+        from pickr_flask.looped_tasks import send_marketing_dms
+        send_marketing_dms()
+        
 
 @app.command()
 def get_posts():
