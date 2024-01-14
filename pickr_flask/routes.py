@@ -1,5 +1,6 @@
 import random
 import datetime as dt
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from uuid import UUID
@@ -23,13 +24,13 @@ from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
 from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm, PostForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
-                     PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost,
+                     PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost, Tweet
                      db)
 from .reddit import write_generated_posts
 from .queries import (get_scheduled_post, latest_post_edit,
                       oauth_session_by_token, oauth_session_by_user,
                       reddit_posts_for_topic_query, top_modeled_topic_query,
-                      top_trending_modeled_topic_query)
+                      top_trending_modeled_topic_query, twitter_posts_for_topic_query)
 from .subscription import (handle_checkout_completed,
                            handle_subscription_deleted,
                            handle_subscription_updated, is_user_account_valid,
@@ -675,6 +676,12 @@ def all_topics():
         topic_ids=topic_ids,
     )
 
+@dataclass
+class TweetPost:
+    title: str = ''
+    body: str
+    url: str
+
 
 @app.route("/topic/<topic_id>")
 @login_required
@@ -694,12 +701,22 @@ def topic(topic_id):
         return abort(404)
 
     generated_posts = topic.generated_posts
-    posts = (
-        reddit_posts_for_topic_query(topic.id)
-            .order_by(RedditPost.score)
-            .limit(20)
-            .all()
-    )
+    if topic.trend_class == 'twitter':
+        posts = (
+            twitter_posts_for_topic_query(topic.id)
+                .order_by(Tweet.likes)
+                .limit(20)
+                .all()
+        )
+        posts = [TweetPost('', p.text, p.url) for p in posts]
+        
+    else:
+        posts = (
+            reddit_posts_for_topic_query(topic.id)
+                .order_by(RedditPost.score)
+                .limit(20)
+                .all()
+        )
 
     # generated posts HTML is rendered separately
     posts_html_fragment = "\n".join([
