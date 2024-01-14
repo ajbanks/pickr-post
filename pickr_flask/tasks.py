@@ -25,7 +25,9 @@ from .reddit import (fetch_subreddit_posts, process_post,
 from .twitter import (get_twitter_posts_from_term, clean_tweet,
                       write_modeled_topic_with_twitter_posts,
                       write_twitter_modeled_overview, write_twitter_posts)
+from .text_embedder import TextEmbedder
 
+EMBEDDER = TextEmbedder()
 TOPIC_MODEL_MIN_DOCS = 20
 MAX_MONTHLY_TWITTER_POSTS = 9500
 MAX_DAILY_TWITTER_POSTS = MAX_MONTHLY_TWITTER_POSTS / 30
@@ -56,6 +58,28 @@ def all_users_run_schedule():
         create_schedule(user.id).apply_async(
             args=(user.id,)
         )
+
+def remove_duplicated_posts(generated_posts, match_threshold=0.75):
+    deduplicated_posts = []
+    post_embeddings = []
+
+    for post in generated_posts:
+        remove_post = False
+        latest_post_embedding = EMBEDDER.embed(post.text)
+
+        for post_embedding in post_embeddings:
+
+            cosine_similarity = EMBEDDER.embedding_simimalrity(latest_post_embedding, post_embedding)[0][0]
+            if cosine_similarity > match_threshold:
+                remove_post = True
+                break
+
+        if not remove_post:
+            post_embeddings.append(latest_post_embedding)
+            deduplicated_posts.append(post)
+
+    return deduplicated_posts
+
 
 
 @shared_task
@@ -129,7 +153,8 @@ def create_schedule(user_id):
         num_posts_per_topic = math.ceil(total_num_posts / len(all_topics))
         for t in all_topics:
             random.shuffle(t.generated_posts)
-            posts = t.generated_posts[:num_posts_per_topic]
+            topic_posts = remove_duplicated_posts(t.generated_posts)
+            posts = topic_posts[:num_posts_per_topic]
             generated_posts += posts
 
     else:
@@ -140,7 +165,8 @@ def create_schedule(user_id):
                     continue
                 t_ = t.pop()
                 random.shuffle(t_.generated_posts)
-                posts = t_.generated_posts[:num_posts_per_topic]
+                topic_posts = remove_duplicated_posts(t_.generated_posts)
+                posts = topic_posts[:num_posts_per_topic]
 
                 generated_posts += posts
                 if len(generated_posts) >= total_num_posts:

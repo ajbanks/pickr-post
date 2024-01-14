@@ -22,10 +22,18 @@ log = logging.getLogger(__name__)
 TWITTER_USERS_CSV = "data/all_competitor_followers.csv"
 AUTO_DM_MESSAGE = """Hi!. I can see you're building your X following.
 
-I'd love to help you build your audience.
+We'd love to help you build your audience.
 
-I've built a bespoke tool that analyses the type of content your target audience loves, and then generates 
-human-like viral tweets for you based on this analysis. More followers = more opportunities.
+We've built a bespoke tool that analyses the type of content your target audience loves, and then generates human-like tweets for you based on this analysis. 
+
+More followers = more opportunities.
+
+Here are some of the features that can help you:
+- Automated posting schedule with bespoke tweets
+- Automatically generate posts from blog or article content
+- Trending topics in your audience/niche
+
+
 We're making it available free for 14 days as we are in Beta testing. Interested?
 
 pickrsocial.com
@@ -53,11 +61,14 @@ class X_Caller:
         dm_client = tweepy.Client(
             consumer_key=app.config["TWITTER_API_KEY"],
             consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
-            access_token=app.config["TWITTER_OAUTH_TOKEN"],
-            access_token_secret=app.config["TWITTER_OAUTH_TOKEN_SECRET"],
+            access_token="1574474471179796491-7nHqtrxZPlDiBNr5xxycJ4mnLhiRUj",
+            access_token_secret="Y0TnaeAuPW2GgjT79QS4u3GE9sYNsBvuMvp5s5mmboAob",
             wait_on_rate_limit=True,
         )
-        return dm_client.create_direct_message(participant_id=user_id, text=message, user_auth=True)
+        response = dm_client.create_direct_message(participant_id=user_id, text=message, user_auth=True)
+
+        return response
+
 
     def get_tweets_for_tone_matching(self, user_twitter_id, max_results=30):
 
@@ -77,7 +88,8 @@ class X_Caller:
         return twitterid.data.id
 
     def is_x_bio_valid(self, bio):
-        valid_terms = ["marketing", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur",
+        valid_terms = ["marketing","buy", "sign up", "builder", "building", "ceo", "founder", "coach", "consultant",
+                       "consulting", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur",
                        "fitness", "muscle", "course", "startup", "saas", "diet"]
 
         for term in valid_terms:
@@ -263,14 +275,16 @@ def twitter_posts_for_niches_query(niches: List) -> Query:
         .filter(
             and_(
                 Tweet.niche_id.in_(niche_ids),
-                # Tweet.published_at >= week_ago
+                Tweet.created_at >= week_ago,
+                Tweet.likes >= 1,
+                Tweet.retweets >= 1
             )
         )
     )
 
 def get_top_twitter_posts_for_niches(niches, num_posts=200):
 
-    top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(Tweet.likes).limit(num_posts).all()
+    top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(Tweet.likes.desc(), Tweet.retweets.desc()).limit(num_posts).all()
     return top_twitter_posts
 
 

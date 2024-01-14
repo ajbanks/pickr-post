@@ -199,7 +199,7 @@ def reddit_posts_for_niches_query(niches: List) -> Query:
 
 def get_top_reddit_posts_for_niches(niches, num_posts=200):
 
-    top_reddit_posts = reddit_posts_for_niches_query(niches).order_by(RedditPost.score).limit(num_posts).all()
+    top_reddit_posts = reddit_posts_for_niches_query(niches).order_by(RedditPost.score.desc()).limit(num_posts).all()
     return top_reddit_posts
 
 

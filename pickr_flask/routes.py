@@ -732,18 +732,15 @@ def topic(topic_id):
 @login_required
 def top_posts():
     log_user_activity(current_user, "top_posts")
+    max_num_posts = 50
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 
-    top_user_reddit_niche_posts = get_top_reddit_posts_for_niches(current_user.niches)[:20]
-    top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:20]
+    top_user_reddit_niche_posts = get_top_reddit_posts_for_niches(current_user.niches)[:max_num_posts]
+    top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:max_num_posts]
 
-    posts = top_user_twitter_niche_posts + top_user_reddit_niche_posts
-
-    # only get first 50 posts
-    posts = posts[:50]
-    print(posts)
+    posts = top_user_twitter_niche_posts + top_user_reddit_niche_posts[:max_num_posts - len(top_user_twitter_niche_posts)]
 
     return render_template(
         "top_posts.html",

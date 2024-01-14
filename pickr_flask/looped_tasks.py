@@ -17,7 +17,7 @@ from .post_schedule import (write_schedule, write_schedule_posts,
                             get_simple_schedule_text)
 from .queries import latest_post_edit, oauth_session_by_user
 from .tasks import (create_schedule, update_niche_twitter, update_niche_subreddits, run_niche_trends, build_topic_dicts, 
-                    run_niche_topic_model, generate_niche_topic_overviews, generate_modeled_topic_tweets,
+                    run_niche_topic_model, generate_niche_topic_overviews, run_marketing_functions, generate_modeled_topic_tweets,
                     MAX_DAILY_TWITTER_POSTS, TWITTER_NICHES
 )
 from .reddit import (fetch_subreddit_posts, process_post,
