@@ -102,13 +102,13 @@ class X_Caller:
     def send_marketing_dms(self, number_dms=5):
         """
             5 requests / 15 mins PER USER
-            500 requests / 24 hours PER USER
+            500 requests / 24 hours PER APP
 
         """
 
         for i in range(number_dms):
             self.dm_next_person_in_csv()
-            time.sleep(180)
+            time.sleep(200)
 
     def post_tweet(self, tweet: str):
         return self.client.create_tweet(text=tweet)

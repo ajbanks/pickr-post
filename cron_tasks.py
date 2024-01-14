@@ -45,7 +45,7 @@ def send_marketing_dms():
     with app.app_context():
         from pickr_flask.looped_tasks import send_marketing_dms
         send_marketing_dms()
-        
+
 
 @app.command()
 def get_posts():
