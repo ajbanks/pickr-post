@@ -251,6 +251,7 @@ def post_creation():
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
+    log_user_activity(user, "post_creation")
 
     form = PostForm()
 
@@ -289,6 +290,7 @@ def posts_from_blog():
 
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
+    log_user_activity(user, "post_from_blog")
 
     form = BlogForm()
 
@@ -748,6 +750,7 @@ def top_posts():
         return redirect(url_for("upgrade"))
 
     log_user_activity(current_user, "top_posts")
+    
     max_num_posts = 50
 
     if not is_user_account_valid(current_user):
