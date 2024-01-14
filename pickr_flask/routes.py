@@ -24,7 +24,7 @@ from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
 from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm, PostForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
-                     PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost, Tweet
+                     PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost, Tweet,
                      db)
 from .reddit import write_generated_posts
 from .queries import (get_scheduled_post, latest_post_edit,
