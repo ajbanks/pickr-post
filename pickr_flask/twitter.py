@@ -223,10 +223,11 @@ def write_modeled_topic_with_twitter_posts(
         db.session.execute(
             insert(tweet_modeled_topic_assoc),
             [
-                {"twitter_id": pid, "modeled_topic_id": modeled_topic.id}
+                {"tweet_id": pid, "modeled_topic_id": modeled_topic.id}
                 for pid in post_ids
             ],
         )
+        print('pids done: ', post_ids)
     except exc.SQLAlchemyError as e:
         db.session.rollback()
         log.error(f"Database error occured: {e}")
