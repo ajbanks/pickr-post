@@ -248,7 +248,7 @@ def user():
 @app.route("/post_creation", methods=["GET", "POST"])
 @login_required
 def post_creation():
-    
+
     if not is_user_account_valid(current_user):
         return redirect(url_for("upgrade"))
 

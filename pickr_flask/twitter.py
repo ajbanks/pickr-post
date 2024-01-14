@@ -31,8 +31,7 @@ More followers = more opportunities.
 Here are some of the features that can help you:
 - Automated posting schedule with bespoke tweets
 - Automatically generate posts from blog or article content
-- Trending topics in your audience/niche
-
+- Trending topics and Top posts in your audience/niche
 
 We're making it available free for 14 days as we are in Beta testing. Interested?
 
