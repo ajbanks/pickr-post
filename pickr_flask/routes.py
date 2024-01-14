@@ -678,7 +678,7 @@ def all_topics():
 
 @dataclass
 class TweetPost:
-    title: str = ''
+    title: str
     body: str
     url: str
 
