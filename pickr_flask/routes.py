@@ -38,6 +38,7 @@ from .subscription import (handle_checkout_completed,
 from .tasks import generate_niche_gpt_topics, create_schedule
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
 from .twitter import X_Caller
+from . import csrf
 
 TWITTER_STATUS_URL = "https://twitter.com/i/status"
 TWITTER_INTENTS_URL = "https://twitter.com/intent/tweet"
@@ -460,6 +461,7 @@ def stripe_checkout_cancel():
 
 
 @app.route("/webhooks", methods=["POST"])
+@csrf.exempt
 def webhooks():
     """
     POST handles webhook events from stripe
