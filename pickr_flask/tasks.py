@@ -106,7 +106,7 @@ def create_schedule(user_id):
         news_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.date >= datetime.now().date() - timedelta(days=7),
                 ModeledTopic.trend_class == 'trending'
             )
         ).order_by(
@@ -116,7 +116,7 @@ def create_schedule(user_id):
         twitter_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.date >= datetime.now().date() - timedelta(days=2),
                 ModeledTopic.trend_class == 'twitter'
             )
         ).order_by(
@@ -126,7 +126,7 @@ def create_schedule(user_id):
         evergreen_topics = ModeledTopic.query.filter(
             and_(
                 ModeledTopic.niche_id == niche.id,
-                ModeledTopic.date >= datetime.now() - timedelta(days=7),
+                ModeledTopic.date >= datetime.now().date() - timedelta(days=2),
                 #ModeledTopic.trend_class == None
             )
         ).order_by(
@@ -253,7 +253,7 @@ def update_niche_twitter(niche_id, total_posts):
     """
 
     twitter_terms = db.session.query(TwitterTerm).filter(TwitterTerm.niche_id == niche_id).all()
-    print('retrieved twitter terms',len(twitter_terms))
+    print('retrieved twitter terms', len(twitter_terms))
     posts_per_term = int(total_posts / len(twitter_terms))
     for twitter_term in twitter_terms:
         print('term', twitter_term)
@@ -415,7 +415,7 @@ def build_topic_dicts(posts, source, niche):
 
 
 @shared_task
-def run_niche_topic_model(niche_id) -> List[dict]:
+def run_niche_topic_model(niche_id, date_from=None, date_to=None) -> List[dict]:
     """
     First step of topic pipeline:
     read recent posts for the niche and run the BERTopic model.
@@ -427,22 +427,40 @@ def run_niche_topic_model(niche_id) -> List[dict]:
     # what data do we want to use here?
 
     if niche.title in ["Entrepreneurship", "Marketing", "Personal Development"]:
-        twitter_posts = Tweet.query.filter(
-            and_(
-                Tweet.niche_id == niche.id,
-                Tweet.published_at > datetime.now() - timedelta(days=7)
-            )
-        ).all()
+        if date_from is not None and date_to is not None:
+            twitter_posts = Tweet.query.filter(
+                and_(
+                    Tweet.niche_id == niche.id,
+                    Tweet.published_at >= date_from,
+                    Tweet.published_at <= date_to
+                )
+            ).all()
+        else:
+            twitter_posts = Tweet.query.filter(
+                and_(
+                    Tweet.niche_id == niche.id,
+                    Tweet.published_at > datetime.now().date() - timedelta(days=7)
+                )
+            ).all()
 
         topic_dicts = build_topic_dicts(twitter_posts, "twitter", niche)
         print(' in twitter, type of topic dict', type(topic_dicts))
 
-    reddit_posts = RedditPost.query.filter(
-        and_(
-            RedditPost.created_at > datetime.now() - timedelta(days=7),
-            RedditPost.subreddit_id.in_(sub_ids),
-        )
-    ).all()
+    if date_from is not None and date_to is not None:
+        reddit_posts = RedditPost.query.filter(
+            and_(
+                RedditPost.created_at >= date_from,
+                RedditPost.created_at <= date_to,
+                RedditPost.subreddit_id.in_(sub_ids),
+            )
+        ).all()
+    else:
+        reddit_posts = RedditPost.query.filter(
+            and_(
+                RedditPost.created_at > datetime.now().date() - timedelta(days=7),
+                RedditPost.subreddit_id.in_(sub_ids),
+            )
+        ).all()
 
     topic_dicts = topic_dicts + build_topic_dicts(reddit_posts, "reddit", niche)
     return topic_dicts
@@ -453,6 +471,7 @@ def generate_niche_topic_overviews(
         topic_dicts: List[dict],
         niche_id: uuid.UUID,
         max_modeled_topics=13,
+        topic_date=None
 ) -> List[uuid.UUID]:
     """
     Second step of topic pipeline:
@@ -492,13 +511,15 @@ def generate_niche_topic_overviews(
         )
         if topic_label == "" or topic_desc == "":
             continue  # discard this topic
-
+        
+        if topic_date is None:
+            topic_date = datetime.now()
         modeled_topic = {
             "id": uuid.uuid4(),
             "niche_id": niche_id,
             "name": topic_label,
             "description": topic_desc,
-            "date": datetime.now(),
+            "date": topic_date,
             "size": topic_dict["rank"],
         }
         if topic_dict["source"] == "twitter":

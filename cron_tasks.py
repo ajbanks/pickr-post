@@ -74,5 +74,20 @@ def get_topics():
         all_niches_run_pipeline_schedule()
 
 
+@app.command()
+def get_topics_run_days():
+    from pickr_flask import init_app
+    app = init_app()
+    with app.app_context():
+        from pickr_flask.looped_tasks import all_niches_run_pipeline
+        import datetime
+        date_from = datetime.datetime.strptime('2024-01-03', "%Y-%m-%d")
+        date_to = datetime.datetime.strptime('2024-01-10', "%Y-%m-%d")
+        all_niches_run_pipeline(date_from, date_to)
+
+        date_from = datetime.datetime.strptime('2024-01-02', "%Y-%m-%d")
+        date_to = datetime.datetime.strptime('2024-01-09', "%Y-%m-%d")
+        all_niches_run_pipeline(date_from, date_to)
+
 if __name__ == "__main__":
     app()

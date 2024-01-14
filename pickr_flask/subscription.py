@@ -7,35 +7,45 @@ from sqlalchemy.orm.exc import NoResultFound
 from .models import PickrUser, StripeSubscription, StripeSubscriptionStatus, db
 
 
-def is_user_stripe_subscription_active(pickr_user):
-    stripe_subscription = StripeSubscriptionStatus(
-        get_stripe_subscription_status(pickr_user.id))
-    if stripe_subscription != StripeSubscriptionStatus.active \
-       and stripe_subscription != StripeSubscriptionStatus.trialing:
-        return False
-    else:
-        return True
+unlimited_access_pickr_users = ['alexander.joseph9141@gmail.com', 'nathan111', 'testmail', 'pickr_social', 'pickrsocial', 'testuser555']
 
+
+def is_user_stripe_subscription_active(pickr_user):
+    try:
+        stripe_subscription = StripeSubscriptionStatus(
+            get_stripe_subscription_status(pickr_user.id))
+        if stripe_subscription != StripeSubscriptionStatus.active \
+        and stripe_subscription != StripeSubscriptionStatus.trialing:
+            print('stripe sub is not valid')
+            return False
+        else:
+            print('stripe sub is valid')
+            return True
+    except Exception as e:
+        print('couldnt find striper subscirption', e)
+        return False
 
 def is_user_account_valid(pickr_user):
     "check if a user is allowed to use pickr features"
+    if pickr_user.username in unlimited_access_pickr_users:
+        return True
+    
+    print('checking if users account is valid')
     valid = True
-
-    # if is_users_trial_valid(pickr_user) \
-    #    and not is_user_stripe_subscription_active(pickr_user):
-    #     valid = False
+    if is_users_trial_invalid(pickr_user) and not is_user_stripe_subscription_active(pickr_user):
+        valid = False
 
     return valid
 
 
-def is_users_trial_valid(pickr_user, n_trial_days=14):
+def is_users_trial_invalid(pickr_user, n_trial_days=14):
     """Check if a users account is older than trial period"""
     trial_over = False
     delta = datetime.today() - pickr_user.created_at
-
+    
     if delta.days >= n_trial_days:
         trial_over = True
-
+    print('is trial over?', trial_over, pickr_user.created_at, delta)
     return trial_over
 
 

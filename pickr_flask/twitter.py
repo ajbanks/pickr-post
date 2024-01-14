@@ -148,6 +148,7 @@ class X_Caller:
         """
 
         # This endpoint/method returns Tweets from the last seven days
+        max_results = min(100, max_results)
         response = self.client.search_recent_tweets(search_term, tweet_fields=['created_at', 'public_metrics', 'author_id'], max_results=max_results)
         # The method returns a Response object, a named tuple with data, includes,
         # errors, and meta fields
@@ -175,8 +176,6 @@ class X_Caller:
                 return resp
 
         return "FALSE"
-
-
 
 
 def write_twitter_posts(posts: List[dict]) -> int:
@@ -236,10 +235,11 @@ def write_modeled_topic_with_twitter_posts(
         db.session.execute(
             insert(tweet_modeled_topic_assoc),
             [
-                {"twitter_id": pid, "modeled_topic_id": modeled_topic.id}
+                {"tweet_id": pid, "modeled_topic_id": modeled_topic.id}
                 for pid in post_ids
             ],
         )
+        print('pids done: ', post_ids)
     except exc.SQLAlchemyError as e:
         db.session.rollback()
         log.error(f"Database error occured: {e}")
@@ -312,6 +312,7 @@ def write_twitter_modeled_overview(topic_overviews: List[dict]) -> None:
 
 def get_twitter_posts_from_term(search_term: str, num_posts) -> List[dict]:
     x_caller = X_Caller()
+    num_posts = min(100, num_posts)
     tweet_dicts = x_caller.search_tweets(search_term, max_results=num_posts)
     return tweet_dicts
 

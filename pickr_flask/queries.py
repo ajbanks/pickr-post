@@ -5,6 +5,7 @@ from sqlalchemy import and_
 from sqlalchemy.dialects.postgresql import UUID
 
 from .models import (
+    Tweet,
     RedditPost,
     ModeledTopic,
     GeneratedPost,
@@ -13,6 +14,7 @@ from .models import (
     ScheduledPost,
     OAuthSession,
     reddit_modeled_topic_assoc,
+    tweet_modeled_topic_assoc
 )
 
 ###############################################################################
@@ -91,6 +93,24 @@ def reddit_posts_for_topic_query(topic_id) -> Query:
         .filter(
             and_(
                 RedditPost.id == reddit_modeled_topic_assoc.c.reddit_id,
+                ModeledTopic.id == topic_id
+            )
+        )
+    )
+
+
+def twitter_posts_for_topic_query(topic_id) -> Query:
+    '''
+    Return a query object that looks up twitter posts
+    associated to a topic
+    '''
+    return (
+        Tweet.query
+        .join(tweet_modeled_topic_assoc)
+        .join(ModeledTopic)
+        .filter(
+            and_(
+                Tweet.id == tweet_modeled_topic_assoc.c.tweet_id,
                 ModeledTopic.id == topic_id
             )
         )

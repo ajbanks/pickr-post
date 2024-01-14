@@ -1,5 +1,6 @@
 import random
 import datetime as dt
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from uuid import UUID
@@ -29,13 +30,14 @@ from .reddit import write_generated_posts, get_top_reddit_posts_for_niches
 from .queries import (get_scheduled_post, latest_post_edit,
                       oauth_session_by_token, oauth_session_by_user,
                       reddit_posts_for_topic_query, top_modeled_topic_query,
-                      top_trending_modeled_topic_query)
+                      top_trending_modeled_topic_query, twitter_posts_for_topic_query)
 from .subscription import (handle_checkout_completed,
                            handle_subscription_deleted,
                            handle_subscription_updated, is_user_account_valid,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics, create_schedule
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
+from . import csrf
 from .twitter import X_Caller, get_top_twitter_posts_for_niches, twitter_posts_for_topic_query
 
 TWITTER_STATUS_URL = "https://twitter.com/i/status"
@@ -147,7 +149,6 @@ def login():
     GET requests serve Log-in page.
     POST requests validate and redirect user to home.
     """
-
     form = LoginForm()
     if form.validate_on_submit():
         user = PickrUser.query.filter_by(
@@ -460,7 +461,8 @@ def stripe_checkout_cancel():
 
 
 @app.route("/webhooks", methods=["POST"])
-def webhook():
+@csrf.exempt
+def webhooks():
     """
     POST handles webhook events from stripe
     cf https://stripe.com/docs/webhooks
@@ -676,6 +678,12 @@ def all_topics():
         topic_ids=topic_ids,
     )
 
+@dataclass
+class TweetPost:
+    title: str
+    body: str
+    url: str
+
 
 @app.route("/topic/<topic_id>")
 @login_required
@@ -695,24 +703,22 @@ def topic(topic_id):
         return abort(404)
 
     generated_posts = topic.generated_posts
+    if topic.trend_class == 'twitter':
+        posts = (
+            twitter_posts_for_topic_query(topic.id)
+                .order_by(Tweet.likes)
+                .limit(20)
+                .all()
+        )
+        posts = [TweetPost('', p.text, p.url) for p in posts]
 
-    posts = (
-
-        twitter_posts_for_topic_query(topic.id)
-            .order_by(Tweet.likes)
-            .limit(20)
-            .all()
-    )
-
-    posts += (
-        reddit_posts_for_topic_query(topic.id)
-            .order_by(RedditPost.score)
-            .limit(20)
-            .all()
-    )
-
-    # only get first 20 posts
-    posts = posts[:20]
+    else:
+        posts = (
+            reddit_posts_for_topic_query(topic.id)
+                .order_by(RedditPost.score)
+                .limit(20)
+                .all()
+        )
 
     # generated posts HTML is rendered separately
     posts_html_fragment = "\n".join([

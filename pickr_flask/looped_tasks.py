@@ -61,6 +61,7 @@ def all_niches_update_schedule():
         if is_time_between(time(0, 59), time(1, 00), check_time=now.time()):
             all_niches_update()
             
+
 def all_niches_update():
     """
     Scheduled daily task to fetch recent posts for all niches
@@ -93,7 +94,7 @@ def all_niches_run_pipeline_schedule():
         all_niches_run_pipeline()        
 
 
-def all_niches_run_pipeline():
+def all_niches_run_pipeline(date_from=None, date_to=None):
     """
     Scheduled daily task to run topic pipeline for each niche
     """
@@ -105,10 +106,10 @@ def all_niches_run_pipeline():
 
     for niche in tqdm(niches):
         log.info(f"Running topic model for niche: {niche.title}")
-        run_topic_pipeline(niche.id)
+        run_topic_pipeline(niche.id, date_from, date_to)
 
 
-def run_topic_pipeline(niche_id):
+def run_topic_pipeline(niche_id, date_from=None, date_to=None):
     """
     Topic pipeline is done by chaining celery tasks, so different workers
     can process different steps of the pipeline.
@@ -119,8 +120,8 @@ def run_topic_pipeline(niche_id):
     generate_modeled_topic_tweets(modeled_topic_ids)
 
     # get evergreen topics from reddit
-    topic_dicts = run_niche_topic_model(niche_id)
-    modeled_topic_ids = generate_niche_topic_overviews(topic_dicts, niche_id)
+    topic_dicts = run_niche_topic_model(niche_id, date_from, date_to)
+    modeled_topic_ids = generate_niche_topic_overviews(topic_dicts, niche_id, topic_date=date_to)
     generate_modeled_topic_tweets(modeled_topic_ids)
 
 
