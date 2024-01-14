@@ -460,12 +460,12 @@ def stripe_checkout_cancel():
 
 
 @app.route("/webhooks", methods=["POST"])
-def webhook():
+def webhooks():
     """
     POST handles webhook events from stripe
     cf https://stripe.com/docs/webhooks
     """
-
+    print('entered web hook')
     payload = request.get_data(as_text=True)
     stripe_header = request.headers.get("Stripe-Signature")
     app.logger.info('stripe_webhook activated')
@@ -678,7 +678,7 @@ def all_topics():
 
 @dataclass
 class TweetPost:
-    title: str
+    title: str  
     body: str
     url: str
 
