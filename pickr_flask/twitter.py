@@ -171,7 +171,7 @@ class X_Caller:
                 dm_df["been_messaged"].values[i] = 1
                 user_id = dm_df["User Id"].values[i]
                 resp = self.auto_dm(user_id, AUTO_DM_MESSAGE)
-                dm_df.to_csv(TWITTER_USERS_CSV)
+                dm_df.to_csv(TWITTER_USERS_CSV, index=False)
                 return resp
 
         return "FALSE"
