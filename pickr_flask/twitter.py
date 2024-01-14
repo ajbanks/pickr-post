@@ -164,8 +164,6 @@ class X_Caller:
         return "FALSE"
 
 
-
-
 def write_twitter_posts(posts: List[dict]) -> int:
     num_written = 0
     for post in posts:
