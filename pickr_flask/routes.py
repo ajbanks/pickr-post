@@ -248,6 +248,9 @@ def user():
 @app.route("/post_creation", methods=["GET", "POST"])
 @login_required
 def post_creation():
+    
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
 
     form = PostForm()
 
@@ -283,6 +286,9 @@ def post_creation():
 @app.route("/posts_from_blog", methods=["GET", "POST"])
 @login_required
 def posts_from_blog():
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
 
     form = BlogForm()
 
@@ -737,6 +743,10 @@ def topic(topic_id):
 @app.route("/top_posts")
 @login_required
 def top_posts():
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
+
     log_user_activity(current_user, "top_posts")
     max_num_posts = 50
 
