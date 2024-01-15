@@ -10,7 +10,7 @@ from typing import List
 from celery import chain, shared_task
 from flask import current_app as app
 from sqlalchemy import exc, insert, and_
-from topic_model import topic
+from topic_model import topic, clean_generated_tweet
 from .twitter import X_Caller
 from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Tweet, TwitterTerm, RedditPost,
                      ScheduledPost, _to_dict, db, user_niche_assoc)
@@ -680,3 +680,15 @@ def post_scheduled_tweets():
             f"posted {num_posted} tweets for user_id={user_id}"
         )
     # endfor
+
+
+def clean_all_generated_tweets():
+    all_posts = GeneratedPost.query.all()
+    for post in all_posts:
+        post.text = clean_generated_tweet(post.text)
+    db.session.commit()
+
+    all_posts = PostEdit.query.all()
+    for post in all_posts:
+        post.text = clean_generated_tweet(post.text)
+    db.session.commit()

@@ -742,6 +742,7 @@ def topic(topic_id):
         generated_posts_fragment=posts_html_fragment
     )
 
+
 @app.route("/top_posts")
 @login_required
 def top_posts():

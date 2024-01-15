@@ -281,6 +281,7 @@ def twitter_posts_for_niches_query(niches: List) -> Query:
         )
     )
 
+
 def get_top_twitter_posts_for_niches(niches, num_posts=200):
 
     top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(Tweet.likes.desc(), Tweet.retweets.desc()).limit(num_posts).all()

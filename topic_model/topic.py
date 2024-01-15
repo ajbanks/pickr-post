@@ -354,12 +354,14 @@ def generate_tweets_for_topic(
     generated_tweets = []
     for i in range(math.ceil(num_tweets/2)):
         tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_label))
+        tweet = clean_generated_tweet(tweet)
         generated_tweets.append({
             "topic_label": topic_label,
             "information_type": "informative",
             "text": tweet,
         })
         tweet = send_chat_gpt_message(generate_informative_tweet_for_topic_awesome_prompt(topic_summary))
+        tweet = clean_generated_tweet(tweet)
         generated_tweets.append({
             "topic_label": topic_label,
             "information_type": "funny",
@@ -367,6 +369,12 @@ def generate_tweets_for_topic(
         })
 
     return generated_tweets
+
+
+def clean_generated_tweet(text):
+    if '"' in text:
+        text = text.split('"')[1]
+    return text
 
 
 def rewrite_tweet_in_users_tone(tweet, user_tweet_examples):

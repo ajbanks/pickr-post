@@ -20,7 +20,7 @@
                 {% for post in posts %}
                 <div class="card post">
                     <p>{{post.title }}</p>
-                    <p>{{ post.clean_text | truncate(300)}}</p>
+                    <p>{{ post.body | truncate(300)}}</p>
 
                     <div class="read">
                         <a href="{{ post.url }}">Read↗</a>

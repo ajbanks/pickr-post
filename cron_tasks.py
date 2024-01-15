@@ -89,5 +89,15 @@ def get_topics_run_days():
         date_to = datetime.datetime.strptime('2024-01-09', "%Y-%m-%d")
         all_niches_run_pipeline(date_from, date_to)
 
+
+@app.command()
+def clean_posts():
+    from pickr_flask import init_app
+    app = init_app()
+    with app.app_context():
+        from pickr_flask.tasks import clean_all_generated_tweets
+        clean_all_generated_tweets()
+
+
 if __name__ == "__main__":
     app()
