@@ -757,6 +757,7 @@ def top_posts():
 
     top_user_reddit_niche_posts = get_top_reddit_posts_for_niches(current_user.niches)[:max_num_posts]
     top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:max_num_posts]
+    top_user_twitter_niche_posts = [TweetPost('', p.text, p.url) for p in top_user_twitter_niche_posts]
 
     posts = top_user_twitter_niche_posts + top_user_reddit_niche_posts[:max_num_posts - len(top_user_twitter_niche_posts)]
 
