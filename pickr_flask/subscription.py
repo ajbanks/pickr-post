@@ -53,10 +53,11 @@ def get_stripe_subscription_status(user_id):
     stripe_subscription = StripeSubscription.query.filter_by(
             user_id=user_id,
         ).first()
-
+    print('stripe_subscription', stripe_subscription, user_id)
     if stripe_subscription is None:
+        print('subscription is None')
         return StripeSubscriptionStatus.canceled
-
+    print('stripe_subscription.stripe_subscription_id', stripe_subscription.stripe_subscription_id)
     retrieve_sub = stripe.Subscription.retrieve(
         stripe_subscription.stripe_subscription_id)
     status = retrieve_sub.status

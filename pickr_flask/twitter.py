@@ -126,7 +126,7 @@ class X_Caller:
             post_dict["id"] = tweet_object['id']
             post_dict["url"] = f"https://twitter.com/unknown/status/{tweet_object['id']}"
             post_dict["text"] = tweet_object['text']
-            post_dict["created_at"] = tweet_object['created_at']
+            post_dict["published_at"] = tweet_object['created_at']
             post_dict["author_id"] = tweet_object['author_id']
             post_dict["retweets"] = tweet_object.public_metrics['retweet_count']
             post_dict["likes"] = tweet_object.public_metrics['like_count']
@@ -274,7 +274,7 @@ def twitter_posts_for_niches_query(niches: List) -> Query:
         .filter(
             and_(
                 Tweet.niche_id.in_(niche_ids),
-                Tweet.created_at >= week_ago,
+                Tweet.published_at >= week_ago,
                 Tweet.likes >= 1,
                 Tweet.retweets >= 1
             )
