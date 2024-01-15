@@ -1,6 +1,6 @@
 <div class="left">
     <img id="menu" class="clickable" src="{{url_for('static', filename='img/icons8-menu.svg')}}">
-    <div class="logo clickable" onclick=location.href='{{url_for('home')}}'><b>pickr</b></div>
+    <div class="logo clickable" onclick=location.href='{{url_for('home')}}'><img id="logo" class="logo clickable" onclick=location.href='{{url_for('home')}} src="{{url_for('static', filename='img/logo.png')}}" style="width:150px;height:65px;" alt="Pickr" /></div>
 </div>
 <div class="right">
     {% if current_user.is_authenticated %}

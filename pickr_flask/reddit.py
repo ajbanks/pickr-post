@@ -5,8 +5,8 @@ from typing import Union, List
 
 import pandas as pd
 import praw
-from sqlalchemy import exc, insert
-
+from sqlalchemy import exc, insert, and_
+from sqlalchemy.orm import Query
 from topic_model.util import normalise_tweet, parse_html
 
 from .models import (
@@ -176,6 +176,31 @@ def write_modeled_topic_with_reddit_posts(
     else:
         db.session.commit()
 
+def reddit_posts_for_niches_query(niches: List) -> Query:
+    '''
+    Return a query object that looks up reddit posts
+    associated to a topic
+    '''
+
+    week_ago = (datetime.now() - timedelta(days=7)).date()
+    niche_ids = [niche.id for niche in niches]
+    subreddit_table = retrieve_subreddit()
+    niche_subreddit_table = subreddit_table.loc[subreddit_table['niche_id'].isin(niche_ids)]
+    subreddit_ids = [row["id"] for id, row in niche_subreddit_table.iterrows()]
+    return (
+        RedditPost.query
+        .filter(
+            and_(
+                RedditPost.subreddit_id.in_(subreddit_ids),
+                RedditPost.created_at >= week_ago
+            )
+        )
+    )
+
+def get_top_reddit_posts_for_niches(niches, num_posts=200):
+
+    top_reddit_posts = reddit_posts_for_niches_query(niches).order_by(RedditPost.score.desc()).limit(num_posts).all()
+    return top_reddit_posts
 
 
 def retrieve_reddit_niche() -> Union[pd.DataFrame, str]:

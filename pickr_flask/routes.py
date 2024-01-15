@@ -24,9 +24,9 @@ from .constants import (DATETIME_FRIENDLY_FMT, DATETIME_ISO_FMT,
 from .forms import LoginForm, ResetForm, SetPasswordForm, SignupForm, TopicForm, BlogForm, PostForm
 from .http import url_has_allowed_host_and_scheme
 from .models import (GeneratedPost, ModeledTopic, Niche, OAuthSession,
-                     PickrUser, PostEdit, RedditPost, Schedule, ScheduledPost, Tweet,
+                     PickrUser, PostEdit, Tweet, RedditPost, Schedule, ScheduledPost,
                      db)
-from .reddit import write_generated_posts
+from .reddit import write_generated_posts, get_top_reddit_posts_for_niches
 from .queries import (get_scheduled_post, latest_post_edit,
                       oauth_session_by_token, oauth_session_by_user,
                       reddit_posts_for_topic_query, top_modeled_topic_query,
@@ -37,8 +37,8 @@ from .subscription import (handle_checkout_completed,
                            is_user_stripe_subscription_active)
 from .tasks import generate_niche_gpt_topics, create_schedule
 from .util import log_user_activity, render_post_html_from_id, urlsafe_uuid
-from .twitter import X_Caller
 from . import csrf
+from .twitter import X_Caller, get_top_twitter_posts_for_niches, twitter_posts_for_topic_query
 
 TWITTER_STATUS_URL = "https://twitter.com/i/status"
 TWITTER_INTENTS_URL = "https://twitter.com/intent/tweet"
@@ -249,6 +249,10 @@ def user():
 @login_required
 def post_creation():
 
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
+    log_user_activity(user, "post_creation")
+
     form = PostForm()
 
     generated_posts = []
@@ -283,6 +287,10 @@ def post_creation():
 @app.route("/posts_from_blog", methods=["GET", "POST"])
 @login_required
 def posts_from_blog():
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
+    log_user_activity(user, "post_from_blog")
 
     form = BlogForm()
 
@@ -467,7 +475,7 @@ def webhooks():
     POST handles webhook events from stripe
     cf https://stripe.com/docs/webhooks
     """
-    print('entered web hook')
+
     payload = request.get_data(as_text=True)
     stripe_header = request.headers.get("Stripe-Signature")
     app.logger.info('stripe_webhook activated')
@@ -680,7 +688,7 @@ def all_topics():
 
 @dataclass
 class TweetPost:
-    title: str  
+    title: str
     body: str
     url: str
 
@@ -711,7 +719,7 @@ def topic(topic_id):
                 .all()
         )
         posts = [TweetPost('', p.text, p.url) for p in posts]
-        
+
     else:
         posts = (
             reddit_posts_for_topic_query(topic.id)
@@ -734,6 +742,29 @@ def topic(topic_id):
         generated_posts_fragment=posts_html_fragment
     )
 
+@app.route("/top_posts")
+@login_required
+def top_posts():
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
+
+    log_user_activity(current_user, "top_posts")
+    max_num_posts = 50
+
+    if not is_user_account_valid(current_user):
+        return redirect(url_for("upgrade"))
+
+    top_user_reddit_niche_posts = get_top_reddit_posts_for_niches(current_user.niches)[:max_num_posts]
+    top_user_twitter_niche_posts = get_top_twitter_posts_for_niches(current_user.niches)[:max_num_posts]
+
+    posts = top_user_twitter_niche_posts + top_user_reddit_niche_posts[:max_num_posts - len(top_user_twitter_niche_posts)]
+
+    return render_template(
+        "top_posts.html",
+        title="Pickr - Top Posts",
+        posts=posts
+    )
 
 @app.route("/picker", methods=["GET", "POST"])
 @login_required

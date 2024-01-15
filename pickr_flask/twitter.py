@@ -1,13 +1,14 @@
 import pandas as pd
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 import tweepy
 import time
 from flask import current_app as app
 from typing import Union, List
 import emoji
 import nltk
-from sqlalchemy import exc, insert
+from sqlalchemy.orm import Query
+from sqlalchemy import exc, insert, and_
 import re
 from topic_model.util import normalise_tweet, parse_html
 from .models import (
@@ -21,10 +22,17 @@ log = logging.getLogger(__name__)
 TWITTER_USERS_CSV = "data/all_competitor_followers.csv"
 AUTO_DM_MESSAGE = """Hi!. I can see you're building your X following.
 
-I'd love to help you build your audience.
+We'd love to help you build your audience.
 
-I've built a bespoke tool that analyses the type of content your target audience loves, and then generates 
-human-like viral tweets for you based on this analysis. More followers = more opportunities.
+We've built a bespoke tool that analyses the type of content your target audience loves, and then generates human-like tweets for you based on this analysis. 
+
+More followers = more opportunities.
+
+Here are some of the features that can help you:
+- Automated posting schedule with bespoke tweets
+- Automatically generate posts from blog or article content
+- Trending topics and Top posts in your audience/niche
+
 We're making it available free for 14 days as we are in Beta testing. Interested?
 
 pickrsocial.com
@@ -52,11 +60,14 @@ class X_Caller:
         dm_client = tweepy.Client(
             consumer_key=app.config["TWITTER_API_KEY"],
             consumer_secret=app.config["TWITTER_API_KEY_SECRET"],
-            access_token=app.config["TWITTER_OAUTH_TOKEN"],
-            access_token_secret=app.config["TWITTER_OAUTH_TOKEN_SECRET"],
+            access_token="1574474471179796491-7nHqtrxZPlDiBNr5xxycJ4mnLhiRUj",
+            access_token_secret="Y0TnaeAuPW2GgjT79QS4u3GE9sYNsBvuMvp5s5mmboAob",
             wait_on_rate_limit=True,
         )
-        return dm_client.create_direct_message(participant_id=user_id, text=message, user_auth=True)
+        response = dm_client.create_direct_message(participant_id=user_id, text=message, user_auth=True)
+
+        return response
+
 
     def get_tweets_for_tone_matching(self, user_twitter_id, max_results=30):
 
@@ -76,7 +87,8 @@ class X_Caller:
         return twitterid.data.id
 
     def is_x_bio_valid(self, bio):
-        valid_terms = ["marketing", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur",
+        valid_terms = ["marketing","buy", "sign up", "builder", "building", "ceo", "founder", "coach", "consultant",
+                       "consulting", "marketer", "seo", "advertising", "content", "creator", "writer", "entrepreneur",
                        "fitness", "muscle", "course", "startup", "saas", "diet"]
 
         for term in valid_terms:
@@ -89,13 +101,13 @@ class X_Caller:
     def send_marketing_dms(self, number_dms=5):
         """
             5 requests / 15 mins PER USER
-            500 requests / 24 hours PER USER
+            500 requests / 24 hours PER APP
 
         """
 
         for i in range(number_dms):
             self.dm_next_person_in_csv()
-            time.sleep(180)
+            time.sleep(200)
 
     def post_tweet(self, tweet: str):
         return self.client.create_tweet(text=tweet)
@@ -112,8 +124,9 @@ class X_Caller:
         for tweet_object in response.data:
             post_dict = {}
             post_dict["id"] = tweet_object['id']
+            post_dict["url"] = f"https://twitter.com/unknown/status/{tweet_object['id']}"
             post_dict["text"] = tweet_object['text']
-            post_dict["published_at"] = tweet_object['created_at']
+            post_dict["created_at"] = tweet_object['created_at']
             post_dict["author_id"] = tweet_object['author_id']
             post_dict["retweets"] = tweet_object.public_metrics['retweet_count']
             post_dict["likes"] = tweet_object.public_metrics['like_count']
@@ -158,7 +171,7 @@ class X_Caller:
                 dm_df["been_messaged"].values[i] = 1
                 user_id = dm_df["User Id"].values[i]
                 resp = self.auto_dm(user_id, AUTO_DM_MESSAGE)
-                dm_df.to_csv(TWITTER_USERS_CSV)
+                dm_df.to_csv(TWITTER_USERS_CSV, index=False)
                 return resp
 
         return "FALSE"
@@ -232,16 +245,53 @@ def write_modeled_topic_with_twitter_posts(
     else:
         db.session.commit()
 
+def twitter_posts_for_topic_query(topic_id) -> Query:
+    '''
+    Return a query object that looks up reddit posts
+    associated to a topic
+    '''
+    return (
+        Tweet.query
+        .join(tweet_modeled_topic_assoc)
+        .join(ModeledTopic)
+        .filter(
+            and_(
+                Tweet.id == tweet_modeled_topic_assoc.c.tweet_id,
+                ModeledTopic.id == topic_id
+            )
+        )
+    )
+
+def twitter_posts_for_niches_query(niches: List) -> Query:
+    '''
+    Return a query object that looks up reddit posts
+    associated to a topic
+    '''
+    week_ago = (datetime.now() - timedelta(days=7)).date()
+    niche_ids = [niche.id for niche in niches]
+    return (
+        Tweet.query
+        .filter(
+            and_(
+                Tweet.niche_id.in_(niche_ids),
+                Tweet.created_at >= week_ago,
+                Tweet.likes >= 1,
+                Tweet.retweets >= 1
+            )
+        )
+    )
+
+def get_top_twitter_posts_for_niches(niches, num_posts=200):
+
+    top_twitter_posts = twitter_posts_for_niches_query(niches).order_by(Tweet.likes.desc(), Tweet.retweets.desc()).limit(num_posts).all()
+    return top_twitter_posts
+
 
 def clean_tweet(tweet: str) -> str:
-    words = set(nltk.corpus.words.words())
     tweet = re.sub("@[A-Za-z0-9]+","",tweet) #Remove @ sign
     tweet = re.sub(r"(?:\@|http?\://|https?\://|www)\S+", "", tweet) #Remove http links
     tweet = " ".join(tweet.split())
     tweet = emoji.replace_emoji(tweet, replace='')
-    tweet = tweet.replace("#", "").replace("_", " ") #Remove hashtag sign but keep the text
-    tweet = " ".join(w for w in nltk.wordpunct_tokenize(tweet) \
-         if w.lower() in words or not w.isalpha())
     return tweet
 
 
