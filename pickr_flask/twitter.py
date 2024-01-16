@@ -106,7 +106,10 @@ class X_Caller:
         """
 
         for i in range(number_dms):
-            self.dm_next_person_in_csv()
+            try:   
+                self.dm_next_person_in_csv()
+            except Exception as e:
+                print(f'failed to msg user due to error: {e}')
             time.sleep(200)
 
     def post_tweet(self, tweet: str):
