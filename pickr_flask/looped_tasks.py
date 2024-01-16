@@ -47,7 +47,7 @@ def send_marketing_dms():
     while True:
         # datetime object containing current date and time
         now = datetime.now()
-        if is_time_between(time(0, 59), time(1, 00), check_time=now.time()):
+        if is_time_between(time(15, 00), time(15, 1), check_time=now.time()):
             run_marketing_functions()
 
 def all_niches_update_schedule():
