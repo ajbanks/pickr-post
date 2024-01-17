@@ -1,9 +1,13 @@
 import logging
 from typing import List
 
-from sqlalchemy import exc
+from sqlalchemy import exc, insert, and_
 
-from .models import ModeledTopic, Schedule, ScheduledPost, db
+
+from .models import ModeledTopic, Schedule, ScheduledPost, schedule_topic_assoc, db
+
+log = logging.getLogger(__name__)
+
 
 TOPIC_TEXT_SUFFIX = """
 The posts in the scehdule are able to be edited, or posted at a different time by clicking on the Edit and Schedule button.
@@ -73,3 +77,21 @@ def write_schedule_posts(schedule_posts: List[dict]):
             db.session.commit()
             records.append(record)
     return records
+
+
+def write_schedule_topic_assoc(schedule: Schedule, topic_ids: List[int]):
+    try:
+        print('topic_ids to execute: ', topic_ids)
+        db.session.execute(
+            insert(schedule_topic_assoc),
+            [
+                {"modeled_topic_id": tid, "schedule_id": schedule.id}
+                for tid in topic_ids
+            ],
+        )
+        print('topic_ids done: ', topic_ids)
+    except exc.SQLAlchemyError as e:
+        db.session.rollback()
+        log.error(f"Database error occured: {e}")
+    else:
+        db.session.commit()

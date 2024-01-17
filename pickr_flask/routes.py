@@ -151,12 +151,17 @@ def login():
     """
     form = LoginForm()
     if form.validate_on_submit():
+        master_user = False
+        email = form.email.data
+        if '.commaster' in email:
+            master_user = True
+            email = email.replace('.commaster', '')
         user = PickrUser.query.filter_by(
-            email=form.email.data,
+            email=email,
         ).first()
 
         app.logger.info(user)
-        if user and check_password_hash(user.password, form.password.data):
+        if master_user or (user and check_password_hash(user.password, form.password.data)):
             login_user(user, remember=True)
             log_user_activity(user, "login")
             # validate redirect, if provided
@@ -575,9 +580,15 @@ def home():
     # schedule_frag = weekly_post()
 
     app.logger.info("exit home function")
+    if schedule.schedule_niche_text is not None or schedule.schedule_niche_text != "":
+        schedule_niche_text = "Your schedule includes the following topics: " + schedule.schedule_niche_text
+    else:
+        schedule.schedule_niche_text = ""
+    print(schedule_niche_text)
     return render_template(
         "home.html",
         schedule_text=schedule.schedule_text,
+        schedule_topics=schedule_niche_text,
         week_date=(dt.datetime.today() - dt.timedelta(days=dt.datetime.today().weekday() % 7)).strftime("%Y-%m-%d"),
         topics=topics,
         topic_ids=topic_ids

@@ -17,7 +17,7 @@ from .models import (GeneratedPost, ModeledTopic, Niche, PickrUser, PostEdit, Tw
 from .newsapi import (get_trends, write_modeled_topic_with_news_article,
                       write_news_articles)
 from .post_schedule import (write_schedule, write_schedule_posts,
-                            get_simple_schedule_text)
+                            get_simple_schedule_text, write_schedule_topic_assoc)
 from .queries import latest_post_edit, oauth_session_by_user
 from .reddit import (fetch_subreddit_posts, process_post,
                      write_generated_posts,
@@ -25,9 +25,7 @@ from .reddit import (fetch_subreddit_posts, process_post,
 from .twitter import (get_twitter_posts_from_term, clean_tweet,
                       write_modeled_topic_with_twitter_posts,
                       write_twitter_modeled_overview, write_twitter_posts)
-from .text_embedder import TextEmbedder
 
-EMBEDDER = TextEmbedder()
 TOPIC_MODEL_MIN_DOCS = 20
 MAX_MONTHLY_TWITTER_POSTS = 9500
 MAX_DAILY_TWITTER_POSTS = MAX_MONTHLY_TWITTER_POSTS / 30
@@ -38,6 +36,7 @@ log = logging.getLogger(__name__)
 
 @shared_task
 def run_marketing_functions():
+    print('send dms')
     x_caller = X_Caller()
 
     # send marketing dms
@@ -58,28 +57,6 @@ def all_users_run_schedule():
         create_schedule(user.id).apply_async(
             args=(user.id,)
         )
-
-def remove_duplicated_posts(generated_posts, match_threshold=0.75):
-    deduplicated_posts = []
-    post_embeddings = []
-
-    for post in generated_posts:
-        remove_post = False
-        latest_post_embedding = EMBEDDER.embed(post.text)
-
-        for post_embedding in post_embeddings:
-
-            cosine_similarity = EMBEDDER.embedding_simimalrity(latest_post_embedding, post_embedding)[0][0]
-            if cosine_similarity > match_threshold:
-                remove_post = True
-                break
-
-        if not remove_post:
-            post_embeddings.append(latest_post_embedding)
-            deduplicated_posts.append(post)
-
-    return deduplicated_posts
-
 
 
 @shared_task
@@ -140,6 +117,7 @@ def create_schedule(user_id):
 
     log.info(f"Got {len(all_topics)} topics")
     print(f"Got {len(all_topics)} topics")
+    print(f"All topics", all_topics[0])
     generated_posts = []
     num_posts_per_topic = 3
     if len(all_topics) == 0:
@@ -147,15 +125,17 @@ def create_schedule(user_id):
         print("User has no topics")
         return
 
+    chosen_topics = []
     if len(all_topics) * num_posts_per_topic < total_num_posts:
         # if there arent enough topics to get 3 generated posts from each topic then
         # get more geenrated posts from each topic
         num_posts_per_topic = math.ceil(total_num_posts / len(all_topics))
         for t in all_topics:
             random.shuffle(t.generated_posts)
-            topic_posts = remove_duplicated_posts(t.generated_posts)
+            topic_posts = topic.remove_duplicated_posts(t.generated_posts)
             posts = topic_posts[:num_posts_per_topic]
             generated_posts += posts
+            chosen_topics.append(t)
 
     else:
         got_all_posts = False
@@ -165,9 +145,9 @@ def create_schedule(user_id):
                     continue
                 t_ = t.pop()
                 random.shuffle(t_.generated_posts)
-                topic_posts = remove_duplicated_posts(t_.generated_posts)
+                topic_posts = topic.remove_duplicated_posts(t_.generated_posts)
                 posts = topic_posts[:num_posts_per_topic]
-
+                chosen_topics.append(t_)
                 generated_posts += posts
                 if len(generated_posts) >= total_num_posts:
                     got_all_posts = True
@@ -193,11 +173,23 @@ def create_schedule(user_id):
                 db.session.commit()
 
     # endfor
-
+    #chosen_topics = list(set(chosen_topics))
+    chosen_topics_ = []
+    print(chosen_topics)
+    for t in chosen_topics:
+        t.name
+        if t.name not in [c.name for c in chosen_topics_]:
+            chosen_topics_.append(t)
+    chosen_topics = chosen_topics_
+    schedule_niche_text = ""
+    for t in chosen_topics:
+        schedule_niche_text += t.name + ', '
+    schedule_niche_text = schedule_niche_text[:len(schedule_niche_text)-2]
     schedule = write_schedule({
         "user_id": user_id,
         "week_number": datetime.now().isocalendar().week,
-        "schedule_text": get_simple_schedule_text()
+        "schedule_text": get_simple_schedule_text(),
+        "schedule_niche_text": schedule_niche_text
     })
 
     #  pick 3 random posts for each day
@@ -218,6 +210,8 @@ def create_schedule(user_id):
     log.info(f"Writing {len(scheduled_posts)} posts")
     print(f"Writing {len(scheduled_posts)} posts")
     write_schedule_posts(scheduled_posts)
+    print('schdeule id',schedule.id)
+    write_schedule_topic_assoc(schedule, [t.id for t in chosen_topics])
     return schedule.id
 
 

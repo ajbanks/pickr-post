@@ -31,6 +31,15 @@ def schedule_run():
 
 
 @app.command()
+def schedule_id_run(uid):
+    from pickr_flask import init_app
+    app = init_app()
+    with app.app_context():
+        from pickr_flask.tasks import create_schedule
+        create_schedule(uid)
+
+
+@app.command()
 def get_posts_run():
     from pickr_flask import init_app
     app = init_app()

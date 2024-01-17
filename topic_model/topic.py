@@ -17,7 +17,9 @@ from openai.error import OpenAIError
 from flask import current_app as app
 from sklearn.feature_extraction.text import CountVectorizer
 # from sklearn.metrics.pairwise import cosine_similarity
+from topic_model.text_embedder import TextEmbedder
 
+EMBEDDER = TextEmbedder()
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 RANDOM_STATE = 42
 
@@ -373,7 +375,13 @@ def generate_tweets_for_topic(
 
 def clean_generated_tweet(text):
     if '"' in text:
-        text = text.split('"')[1]
+        temp_text = text.split('"')[1]
+        if len(temp_text) > 50:
+            text = temp_text
+    elif '**Public Statement:**' in text:
+        temp_text = text.split('**Public Statement:**')[1]
+        if len(temp_text) > 50:
+            text = temp_text
     return text
 
 
@@ -447,6 +455,29 @@ def create_label_prompt_no_keywords(documents):
         Based on the information above, extract a short topic label in the following format:
         topic: <topic label>
         """
+
+
+def remove_duplicated_posts(generated_posts, match_threshold=0.75):
+    deduplicated_posts = []
+    post_embeddings = []
+
+    for post in generated_posts:
+        remove_post = False
+        latest_post_embedding = EMBEDDER.embed(post.text)
+
+        for post_embedding in post_embeddings:
+
+            cosine_similarity = EMBEDDER.embedding_simimalrity(latest_post_embedding, post_embedding)[0][0]
+            if cosine_similarity > match_threshold:
+                remove_post = True
+                break
+
+        if not remove_post:
+            post_embeddings.append(latest_post_embedding)
+            deduplicated_posts.append(post)
+
+    deduplicated_posts = [p for p in deduplicated_posts if len(p.text) > 50]
+    return deduplicated_posts
 
 
 def convert_chat_gpt_response_to_list(str_response):

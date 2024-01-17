@@ -104,10 +104,12 @@ class X_Caller:
             500 requests / 24 hours PER APP
 
         """
-
+        print('sending dms')
         for i in range(number_dms):
-            try:   
-                self.dm_next_person_in_csv()
+            try:
+                print('attempting to send ', i)
+                resp = self.dm_next_person_in_csv()
+                print('successfully sent ', i, resp)
             except Exception as e:
                 print(f'failed to msg user due to error: {e}')
             time.sleep(200)
@@ -162,16 +164,20 @@ class X_Caller:
 
     def dm_next_person_in_csv(self):
 
+        print('attemtpting to read csv')
         dm_df = pd.read_csv(TWITTER_USERS_CSV, header=0)
+        print('successfully read csv')
 
         for i in range(len(dm_df)):
 
             if dm_df["been_messaged"].values[i] == 1:
+                print('user has already been messaged')
                 continue
 
             elif self.is_x_bio_valid(str(dm_df["Bio"].values[i])):
-
-                dm_df["been_messaged"].values[i] = 1
+                print('checking if bio is valid')
+                dm_df.at[i, "been_messaged"] = 1
+                #dm_df["been_messaged"].values[i] = 1
                 user_id = dm_df["User Id"].values[i]
                 resp = self.auto_dm(user_id, AUTO_DM_MESSAGE)
                 dm_df.to_csv(TWITTER_USERS_CSV, index=False)

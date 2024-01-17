@@ -17,6 +17,24 @@ def _to_dict(obj):
     return dict((col, getattr(obj, col)) for col in obj.__table__.columns.keys())
 
 
+schedule_topic_assoc = db.Table(
+    "schedule_topic_assoc",
+    db.Column(
+        "schedule_id",
+        Integer,
+        ForeignKey(f"{DEFAULT_SCHEMA}.schedule.id"),
+        primary_key=True,
+    ),
+    db.Column(
+        "modeled_topic_id",
+        UUID(as_uuid=True),
+        ForeignKey(f"{DEFAULT_SCHEMA}.modeled_topic.id"),
+        primary_key=True,
+    ),
+    schema=DEFAULT_SCHEMA,
+)
+
+
 user_niche_assoc = db.Table(
     "user_niche_assoc",
     db.Column(
@@ -254,6 +272,8 @@ class Schedule(db.Model):
     )
     created_at = Column(DateTime, default=func.now())
     schedule_text = Column(String(10000), nullable=True)
+    schedule_niche_text = Column(String(10000), nullable=True)
+    topics = relationship("ModeledTopic", secondary=schedule_topic_assoc)
     
     # The ISO week number that this calendar is for.
     week_number = Column(Integer)
