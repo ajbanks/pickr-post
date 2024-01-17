@@ -580,8 +580,8 @@ def home():
     # schedule_frag = weekly_post()
 
     app.logger.info("exit home function")
-    if schedule.schedule_niche_text is not None or schedule.schedule_niche_text != "":
-        schedule_niche_text = "Your schedule includes the following topics: " + schedule.schedule_niche_text
+    if schedule.schedule_niche_text is not None and schedule.schedule_niche_text != "":
+            schedule_niche_text = "Your schedule includes the following topics: " + schedule.schedule_niche_text
     else:
         schedule.schedule_niche_text = ""
     print(schedule_niche_text)
