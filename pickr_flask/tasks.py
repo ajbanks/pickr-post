@@ -117,7 +117,6 @@ def create_schedule(user_id):
 
     log.info(f"Got {len(all_topics)} topics")
     print(f"Got {len(all_topics)} topics")
-    print(f"All topics", all_topics[0])
     generated_posts = []
     num_posts_per_topic = 3
     if len(all_topics) == 0:
