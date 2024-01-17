@@ -581,10 +581,9 @@ def home():
 
     app.logger.info("exit home function")
     if schedule.schedule_niche_text is not None and schedule.schedule_niche_text != "":
-            schedule_niche_text = "Your schedule includes the following topics: " + schedule.schedule_niche_text
+        schedule_niche_text = "Your schedule includes the following topics: " + schedule.schedule_niche_text
     else:
-        schedule.schedule_niche_text = ""
-    print(schedule_niche_text)
+        schedule_niche_text = ""
     return render_template(
         "home.html",
         schedule_text=schedule.schedule_text,
