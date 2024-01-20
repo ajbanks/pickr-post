@@ -446,7 +446,8 @@ def stripe_checkout_session():
             subscription_data={},
             payment_method_collection="if_required",
             mode="subscription",
-            metadata={"user_id": current_user.id},
+            metadata={"user_id": current_user.id}, 
+            allow_promotion_codes=True,
             line_items=[
                 {
                     "price": app.config["STRIPE_SUBSCRIPTION_PRICE_ID"],
