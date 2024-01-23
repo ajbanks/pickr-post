@@ -56,16 +56,16 @@
                 <p>New trends in your niche</p>
             </div>
         </div>
-        {% if topic %}
+        {% if topics %}
             {% for topic in topics %}
             <div class="topic">
                 <div class="accordion clickable">
                     <h3>{{topic.name}}</h3>
                     <p style="font-size:medium">{{topic.description if topic.description}}</p>
                 </div>
-                <div class="more">
+                <!--<div class="more">
                     <a href="/topic/{{ topic_ids[ loop.index-1 ] }}">View topic details and generated posts↗</a>
-                </div>
+                </div>-->
             </div>
             {% endfor %}
         {% else %}

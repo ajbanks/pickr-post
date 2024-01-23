@@ -147,8 +147,8 @@ def top_trending_modeled_topic_query(niche_ids: List[UUID]) -> Query:
         .filter(
             and_(
                 ModeledTopic.niche_id.in_(niche_ids),
-                ModeledTopic.generated_posts.any(),
-                ModeledTopic.trend_type == 'trend'
+                #ModeledTopic.generated_posts.any(),
+                ModeledTopic.trend_class == 'trending'
             )
         )
         .order_by(

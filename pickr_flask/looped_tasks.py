@@ -125,6 +125,20 @@ def run_topic_pipeline(niche_id, date_from=None, date_to=None):
     generate_modeled_topic_tweets(modeled_topic_ids)
 
 
+def all_niches_run_news_pipeline():
+    """
+    Function for testing only: Scheduled daily task to run topic pipeline for each niche
+    """
+    niches = (
+        Niche.query.filter(and_(Niche.is_active, Niche.subreddits.any()))
+            .order_by(Niche.title)
+            .all()
+    )
+
+    for niche in tqdm(niches):
+        run_niche_trends(niche.id)
+
+
 def all_users_run_schedule_schdule():
     '''
     Scheduled weeky task to create post schedule for every user

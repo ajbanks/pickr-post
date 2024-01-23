@@ -337,11 +337,12 @@ def run_niche_trends(niche_id) -> List[uuid.UUID]:
     """
     niche = Niche.query.get(niche_id)
     terms = [t.term for t in niche.news_terms]
-
+    print('niche terms', niche.title, ':', terms)
     # get trends
     all_topics = []
     for term in terms:
         topic_labels, topic_articles = get_trends(term, niche.title)
+        print('topic_labels for term,', term, ':', topic_labels)
         if topic_labels is None:
             continue
         for i, title_desc in enumerate(topic_labels):

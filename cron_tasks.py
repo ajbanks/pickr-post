@@ -76,6 +76,15 @@ def get_posts():
 
 
 @app.command()
+def get_news_topics_run():
+    from pickr_flask import init_app
+    app = init_app()
+    with app.app_context():
+        from pickr_flask.looped_tasks import all_niches_run_news_pipeline
+        all_niches_run_news_pipeline()
+  
+
+@app.command()
 def get_topics_run():
     from pickr_flask import init_app
     app = init_app()

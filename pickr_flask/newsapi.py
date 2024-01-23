@@ -119,7 +119,6 @@ def write_modeled_topic_with_news_article(topic: dict, post_ids: List[int]) -> N
         logging.error(f"Database error occured: {e}")
     else:
         db.session.commit()
-
     try:
         db.session.execute(
             insert(news_modeled_topic_assoc),

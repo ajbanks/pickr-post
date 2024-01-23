@@ -555,7 +555,9 @@ def home():
 
     app.logger.info("get users niches, trending topics and topics ids")
     niche_ids = [n.id for n in current_user.niches]
+    print([n.title for n in current_user.niches])
     topics = top_trending_modeled_topic_query(niche_ids).limit(3).all()
+    print('topics', topics)
     topic_ids = [urlsafe_uuid.encode(t.id) for t in topics]
 
     app.logger.info("get users schedule")
