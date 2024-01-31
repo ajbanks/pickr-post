@@ -985,11 +985,18 @@ def post(post_id):
         )
         db.session.add(new_edit)
         db.session.commit()
-        return render_template(
-            "post.html",
-            post_text=edit_text,
-            post_id=generated_post.id,
-        )
+        #return render_template(
+        #    "post.html",
+        #    post_text=edit_text,
+        #    post_id=generated_post.id,
+        #)
+        return render_post_html_from_id(
+                generated_post.id,
+                current_user.id,
+            )
+        print('REDIRECT -----------------------------------------------------------')
+        print(url_for("top_posts"))
+        return redirect(url_for("top_posts"))
 
 
 @app.route("/post/<post_id>/tweet", methods=["GET"])
