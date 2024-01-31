@@ -994,9 +994,6 @@ def post(post_id):
                 generated_post.id,
                 current_user.id,
             )
-        print('REDIRECT -----------------------------------------------------------')
-        print(url_for("top_posts"))
-        return redirect(url_for("top_posts"))
 
 
 @app.route("/post/<post_id>/tweet", methods=["GET"])
