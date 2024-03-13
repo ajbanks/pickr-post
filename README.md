@@ -1,5 +1,7 @@
 # topic-tweet
 
+Automated Post Generation App
+
 ## Flask
 Environment should contain the following variables
 ```shell
