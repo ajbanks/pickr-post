@@ -1,6 +1,6 @@
 # topic-tweet
 
-Automated Media Analysis and Post Generation App
+Automated Media Analysis (Trust and Safety) and Post-Generation App
 
 ## Flask
 Environment should contain the following variables
